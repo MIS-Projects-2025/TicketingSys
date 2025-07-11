@@ -89,6 +89,8 @@ const Create = () => {
                 status: ticket.STATUS,
                 ticket_level: ticket.TICKET_LEVEL,
                 assessed_by_prog: ticket.ASSESSED_BY_PROGRAMMER,
+                approved_by_dm: ticket.APPROVED_BY_DM,
+                approved_by_od: ticket.APPROVED_BY_OD,
             });
             setExistingFiles(attachments || []);
         }
@@ -310,26 +312,34 @@ const Create = () => {
                                                     <span>Assessed By</span>
                                                 </label>
                                             )}
-                                            <label className="floating-label">
-                                                <input
-                                                    type="text"
-                                                    placeholder="Approved By"
-                                                    className="input input-bordered w-full input-disabled bg-base-200"
-                                                    readOnly
-                                                    value="Approved By(Department Head)"
-                                                />
-                                                <span>Approved By</span>
-                                            </label>
-                                            <label className="floating-label">
-                                                <input
-                                                    type="text"
-                                                    placeholder="Approved By"
-                                                    className="input input-bordered w-full input-disabled bg-base-200"
-                                                    readOnly
-                                                    value="Approved By(Operational Director)"
-                                                />
-                                                <span>Approved By</span>
-                                            </label>
+                                            {addTicketData.approved_by_dm && (
+                                                <label className="floating-label">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Assessed By"
+                                                        className="input input-bordered w-full input-disabled bg-base-200"
+                                                        readOnly
+                                                        value={
+                                                            addTicketData.approved_by_dm
+                                                        }
+                                                    />
+                                                    <span>Approved By</span>
+                                                </label>
+                                            )}
+                                            {addTicketData.approved_by_od && (
+                                                <label className="floating-label">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Assessed By"
+                                                        className="input input-bordered w-full input-disabled bg-base-200"
+                                                        readOnly
+                                                        value={
+                                                            addTicketData.approved_by_od
+                                                        }
+                                                    />
+                                                    <span>Approved By</span>
+                                                </label>
+                                            )}
                                         </>
                                     )}
                                 </div>

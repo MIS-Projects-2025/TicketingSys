@@ -23,6 +23,7 @@ const Create = () => {
         addTicketData,
         successMessage,
         processing,
+        errors,
         remarksState,
         setRemarksState,
         setSuccessMessage,
@@ -158,6 +159,7 @@ const Create = () => {
                                 onChange={handleFormChange}
                                 onSubmit={handleAddTicket}
                                 processing={processing}
+                                errors={errors}
                                 ticketOptions={ticketOptions}
                                 customDarkStyles={customDarkStyles}
                                 selectedFiles={selectedFiles}

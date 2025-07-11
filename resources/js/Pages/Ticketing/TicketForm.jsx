@@ -18,24 +18,13 @@ const TicketForm = ({
     formState,
     errors = {},
 }) => {
-    console.log("🎨 TicketForm rendered with:", {
-        formData,
-        errors,
-        processing,
-        onSubmit: typeof onSubmit,
-    });
-
-    const handleSubmit = (e) => {
-        console.log("🎯 Form onSubmit handler called");
-        if (onSubmit) {
-            onSubmit(e);
-        } else {
-            console.error("❌ onSubmit prop is missing!");
-        }
-    };
+    // Debug logging
+    console.log("🔍 TicketForm errors prop:", errors);
+    console.log("🔍 TicketForm formData:", formData);
+    console.log("🔍 Has errors:", Object.keys(errors).length > 0);
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={onSubmit}>
             <div className="space-y-6">
                 {/* Ticket Selection */}
                 <div className="flex items-stretch gap-2 w-full">
@@ -121,10 +110,6 @@ const TicketForm = ({
                             }`}
                             value={formData.project_name}
                             onChange={(e) => {
-                                console.log(
-                                    "📝 Project name changed:",
-                                    e.target.value
-                                );
                                 onChange("project_name", e.target.value);
                             }}
                         />
@@ -145,10 +130,6 @@ const TicketForm = ({
                             }`}
                             value={formData.type_of_request}
                             onChange={(e) => {
-                                console.log(
-                                    "📝 Request type changed:",
-                                    e.target.value
-                                );
                                 onChange("type_of_request", e.target.value);
                                 setRequestType(e.target.value);
                             }}
@@ -181,10 +162,6 @@ const TicketForm = ({
                             placeholder="Details of the request"
                             value={formData.details}
                             onChange={(e) => {
-                                console.log(
-                                    "📝 Details changed:",
-                                    e.target.value
-                                );
                                 onChange("details", e.target.value);
                             }}
                         />
@@ -206,53 +183,16 @@ const TicketForm = ({
                     handleRemove={handleRemove}
                 />
 
-                {/* Display general errors */}
-                {Object.keys(errors).length > 0 && (
-                    <div className="alert alert-error">
-                        <div>
-                            <h4 className="font-bold">
-                                Please fix the following errors:
-                            </h4>
-                            <ul className="list-disc list-inside mt-2">
-                                {Object.entries(errors).map(
-                                    ([field, error]) => (
-                                        <li key={field} className="text-sm">
-                                            {error}
-                                        </li>
-                                    )
-                                )}
-                            </ul>
-                        </div>
-                    </div>
-                )}
-
-                {/* Debug info */}
-                <div className="bg-gray-100 p-4 rounded text-sm">
-                    <strong>Debug Info:</strong>
-                    <pre>
-                        {JSON.stringify(
-                            {
-                                hasErrors: Object.keys(errors).length > 0,
-                                errors,
-                                processing,
-                                formData: {
-                                    type_of_request: formData.type_of_request,
-                                    project_name: formData.project_name,
-                                    details: formData.details,
-                                },
-                            },
-                            null,
-                            2
-                        )}
-                    </pre>
-                </div>
-
                 {/* Submit Button */}
                 <button
                     type="submit"
                     className="btn btn-primary gap-2"
                     disabled={processing}
-                    onClick={() => console.log("🔘 Submit button clicked")}
+                    onClick={(e) => {
+                        console.log("🔘 Submit button clicked");
+                        console.log("📝 Current form data:", formData);
+                        console.log("❌ Current errors:", errors);
+                    }}
                 >
                     <Ticket className="w-5 h-5" />
                     {processing ? "Generating Ticket ..." : "Generate"}

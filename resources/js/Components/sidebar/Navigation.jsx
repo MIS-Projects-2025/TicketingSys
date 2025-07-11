@@ -9,7 +9,7 @@ export default function NavLinks() {
             className="flex flex-col flex-grow space-y-1 overflow-y-auto"
             style={{ scrollbarWidth: "none" }}
         >
-            <SidebarLink
+            {/* <SidebarLink
                 href={route("dashboard")}
                 label="Dashboard"
                 icon={
@@ -29,9 +29,30 @@ export default function NavLinks() {
                     </svg>
                 }
                 notifications={5}
+            /> */}
+            <SidebarLink
+                href={route("tickets")}
+                label="Tickets"
+                icon={
+                    // Ticket icon (FontAwesome style)
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth="1.5"
+                        stroke="currentColor"
+                        className="w-5 h-5"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M4.5 4.5h15v2.25a1.5 1.5 0 010 3V16.5a1.5 1.5 0 010 3V19.5h-15v-2.25a1.5 1.5 0 010-3V7.5a1.5 1.5 0 010-3V4.5z"
+                        />
+                        <circle cx="12" cy="12" r="1.5" />
+                    </svg>
+                }
             />
-
-            <Dropdown
+            {/* <Dropdown
                 label="Dropdown"
                 icon={
                     <svg
@@ -67,7 +88,7 @@ export default function NavLinks() {
                     },
                 ]}
                 notification={true}
-            />
+            /> */}
 
             {["superadmin", "admin"].includes(emp_data?.emp_system_role) && (
                 <div>
@@ -83,10 +104,22 @@ export default function NavLinks() {
                                 stroke="currentColor"
                                 className="w-5 h-5"
                             >
+                                {/* User head and body */}
                                 <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
-                                    d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"
+                                    d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"
+                                />
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M4.5 20.25v-1.5A4.5 4.5 0 019 14.25h2.25"
+                                />
+                                {/* Shield */}
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M17.25 14.25l2.25.75v2.25c0 2.25-2.25 3-2.25 3s-2.25-.75-2.25-3v-2.25l2.25-.75z"
                                 />
                             </svg>
                         }

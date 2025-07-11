@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import FileUploadSection from "./FileUploadSection";
 import { useTicketManagement } from "../../hooks/useTicketManagement";
 import Select from "react-select";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 const Create = () => {
     const customDarkStyles = {
         control: (provided, state) => ({
@@ -93,7 +94,7 @@ const Create = () => {
         }
     }, [initialFormState, ticket, setFormState, setAddTicketData]);
     return (
-        <>
+        <AuthenticatedLayout>
             <div className="flex min-h-screen justify-center items-center bg-base-200">
                 <div className="card bg-base-100 w-full max-w-4xl shadow-xl">
                     <div className="card-body p-8">
@@ -392,7 +393,7 @@ const Create = () => {
                     </div>
                 </div>
             </div>
-        </>
+        </AuthenticatedLayout>
     );
 };
 

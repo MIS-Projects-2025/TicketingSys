@@ -3,7 +3,6 @@ import { router, usePage } from "@inertiajs/react";
 
 export function useTicketManagement() {
     const { emp_data } = usePage().props;
-    console.log(usePage().props);
     const [addTicketData, setAddTicketData] = useState({
         employee_id: emp_data?.emp_id ?? "",
         department: emp_data?.emp_dept ?? "",
@@ -22,15 +21,43 @@ export function useTicketManagement() {
     const [remarksState, setRemarksState] = useState("");
     const [processing, setProcessing] = useState(false);
     const [successMessage, setSuccessMessage] = useState("");
+    const [errors, setErrors] = useState({}); // <-- NEW: error state
+
+    // Validation function
+    const validate = () => {
+        const newErrors = {};
+        if (
+            !addTicketData.type_of_request ||
+            addTicketData.type_of_request.trim() === ""
+        ) {
+            newErrors.type_of_request = "Request type is required.";
+        }
+        // Add more field validations as needed
+        return newErrors;
+    };
+
     const handleFormChange = (field, value) => {
         setAddTicketData((prev) => ({
             ...prev,
             [field]: value,
         }));
+        // Clear error for this field on change
+        setErrors((prev) => ({
+            ...prev,
+            [field]: undefined,
+        }));
     };
+
     const handleAddTicket = (e) => {
         e.preventDefault();
         setProcessing(true);
+
+        const validationErrors = validate();
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            setProcessing(false);
+            return;
+        }
 
         const formData = new FormData();
 
@@ -60,11 +87,13 @@ export function useTicketManagement() {
                     });
                     setSelectedFiles([]);
                     setSuccessMessage("");
+                    setErrors({});
                 }, 2000);
             },
             onFinish: () => setProcessing(false),
         });
     };
+
     const handleFileChange = (e) => {
         const files = Array.from(e.target.files);
         setSelectedFiles((prev) => [...prev, ...files]);
@@ -94,5 +123,7 @@ export function useTicketManagement() {
         setExistingFiles,
         handleFileChange,
         handleRemove,
+        errors, // <-- expose errors to the form
+        setErrors,
     };
 }

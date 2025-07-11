@@ -81,6 +81,16 @@ export function useTicketManagement() {
         }
     };
 
+    const handleApprove = () => {
+        // Implement approval logic
+        console.log("Approving ticket...");
+    };
+
+    const handleDisapprove = () => {
+        // Implement disapproval logic with remarks
+        console.log("Disapproving ticket with remarks:", remarks);
+        setRemarksState("hide");
+    };
     const handleAddTicket = (e) => {
         e.preventDefault();
 
@@ -191,6 +201,8 @@ export function useTicketManagement() {
         setSelectedFiles,
         setExistingFiles,
         handleFileChange,
+        handleApprove,
+        handleDisapprove,
         handleRemove,
         errors,
         setErrors,

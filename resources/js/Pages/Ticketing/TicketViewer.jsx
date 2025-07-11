@@ -128,26 +128,28 @@ const TicketViewer = ({ ticket, attachments }) => {
                         <span>Assessed By</span>
                     </label>
                 )}
-
-                <label className="floating-label">
-                    <input
-                        type="text"
-                        className="input input-bordered w-full input-disabled bg-base-200"
-                        readOnly
-                        value="Approved By(Department Head)"
-                    />
-                    <span>Approved By</span>
-                </label>
-
-                <label className="floating-label">
-                    <input
-                        type="text"
-                        className="input input-bordered w-full input-disabled bg-base-200"
-                        readOnly
-                        value="Approved By(Operational Director)"
-                    />
-                    <span>Approved By</span>
-                </label>
+                {ticket.approved_by_dm && (
+                    <label className="floating-label">
+                        <input
+                            type="text"
+                            className="input input-bordered w-full input-disabled bg-base-200"
+                            readOnly
+                            value={ticket.approved_by_dm}
+                        />
+                        <span>Approved By</span>
+                    </label>
+                )}
+                {ticket.approved_by_od && (
+                    <label className="floating-label">
+                        <input
+                            type="text"
+                            className="input input-bordered w-full input-disabled bg-base-200"
+                            readOnly
+                            value={ticket.approved_by_od}
+                        />
+                        <span>Approved By</span>
+                    </label>
+                )}
             </div>
         </div>
     );

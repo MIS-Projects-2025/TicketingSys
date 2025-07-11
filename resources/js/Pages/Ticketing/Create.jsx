@@ -33,6 +33,8 @@ const Create = () => {
         setAddTicketData,
         handleFormChange,
         handleAddTicket,
+        handleApprove,
+        handleDisapprove,
         handleFileChange,
         handleRemove,
     } = useTicketManagement();
@@ -91,21 +93,13 @@ const Create = () => {
                 status: ticket.STATUS,
                 ticket_level: ticket.TICKET_LEVEL,
                 assessed_by_prog: ticket.ASSESSED_BY_PROGRAMMER,
+                approved_by_dm: ticket.APPROVED_BY_DM,
+                approved_by_od: ticket.APPROVED_BY_OD,
             });
             setExistingFiles(attachments || []);
         }
     }, [initialFormState, ticket, setFormState, setAddTicketData]);
 
-    const handleApprove = () => {
-        // Implement approval logic
-        console.log("Approving ticket...");
-    };
-
-    const handleDisapprove = () => {
-        // Implement disapproval logic with remarks
-        console.log("Disapproving ticket with remarks:", remarks);
-        setRemarksState("hide");
-    };
     return (
         <AuthenticatedLayout>
             <div className="flex min-h-screen justify-center items-center bg-base-200">

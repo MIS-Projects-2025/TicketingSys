@@ -12,6 +12,8 @@ require __DIR__ . '/auth.php';
 // General routes
 require __DIR__ . '/general.php';
 
+// Ticketing routes
+require __DIR__ . '/ticketing.php';
 Route::get("/demo", [DemoController::class, 'index'])->name('demo');
 
 Route::fallback(function () {

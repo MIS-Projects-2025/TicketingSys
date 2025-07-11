@@ -55,23 +55,28 @@ const TicketForm = ({
                     </label>
 
                     {formData.ticket_no &&
-                        !window.location.pathname.includes(
-                            `/tickets/${btoa(formData.ticket_no)}`
-                        ) && (
-                            <a
-                                href={`/tickets/${btoa(formData.ticket_no)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn btn-outline btn-primary px-4"
-                                style={{ height: "38px" }}
-                                title="View Ticket"
-                            >
-                                <View className="w-5 h-5 mr-1" />
-                                View
-                            </a>
-                        )}
+                        (() => {
+                            const encodedTicketNo = btoa(
+                                formData.ticket_no || ""
+                            );
+                            const ticketPath = `/tickets/${encodedTicketNo}`;
+                            const isCurrentTicketPage =
+                                window.location.pathname === ticketPath;
+                            return !isCurrentTicketPage ? (
+                                <a
+                                    href={ticketPath}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn btn-outline btn-primary px-4"
+                                    style={{ height: "38px" }}
+                                    title="View Ticket"
+                                >
+                                    <View className="w-5 h-5 mr-1" />
+                                    View
+                                </a>
+                            ) : null;
+                        })()}
                 </div>
-
                 {/* Employee Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <label className="floating-label">

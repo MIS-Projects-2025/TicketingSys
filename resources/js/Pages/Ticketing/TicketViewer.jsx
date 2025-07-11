@@ -2,6 +2,7 @@ import { View } from "lucide-react";
 import FileUploadSection from "./FileUploadSection";
 
 const TicketViewer = ({ ticket, attachments }) => {
+    console.log("🔍 TicketForm formData:", ticket);
     return (
         <div className="space-y-6">
             {/* Ticket Header */}
@@ -16,17 +17,25 @@ const TicketViewer = ({ ticket, attachments }) => {
                     <span>Ticket No.</span>
                 </label>
 
-                <a
-                    href={`/tickets/${btoa(ticket.ticket_no)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-outline btn-primary px-4"
-                    style={{ height: "38px" }}
-                    title="View Ticket"
-                >
-                    <View className="w-5 h-5 mr-1" />
-                    View
-                </a>
+                {(() => {
+                    const encodedTicketNo = btoa(ticket.ticket_no || "");
+                    const ticketPath = `/tickets/${encodedTicketNo}`;
+                    const isCurrentTicketPage =
+                        window.location.pathname === ticketPath;
+                    return !isCurrentTicketPage ? (
+                        <a
+                            href={ticketPath}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-outline btn-primary px-4"
+                            style={{ height: "38px" }}
+                            title="View Ticket"
+                        >
+                            <View className="w-5 h-5 mr-1" />
+                            View
+                        </a>
+                    ) : null;
+                })()}
             </div>
 
             {/* Employee Information */}

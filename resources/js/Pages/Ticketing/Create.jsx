@@ -54,7 +54,6 @@ const Create = () => {
     } = usePage().props;
 
     const {
-        emp_data,
         requestType,
         formState,
         selectedFiles,
@@ -72,6 +71,7 @@ const Create = () => {
         handleFormChange,
         handleAddTicket,
         handleFileChange,
+        handleApprovalAction,
         handleRemove,
     } = useTicketManagement();
 
@@ -356,16 +356,25 @@ const Create = () => {
                                     </button>
                                 )}
                                 <div className="grid grid-cols-2 gap-6">
-                                    {formState == "viewing" && (
+                                    {formState == "approver" && (
                                         <>
-                                            <button className="btn btn-primary gap-2">
+                                            <button
+                                                className="btn btn-primary gap-2"
+                                                onClick={() =>
+                                                    handleApprovalAction(
+                                                        "approved"
+                                                    )
+                                                }
+                                            >
                                                 <ThumbsUp className="w-5 h-5" />
                                                 Approve
                                             </button>
                                             <button
                                                 className="btn btn-primary gap-2"
                                                 onClick={() =>
-                                                    setRemarksState("show")
+                                                    handleApprovalAction(
+                                                        "disapproved"
+                                                    )
                                                 }
                                             >
                                                 <ThumbsDown className="w-5 h-5" />
@@ -373,7 +382,7 @@ const Create = () => {
                                             </button>
                                         </>
                                     )}
-                                </div>{" "}
+                                </div>
                             </div>
                             {remarksState === "show" && (
                                 <div

@@ -166,6 +166,18 @@ class TicketingController extends Controller
             'ticketOptions' => $ticketOptions,
         ]);
     }
+    public function showTable()
+    {
+        $tickets = DB::select('
+            SELECT * FROM TICKETS 
+            WHERE DELETED_AT IS NULL 
+            ORDER BY CREATED_AT DESC
+        ');
+
+        return Inertia::render('Ticketing/Table', [
+            'tickets' => $tickets
+        ]);
+    }
     private function generateTicketNumber()
     {
         $year = date('Y');

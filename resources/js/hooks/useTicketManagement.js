@@ -73,7 +73,17 @@ export function useTicketManagement() {
     const handleRemove = (index) => {
         setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
     };
+    const handleApprovalAction = (action) => {
+        // Save to database logic here
+        console.log("Action:", action);
 
+        if (action === "disapproved") {
+            setRemarksState("show");
+        }
+
+        // Your database save logic
+        // saveToDatabase({ status: action, ... });
+    };
     return {
         emp_data,
         requestType,
@@ -93,6 +103,7 @@ export function useTicketManagement() {
         setSelectedFiles,
         setExistingFiles,
         handleFileChange,
+        handleApprovalAction,
         handleRemove,
     };
 }

@@ -51,6 +51,7 @@ const Create = () => {
         ticket,
         attachments,
         ticketOptions = [],
+        emp_data,
     } = usePage().props;
 
     const {
@@ -95,6 +96,81 @@ const Create = () => {
             setExistingFiles(attachments || []);
         }
     }, [initialFormState, ticket, setFormState, setAddTicketData]);
+    // --- Approval Step Logic ---
+    // Determine which approval step is pending
+    let approvalStep = null;
+    let approvalField = null;
+    if (!addTicketData.assessed_by_prog) {
+        approvalStep = "assessment";
+        approvalField = "assessed_by_prog";
+    } else if (!addTicketData.approved_by_dm) {
+        approvalStep = "dm_approval";
+        approvalField = "approved_by_dm";
+    } else if (!addTicketData.approved_by_od) {
+        approvalStep = "od_approval";
+        approvalField = "approved_by_od";
+    }
+
+    // --- Approval Eligibility Logic ---
+    // Assessment: MIS + job title contains "programmer"
+    const isAssessmentEligible =
+        approvalStep === "assessment" &&
+        emp_data?.emp_dept === "MIS" &&
+        emp_data?.emp_jobtitle?.toLowerCase().includes("programmer");
+
+    // DM Approval: Approver 2 or 3 of the requestor
+    // Assuming ticket/requestor's emp_id is addTicketData.employee_id
+    // and emp_data.emp_id is the current user's id
+    // You may need to adjust the property names if your data structure differs
+    const isDMAssessmentEligible =
+        approvalStep === "dm_approval" &&
+        (addTicketData?.approver_2 === emp_data?.emp_id ||
+            addTicketData?.approver_3 === emp_data?.emp_id);
+
+    // OD Approval: emp_position == 5
+    const isODApprovalEligible =
+        approvalStep === "od_approval" && emp_data?.emp_position === 5;
+
+    const canApprove =
+        formState === "viewing" &&
+        (isAssessmentEligible ||
+            isDMAssessmentEligible ||
+            isODApprovalEligible);
+
+    // --- Approval Handler ---
+    const handleEnhancedApprovalAction = (action) => {
+        const empid = emp_data?.emp_id || "";
+        const jobTitle = emp_data?.emp_job_title || "";
+        let statusText = "";
+
+        if (approvalStep === "assessment") {
+            statusText =
+                action === "approved"
+                    ? `${empid} - ${jobTitle} approved`
+                    : `${empid} - ${jobTitle} disapproved`;
+        } else if (approvalStep === "dm_approval") {
+            statusText =
+                action === "approved"
+                    ? `${empid} - DM approved`
+                    : `${empid} - DM disapproved`;
+        } else if (approvalStep === "od_approval") {
+            statusText =
+                action === "approved"
+                    ? `${empid} - OD approved`
+                    : `${empid} - OD disapproved`;
+        }
+
+        setAddTicketData((prev) => ({
+            ...prev,
+            [approvalField]: statusText,
+        }));
+
+        handleApprovalAction(action, approvalStep);
+
+        if (action === "disapproved") {
+            setRemarksState("show");
+        }
+    };
     return (
         <AuthenticatedLayout>
             <div className="flex min-h-screen justify-center items-center bg-base-200">
@@ -356,29 +432,56 @@ const Create = () => {
                                     </button>
                                 )}
                                 <div className="grid grid-cols-2 gap-6">
-                                    {formState == "approver" && (
+                                    {canApprove && (
                                         <>
                                             <button
                                                 className="btn btn-primary gap-2"
+                                                type="button"
+                                                data-empid={emp_data?.emp_id}
+                                                data-status="approved"
+                                                data-approval-step={
+                                                    approvalStep
+                                                }
                                                 onClick={() =>
-                                                    handleApprovalAction(
+                                                    handleEnhancedApprovalAction(
                                                         "approved"
                                                     )
                                                 }
                                             >
                                                 <ThumbsUp className="w-5 h-5" />
-                                                Approve
+                                                {approvalStep ===
+                                                    "assessment" && "Assess"}
+                                                {approvalStep ===
+                                                    "dm_approval" &&
+                                                    "DM Approve"}
+                                                {approvalStep ===
+                                                    "od_approval" &&
+                                                    "OD Approve"}
                                             </button>
                                             <button
                                                 className="btn btn-primary gap-2"
+                                                type="button"
+                                                data-empid={emp_data?.emp_id}
+                                                data-status="disapproved"
+                                                data-approval-step={
+                                                    approvalStep
+                                                }
                                                 onClick={() =>
-                                                    handleApprovalAction(
+                                                    handleEnhancedApprovalAction(
                                                         "disapproved"
                                                     )
                                                 }
                                             >
                                                 <ThumbsDown className="w-5 h-5" />
-                                                Disapprove
+                                                {approvalStep ===
+                                                    "assessment" &&
+                                                    "Disapprove"}
+                                                {approvalStep ===
+                                                    "dm_approval" &&
+                                                    "DM Disapprove"}
+                                                {approvalStep ===
+                                                    "od_approval" &&
+                                                    "OD Disapprove"}
                                             </button>
                                         </>
                                     )}

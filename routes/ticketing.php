@@ -12,4 +12,4 @@ Route::get('/tickets', [TicketingController::class, 'showTicketForm'])->name('ti
 Route::post('/add-ticket', [TicketingController::class, 'saveTicket']);
 
 Route::get('/tickets/{hash}', [TicketingController::class, 'show']);
-Route::get('/tickets-table', [TicketingController::class, 'showTable']);
+Route::get('/tickets-table', [TicketingController::class, 'showTable'])->name('tickets-table');

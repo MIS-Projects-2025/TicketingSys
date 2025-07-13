@@ -52,6 +52,27 @@ export default function NavLinks() {
                     </svg>
                 }
             />
+            <SidebarLink
+                href={route("tickets-table")}
+                label="Table"
+                icon={
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth="1.5"
+                        stroke="currentColor"
+                        className="w-5 h-5"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3 6h18M3 10h18M3 14h18M3 18h18M6 3v18M10 3v18M14 3v18M18 3v18"
+                        />
+                    </svg>
+                }
+            />
+
             {/* <Dropdown
                 label="Dropdown"
                 icon={

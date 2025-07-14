@@ -20,8 +20,10 @@ export function useTicketManagement() {
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [existingFiles, setExistingFiles] = useState([]);
     const [remarksState, setRemarksState] = useState("");
-    const [processing, setProcessing] = useState(false);
-    const [successMessage, setSuccessMessage] = useState("");
+    const [uiState, setUiState] = useState({
+        status: "idle", // "idle" | "processing" | "success" | "error"
+        message: "",
+    });
     const handleFormChange = (field, value) => {
         setAddTicketData((prev) => ({
             ...prev,
@@ -30,7 +32,7 @@ export function useTicketManagement() {
     };
     const handleAddTicket = (e) => {
         e.preventDefault();
-        setProcessing(true);
+        setUiState({ status: "processing", message: "" });
 
         const formData = new FormData();
 
@@ -44,9 +46,10 @@ export function useTicketManagement() {
 
         router.post("/add-ticket", formData, {
             onSuccess: () => {
-                setSuccessMessage(
-                    "Ticket submitted successfully! Reloading..."
-                );
+                setUiState({
+                    status: "success",
+                    message: "Ticket submitted successfully! Reloading...",
+                });
                 setTimeout(() => {
                     setAddTicketData({
                         employee_id: "",
@@ -59,10 +62,22 @@ export function useTicketManagement() {
                         ticket_level: "parent",
                     });
                     setSelectedFiles([]);
-                    setSuccessMessage("");
+                    setUiState({
+                        status: "error",
+                        message: "Failed to submit ticket. Please try again.",
+                    });
                 }, 2000);
             },
-            onFinish: () => setProcessing(false),
+            onFinish: () => {
+                setTimeout(() => {
+                    if (
+                        uiState.status !== "success" &&
+                        uiState.status !== "error"
+                    ) {
+                        setUiState({ status: "idle", message: "" });
+                    }
+                }, 500);
+            },
         });
     };
     const handleFileChange = (e) => {
@@ -91,8 +106,7 @@ export function useTicketManagement() {
         selectedFiles,
         existingFiles,
         addTicketData,
-        successMessage,
-        processing,
+        uiState,
         remarksState,
         setRemarksState,
         handleFormChange,

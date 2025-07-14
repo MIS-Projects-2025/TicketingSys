@@ -60,11 +60,9 @@ const Create = () => {
         selectedFiles,
         existingFiles,
         addTicketData,
-        successMessage,
-        processing,
+        uiState,
         remarksState,
         setRemarksState,
-        setSuccessMessage,
         setExistingFiles,
         setRequestType,
         setFormState,
@@ -187,16 +185,14 @@ const Create = () => {
                             </p>
                         </div>
 
-                        {successMessage && (
+                        {uiState.status === "success" && (
                             <div className="alert alert-success shadow-sm flex items-center justify-between">
-                                <span>{successMessage}</span>
-                                <button
-                                    type="button"
-                                    className="btn btn-xs btn-circle btn-ghost ml-2"
-                                    onClick={() => setSuccessMessage("")}
-                                >
-                                    ✕
-                                </button>
+                                <span>{uiState.message}</span>
+                            </div>
+                        )}
+                        {uiState.status === "error" && (
+                            <div className="alert alert-error shadow-sm flex items-center justify-between">
+                                <span>{uiState.message}</span>
                             </div>
                         )}
                         <form onSubmit={handleAddTicket}>
@@ -423,10 +419,12 @@ const Create = () => {
                                     <button
                                         type="submit"
                                         className="btn btn-primary gap-2"
-                                        disabled={processing}
+                                        disabled={
+                                            uiState.status === "processing"
+                                        }
                                     >
                                         <Ticket className="w-5 h-5" />
-                                        {processing
+                                        {uiState.status === "processing"
                                             ? "Generating Ticket ..."
                                             : "Generate"}
                                     </button>

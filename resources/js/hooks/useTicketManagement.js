@@ -11,7 +11,7 @@ export function useTicketManagement() {
         type_of_request: "",
         project_name: "",
         details: "",
-        status: "open",
+        status: "OPEN",
         ticket_level: "parent",
         assessed_by_prog: "",
     });

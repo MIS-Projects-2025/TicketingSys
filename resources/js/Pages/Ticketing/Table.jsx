@@ -7,7 +7,7 @@ const Table = () => {
     const { tickets } = usePage().props;
 
     const columns = [
-        { label: "Ticket No", key: "TICKET_NO" },
+        { label: "Ticket No", key: "TICKET_ID" },
         { label: "Project Name", key: "PROJECT_NAME" },
         { label: "Details", key: "DETAILS" },
         { label: "Date Requested", key: "CREATED_AT" },

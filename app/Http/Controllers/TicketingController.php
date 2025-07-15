@@ -151,9 +151,14 @@ class TicketingController extends Controller
             WHERE DELETED_AT IS NULL 
             ORDER BY CREATED_AT DESC
         ');
+        // From masterlist database connection (specify the connection name)
+        $masterlist = DB::connection('masterlist')->select('
+        SELECT * FROM employee_masterlist 
+    ');
 
         return Inertia::render('Ticketing/Table', [
-            'tickets' => $tickets
+            'tickets' => $tickets,
+            'masterlist' => $masterlist
         ]);
     }
 

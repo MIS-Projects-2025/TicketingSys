@@ -49,6 +49,7 @@ const Create = () => {
 
     const {
         formState: initialFormState,
+        userAccountType: initialUserAccountType,
         ticket,
         attachments,
         ticketOptions = [],
@@ -63,7 +64,8 @@ const Create = () => {
         addTicketData,
         uiState,
         remarksState,
-        setRemarksState,
+        userAccountType,
+        setUserAccountType,
         setExistingFiles,
         setRequestType,
         setFormState,
@@ -75,8 +77,13 @@ const Create = () => {
     } = useTicketManagement();
 
     useEffect(() => {
-        if (initialFormState === "viewing" && ticket) {
-            setFormState("viewing");
+        if (initialFormState) {
+            setFormState(initialFormState);
+        }
+        if (initialUserAccountType) {
+            setUserAccountType(initialUserAccountType);
+        }
+        if (initialFormState != "create" && ticket) {
             setAddTicketData({
                 employee_id: ticket.EMPLOYEE_ID,
                 employee_name: ticket.EMPNAME,
@@ -93,7 +100,7 @@ const Create = () => {
             });
             setExistingFiles(attachments || []);
         }
-    }, [initialFormState, ticket, setFormState, setAddTicketData]);
+    }, [initialFormState, ticket]);
 
     return (
         <AuthenticatedLayout>
@@ -341,7 +348,24 @@ const Create = () => {
                                         </>
                                     )}
                                 </div>
-                                {formState !== "viewing" && (
+                                {formState}
+                                {userAccountType}
+                                {formState === "assessing" &&
+                                    userAccountType === "PROGRAMMER" && (
+                                        <button className="btn btn-success">
+                                            Assess Ticket
+                                        </button>
+                                    )}
+
+                                {formState === "approving" &&
+                                    userAccountType ===
+                                        "DEPARTMENT_MANAGER" && (
+                                        <button className="btn btn-warning">
+                                            Approve
+                                        </button>
+                                    )}
+
+                                {formState == "create" && (
                                     <button
                                         type="submit"
                                         className="btn btn-primary gap-2"

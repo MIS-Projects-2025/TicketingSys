@@ -11,5 +11,5 @@ use Illuminate\Support\Facades\Route;
 Route::get('/tickets', [TicketingController::class, 'showTicketForm'])->name('tickets');
 Route::post('/add-ticket', [TicketingController::class, 'saveTicket']);
 
-Route::get('/tickets/{hash}', [TicketingController::class, 'show']);
+Route::get('/tickets/{hash}', [TicketingController::class, 'show'])->name('tickets.show');
 Route::get('/tickets-table', [TicketingController::class, 'showTable'])->name('tickets-table');

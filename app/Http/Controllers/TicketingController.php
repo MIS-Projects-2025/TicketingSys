@@ -85,7 +85,19 @@ class TicketingController extends Controller
     // Show specific ticket
     public function show($hash): Response
     {
-        $ticketId = base64_decode($hash);
+        $decodedData = base64_decode($hash);
+        $parts = explode(':', $decodedData);
+
+        if (count($parts) !== 3) {
+            abort(400, 'Invalid hash format');
+        }
+
+        [$ticketId, $formState, $userAccountType] = $parts;
+
+        if (!$ticketId) {
+            abort(400, 'Ticket ID is required');
+        }
+
         $ticket = DB::selectOne('
             SELECT * FROM tickets 
             WHERE TICKET_ID = ? AND DELETED_AT IS NULL
@@ -131,9 +143,10 @@ class TicketingController extends Controller
             WHERE DELETED_AT IS NULL
             ORDER BY CREATED_AT DESC
         ');
-
+        // dd($formState, $userAccountType, $ticket, $childTickets, $attachments, $remarks, $history, $ticketOptions);
         return Inertia::render('Ticketing/Create', [
-            'formState' => 'viewing',
+            'formState' => $formState,
+            'userAccountType' => $userAccountType,
             'ticket' => $ticket,
             'childTickets' => $childTickets,
             'attachments' => $attachments,
@@ -144,21 +157,60 @@ class TicketingController extends Controller
     }
 
     // Show tickets table
+
     public function showTable()
     {
-        $tickets = DB::select('
-            SELECT * FROM tickets 
-            WHERE DELETED_AT IS NULL 
-            ORDER BY CREATED_AT DESC
-        ');
-        // From masterlist database connection (specify the connection name)
-        $masterlist = DB::connection('masterlist')->select('
-        SELECT * FROM employee_masterlist 
-    ');
+        $empData = session('emp_data');
+        $userDepartment = $empData['emp_dept'];
+        $userJobTitle = $empData['emp_jobtitle'];
+        $userId = $empData['emp_id'];
+        $userRole = $empData['emp_system_role'];
 
+        // Base query for tickets
+        $ticketsQuery = "
+        SELECT * FROM tickets 
+        WHERE DELETED_AT IS NULL
+    ";
+
+        // Apply filtering based on user account type
+        if ($this->isRequestorAccount($empData)) {
+            // REQUESTOR ACCOUNT: Can only view their own tickets when rejected/pending
+            $ticketsQuery .= " AND REQUESTOR_ID = '{$userId}' 
+                          AND STATUS IN ('REJECTED', 'PENDING')";
+        } elseif ($this->isAssessedByProgrammer($empData)) {
+            // ASSESSED BY PROGRAMMER: MIS department with 'programmer' in job title
+            $ticketsQuery .= " AND (
+            (ASSESSED_BY_PROGRAMMER IS NULL OR ASSESSED_BY_PROGRAMMER = '') 
+            OR 
+            (ASSESSED_BY_PROGRAMMER IS NOT NULL AND STATUS = 'RETURNED')
+        )";
+        } elseif ($this->isODAccount($empData)) {
+            // OD ACCOUNT: Can see tickets approved by programmer and department head
+            $ticketsQuery .= " AND ASSESSED_BY_PROGRAMMER IS NOT NULL 
+                          AND STATUS = 'APPROVED_BY_DH'";
+        } elseif ($this->isDepartmentHead($empData)) {
+            // DEPARTMENT HEAD: Can see tickets that need their approval
+            $ticketsQuery .= " AND ASSESSED_BY_PROGRAMMER IS NOT NULL 
+                          AND STATUS = 'PENDING_APPROVAL'
+                         ";
+        } elseif ($this->isMISSupervisor($empData)) {
+            // MIS SUPERVISOR: Can see tickets approved by OD for programmer assignment
+            $ticketsQuery .= " AND STATUS = 'APPROVED_BY_OD'";
+        }
+
+        $ticketsQuery .= " ORDER BY CREATED_AT DESC";
+
+        $tickets = DB::select($ticketsQuery);
+
+        // From masterlist database connection
+        $masterlist = DB::connection('masterlist')->select('
+        SELECT * FROM employee_masterlist     
+    ');
+        // dd($this->getUserAccountType($empData));
         return Inertia::render('Ticketing/Table', [
             'tickets' => $tickets,
-            'masterlist' => $masterlist
+            'masterlist' => $masterlist,
+            'userAccountType' => $this->getUserAccountType($empData)
         ]);
     }
 
@@ -384,5 +436,67 @@ class TicketingController extends Controller
             'assigned_to' => 'nullable|string|max:100',
             'date_assigned' => 'nullable|date',
         ];
+    }
+    /**
+     * Helper functions to determine user account type
+     */
+    private function isRequestorAccount($empData)
+    {
+        // Regular employees who submit tickets
+        return !$this->isAssessedByProgrammer($empData) &&
+            !$this->isDepartmentHead($empData) &&
+            !$this->isODAccount($empData) &&
+            !$this->isMISSupervisor($empData);
+    }
+
+    private function isAssessedByProgrammer($empData)
+    {
+        $dept = strtoupper($empData['emp_dept']);
+        $jobTitle = strtolower($empData['emp_jobtitle']);
+
+        return $dept === 'MIS' &&
+            (
+                strpos($jobTitle, 'programmer') !== false ||
+                (strpos($jobTitle, 'mis') !== false && strpos($jobTitle, 'supervisor') !== false)
+            );
+    }
+
+
+    private function isDepartmentHead($empData)
+    {
+        // Check if this user is set as approver_2 or approver_3 for any employee
+        $userId = $empData['emp_id'];
+        $hasApprovalRights = DB::connection('masterlist')->select("
+        SELECT COUNT(*) as count FROM employee_masterlist 
+        WHERE (APPROVER2 = '{$userId}' OR APPROVER3 = '{$userId}')
+    ");
+
+        return $hasApprovalRights[0]->count > 0;
+    }
+
+    private function isODAccount($empData)
+    {
+        // Organizational Development account
+        return strtoupper($empData['emp_dept']) === 'OPERATIONS' ||
+            strtoupper($empData['emp_jobtitle']) === 'OPERATIONS DIRECTOR';
+    }
+
+    private function isMISSupervisor($empData)
+    {
+        // MIS Supervisor for assigning programmers
+        return strtoupper($empData['emp_dept']) === 'MIS' &&
+            stripos($empData['emp_jobtitle'], 'supervisor') !== false;
+    }
+
+    private function getUserAccountType($empData)
+    {
+        // Check in priority order to avoid conflicts
+        if ($this->isAssessedByProgrammer($empData)) return 'PROGRAMMER';
+        if ($this->isMISSupervisor($empData)) return 'MIS_SUPERVISOR';
+        if ($this->isODAccount($empData)) return 'OD';
+        if ($this->isDepartmentHead($empData)) return 'DEPARTMENT_HEAD';
+        if ($this->isRequestorAccount($empData)) return 'REQUESTOR';
+
+        return 'UNKNOWN';
     }
 }

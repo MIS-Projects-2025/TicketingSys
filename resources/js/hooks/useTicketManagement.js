@@ -16,6 +16,7 @@ export function useTicketManagement() {
         assessed_by_prog: "",
     });
     const [requestType, setRequestType] = useState("");
+    const [userAccountType, setUserAccountType] = useState("");
     const [formState, setFormState] = useState("create");
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [existingFiles, setExistingFiles] = useState([]);
@@ -108,6 +109,8 @@ export function useTicketManagement() {
         addTicketData,
         uiState,
         remarksState,
+        userAccountType,
+        setUserAccountType,
         setRemarksState,
         handleFormChange,
         handleAddTicket,

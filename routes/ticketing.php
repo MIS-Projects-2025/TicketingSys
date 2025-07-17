@@ -12,4 +12,5 @@ Route::get('/tickets', [TicketingController::class, 'showTicketForm'])->name('ti
 Route::post('/add-ticket', [TicketingController::class, 'saveTicket']);
 
 Route::get('/tickets/{hash}', [TicketingController::class, 'show'])->name('tickets.show');
+Route::put('/tickets/update-status/{hash}', [TicketingController::class, 'updateStatus'])->name('tickets.updateStatus');
 Route::get('/tickets-table', [TicketingController::class, 'showTable'])->name('tickets-table');

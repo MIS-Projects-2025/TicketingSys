@@ -72,6 +72,7 @@ const Create = () => {
         setAddTicketData,
         handleFormChange,
         handleAddTicket,
+        handleApprovalAction,
         handleFileChange,
         handleRemove,
     } = useTicketManagement();
@@ -87,16 +88,16 @@ const Create = () => {
             setAddTicketData({
                 employee_id: ticket.EMPLOYEE_ID,
                 employee_name: ticket.EMPNAME,
-                ticket_no: ticket.TICKET_NO,
+                ticket_id: ticket.TICKET_ID,
                 department: ticket.DEPARTMENT,
                 type_of_request: ticket.TYPE_OF_REQUEST,
                 project_name: ticket.PROJECT_NAME,
                 details: ticket.DETAILS,
                 status: ticket.STATUS,
                 ticket_level: ticket.TICKET_LEVEL,
-                assessed_by_prog: ticket.ASSESSED_BY_PROGRAMMER,
-                approved_by_dm: ticket.APPROVED_BY_DM,
-                approved_by_od: ticket.APPROVED_BY_OD,
+                prog_action_by: ticket.PROG_ACTION_BY,
+                dm_action_by: ticket.DM_ACTION_BY,
+                od_action_by: ticket.OD_ACTION_BY,
             });
             setExistingFiles(attachments || []);
         }
@@ -142,12 +143,12 @@ const Create = () => {
                                                 ticketOptions.find(
                                                     (opt) =>
                                                         opt.value ===
-                                                        addTicketData.ticket_no
+                                                        addTicketData.ticket_id
                                                 ) || null
                                             }
                                             onChange={(option) =>
                                                 handleFormChange(
-                                                    "ticket_no",
+                                                    "ticket_id",
                                                     option ? option.value : ""
                                                 )
                                             }
@@ -161,15 +162,15 @@ const Create = () => {
                                         <span>Ticket No.</span>
                                     </label>
 
-                                    {addTicketData.ticket_no &&
+                                    {addTicketData.ticket_id &&
                                         !window.location.pathname.includes(
                                             `/tickets/${btoa(
-                                                addTicketData.ticket_no
+                                                addTicketData.ticket_id
                                             )}`
                                         ) && (
                                             <a
                                                 href={`/tickets/${btoa(
-                                                    addTicketData.ticket_no
+                                                    addTicketData.ticket_id
                                                 )}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
@@ -194,9 +195,10 @@ const Create = () => {
                                             type="text"
                                             placeholder="Employee ID"
                                             className="input input-bordered w-full input-disabled bg-base-200"
-                                            readOnly={formState === "viewing"}
+                                            readOnly
                                             value={addTicketData.employee_id}
                                         />
+
                                         <span>Employee ID</span>
                                     </label>
 
@@ -205,8 +207,7 @@ const Create = () => {
                                             type="text"
                                             placeholder="Department"
                                             className="input input-bordered w-full input-disabled bg-base-200"
-                                            // value={emp_data?.emp_dept}
-                                            readOnly={formState === "viewing"}
+                                            readOnly
                                             value={addTicketData.department}
                                         />
                                         <span>Department</span>
@@ -218,7 +219,7 @@ const Create = () => {
                                             type="text"
                                             placeholder="Project Name"
                                             className="input input-bordered w-full"
-                                            readOnly={formState === "viewing"}
+                                            readOnly={formState != "create"}
                                             value={addTicketData.project_name}
                                             onChange={(e) =>
                                                 handleFormChange(
@@ -233,7 +234,7 @@ const Create = () => {
                                     <label className="floating-label">
                                         <select
                                             className="select select-bordered w-full"
-                                            disabled={formState === "viewing"}
+                                            disabled={formState != "create"}
                                             value={
                                                 addTicketData.type_of_request
                                             }
@@ -266,7 +267,7 @@ const Create = () => {
                                         <textarea
                                             className="textarea textarea-bordered w-full h-24"
                                             placeholder="Details of the request"
-                                            readOnly={formState === "viewing"}
+                                            readOnly={formState != "create"}
                                             value={addTicketData.details}
                                             onChange={(e) =>
                                                 handleFormChange(
@@ -303,7 +304,7 @@ const Create = () => {
                                                         </span>
                                                     </label>
                                                 )}
-                                            {addTicketData.assessed_by_prog && (
+                                            {addTicketData.prog_action_by && (
                                                 <label className="floating-label">
                                                     <input
                                                         type="text"
@@ -311,13 +312,13 @@ const Create = () => {
                                                         className="input input-bordered w-full input-disabled bg-base-200"
                                                         readOnly
                                                         value={
-                                                            addTicketData.assessed_by_prog
+                                                            addTicketData.prog_action_by
                                                         }
                                                     />
                                                     <span>Assessed By</span>
                                                 </label>
                                             )}
-                                            {addTicketData.approved_by_dm && (
+                                            {addTicketData.dm_action_by && (
                                                 <label className="floating-label">
                                                     <input
                                                         type="text"
@@ -325,13 +326,13 @@ const Create = () => {
                                                         className="input input-bordered w-full input-disabled bg-base-200"
                                                         readOnly
                                                         value={
-                                                            addTicketData.approved_by_dm
+                                                            addTicketData.dm_action_by
                                                         }
                                                     />
                                                     <span>Approved By</span>
                                                 </label>
                                             )}
-                                            {addTicketData.approved_by_od && (
+                                            {addTicketData.od_action_by && (
                                                 <label className="floating-label">
                                                     <input
                                                         type="text"
@@ -339,7 +340,7 @@ const Create = () => {
                                                         className="input input-bordered w-full input-disabled bg-base-200"
                                                         readOnly
                                                         value={
-                                                            addTicketData.approved_by_od
+                                                            addTicketData.od_action_by
                                                         }
                                                     />
                                                     <span>Approved By</span>
@@ -350,19 +351,96 @@ const Create = () => {
                                 </div>
                                 {/* {formState}
                                 {userAccountType} */}
+
+                                {/* Programmer: Return ticket */}
                                 {formState === "assessing" &&
                                     userAccountType === "PROGRAMMER" && (
-                                        <button className="btn btn-success">
-                                            Assess Ticket
-                                        </button>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                className="btn btn-success"
+                                                onClick={() =>
+                                                    handleApprovalAction(
+                                                        "assessed"
+                                                    )
+                                                }
+                                            >
+                                                Assess Ticket
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                className="btn btn-success"
+                                                onClick={() =>
+                                                    handleApprovalAction(
+                                                        "assess_return"
+                                                    )
+                                                }
+                                            >
+                                                Return Ticket
+                                            </button>
+                                        </div>
+                                    )}
+                                {/* {formState} */}
+                                {/* Department Manager: Approve or Disapprove */}
+                                {formState === "approving" &&
+                                    userAccountType === "DEPARTMENT_HEAD" &&
+                                    remarksState !== "show" && (
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                className="btn btn-warning"
+                                                onClick={() =>
+                                                    handleApprovalAction(
+                                                        "approve_dh"
+                                                    )
+                                                }
+                                            >
+                                                Approve
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-error"
+                                                onClick={() =>
+                                                    handleApprovalAction(
+                                                        "disapprove"
+                                                    )
+                                                }
+                                            >
+                                                Disapprove
+                                            </button>
+                                        </div>
                                     )}
 
+                                {/* OD: Approve or Disapprove */}
+                                {/* OD Approval */}
                                 {formState === "approving" &&
-                                    userAccountType ===
-                                        "DEPARTMENT_MANAGER" && (
-                                        <button className="btn btn-warning">
-                                            Approve
-                                        </button>
+                                    userAccountType === "OD" &&
+                                    remarksState !== "show" && (
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                className="btn btn-warning"
+                                                onClick={() =>
+                                                    handleApprovalAction(
+                                                        "approve_od"
+                                                    )
+                                                }
+                                            >
+                                                Approve
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-error"
+                                                onClick={() =>
+                                                    handleApprovalAction(
+                                                        "disapprove"
+                                                    )
+                                                }
+                                            >
+                                                Disapprove
+                                            </button>
+                                        </div>
                                     )}
 
                                 {formState == "create" && (
@@ -381,27 +459,31 @@ const Create = () => {
                                 )}
                             </div>
                             {remarksState === "show" && (
-                                <div
-                                    className="mt-4 transition-all duration-500 ease-in-out"
-                                    style={{
-                                        opacity:
-                                            remarksState === "show" ? 1 : 0,
-                                        transform:
-                                            remarksState === "show"
-                                                ? "translateY(0)"
-                                                : "translateY(20px)",
-                                    }}
-                                >
+                                <div className="mt-4">
                                     <label className="floating-label">
-                                        <input
-                                            type="text"
-                                            placeholder="Remarks"
-                                            className="input input-bordered w-full input-disabled bg-base-200"
-                                            readOnly
-                                            value="Remarks"
+                                        <textarea
+                                            className="textarea textarea-bordered w-full"
+                                            placeholder="Enter remarks here"
+                                            value={addTicketData.remarks || ""}
+                                            onChange={(e) =>
+                                                handleFormChange(
+                                                    "remarks",
+                                                    e.target.value
+                                                )
+                                            }
                                         />
                                         <span>Remarks</span>
                                     </label>
+
+                                    <button
+                                        type="button"
+                                        className="btn btn-error mt-2"
+                                        onClick={() =>
+                                            handleApprovalAction("disapprove")
+                                        }
+                                    >
+                                        Confirm Disapprove
+                                    </button>
                                 </div>
                             )}
                         </form>

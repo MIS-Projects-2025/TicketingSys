@@ -11,88 +11,16 @@ const Table = () => {
 
     // Get action button based on account type and ticket status
     const getActionButton = (ticket) => {
-        switch (userAccountType) {
-            case "REQUESTOR":
-                return (
-                    <button
-                        onClick={() => handleAction(ticket, "viewing")}
-                        className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-                    >
-                        View
-                    </button>
-                );
+        const isMIS = userAccountType.includes("MIS_SUPERVISOR");
+        const isProgrammer = userAccountType.includes("PROGRAMMER");
+        const isDeptHead = userAccountType.includes("DEPARTMENT_HEAD");
+        const isOD = userAccountType.includes("OD");
+        const isRequestor = userAccountType.includes("REQUESTOR");
 
-            case "PROGRAMMER":
-                if (
-                    !ticket.ASSESSED_BY_PROGRAMMER ||
-                    ticket.ASSESSED_BY_PROGRAMMER === ""
-                ) {
-                    return (
-                        <button
-                            onClick={() => handleAction(ticket, "assessing")}
-                            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
-                        >
-                            Assess
-                        </button>
-                    );
-                } else if (ticket.STATUS === "RETURNED") {
-                    return (
-                        <button
-                            onClick={() => handleAction(ticket, "reassessing")}
-                            className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-sm"
-                        >
-                            Re-assess
-                        </button>
-                    );
-                }
-                return (
-                    <button
-                        onClick={() => handleAction(ticket, "viewing")}
-                        className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
-                    >
-                        View
-                    </button>
-                );
-
-            case "DEPARTMENT_HEAD":
-                return (
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => handleAction(ticket, "approving")}
-                            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
-                        >
-                            Approve
-                        </button>
-                        <button
-                            onClick={() => handleAction(ticket, "disapproving")}
-                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
-                        >
-                            Disapprove
-                        </button>
-                    </div>
-                );
-
-            case "OD":
-                return (
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => handleAction(ticket, "od_approving")}
-                            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
-                        >
-                            Approve
-                        </button>
-                        <button
-                            onClick={() =>
-                                handleAction(ticket, "od_disapproving")
-                            }
-                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
-                        >
-                            Disapprove
-                        </button>
-                    </div>
-                );
-
-            case "MIS_SUPERVISOR":
+        // ✅ Handle MIS Supervisor logic first
+        if (isMIS) {
+            if (ticket.STATUS === "APPROVED") {
+                // Supervisor assigns after OD approval
                 return (
                     <button
                         onClick={() =>
@@ -103,17 +31,114 @@ const Table = () => {
                         Assign Programmer
                     </button>
                 );
-
-            default:
+            } else if (
+                !ticket.PROG_ACTION_BY ||
+                ticket.PROG_ACTION_BY === "" ||
+                ticket.STATUS === "RETURNED"
+            ) {
+                // Supervisor acts like a programmer too
                 return (
                     <button
-                        onClick={() => handleAction(ticket, "viewing")}
-                        className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
+                        onClick={() => handleAction(ticket, "assessing")}
+                        className={`px-3 py-1 ${
+                            ticket.STATUS === "RETURNED"
+                                ? "bg-yellow-500 hover:bg-yellow-600"
+                                : "bg-green-500 hover:bg-green-600"
+                        } text-white rounded text-sm`}
                     >
-                        View
+                        {ticket.STATUS === "RETURNED" ? "Re-assess" : "Assess"}
                     </button>
                 );
+            }
+
+            // Default view
+            return (
+                <button
+                    onClick={() => handleAction(ticket, "viewing")}
+                    className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
+                >
+                    View
+                </button>
+            );
         }
+
+        // ✅ Handle Programmer (non-supervisor)
+        if (isProgrammer) {
+            if (!ticket.PROG_ACTION_BY || ticket.PROG_ACTION_BY === "") {
+                return (
+                    <button
+                        onClick={() => handleAction(ticket, "assessing")}
+                        className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
+                    >
+                        Assess
+                    </button>
+                );
+            } else if (ticket.STATUS === "RETURNED") {
+                return (
+                    <button
+                        onClick={() => handleAction(ticket, "assessing")}
+                        className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-sm"
+                    >
+                        Re-assess
+                    </button>
+                );
+            }
+
+            return (
+                <button
+                    onClick={() => handleAction(ticket, "viewing")}
+                    className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
+                >
+                    View
+                </button>
+            );
+        }
+
+        // ✅ Department Head
+        if (isDeptHead) {
+            return (
+                <button
+                    onClick={() => handleAction(ticket, "approving")}
+                    className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
+                >
+                    View
+                </button>
+            );
+        }
+
+        // ✅ OD
+        if (isOD) {
+            return (
+                <button
+                    onClick={() => handleAction(ticket, "approving")}
+                    className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
+                >
+                    View
+                </button>
+            );
+        }
+
+        // ✅ Requestor
+        if (isRequestor) {
+            return (
+                <button
+                    onClick={() => handleAction(ticket, "viewing")}
+                    className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                >
+                    View
+                </button>
+            );
+        }
+
+        // ✅ Default
+        return (
+            <button
+                onClick={() => handleAction(ticket, "viewing")}
+                className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
+            >
+                View
+            </button>
+        );
     };
 
     // Handle action button clicks
@@ -149,20 +174,24 @@ const Table = () => {
 
     // Get account type description for display
     const getAccountTypeDescription = () => {
-        switch (userAccountType) {
-            case "REQUESTOR":
-                return "Requestor - Your rejected/pending tickets";
-            case "PROGRAMMER":
-                return "Programmer - Tickets for assessment";
-            case "DEPARTMENT_HEAD":
-                return "Department Head - Tickets awaiting your approval";
-            case "OD":
-                return "OD - Tickets approved by department heads";
-            case "MIS_SUPERVISOR":
-                return "MIS Supervisor - Tickets for programmer assignment";
-            default:
-                return "Unknown account type";
-        }
+        if (!Array.isArray(userAccountType)) return "Unknown account type";
+
+        const roleDescriptions = {
+            REQUESTOR: "Requestor - Your rejected/pending tickets",
+            PROGRAMMER: "Programmer - Tickets for assessment",
+            DEPARTMENT_HEAD: "Department Head - Tickets awaiting your approval",
+            OD: "OD - Tickets approved by department heads",
+            MIS_SUPERVISOR:
+                "MIS Supervisor - Tickets for programmer assignment",
+        };
+
+        const descriptions = userAccountType
+            .filter((role) => roleDescriptions[role])
+            .map((role) => roleDescriptions[role]);
+
+        return descriptions.length > 0
+            ? descriptions.join(" | ")
+            : "Unknown account type";
     };
 
     return (

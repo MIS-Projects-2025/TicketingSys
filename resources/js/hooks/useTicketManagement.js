@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { act, useState } from "react";
 import { router, usePage } from "@inertiajs/react";
 
 export function useTicketManagement() {
@@ -89,17 +89,61 @@ export function useTicketManagement() {
     const handleRemove = (index) => {
         setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
     };
-    const handleApprovalAction = (action) => {
-        // Save to database logic here
-        console.log("Action:", action);
 
-        if (action === "disapproved") {
+    const handleApprovalAction = (action) => {
+        if (
+            (action === "disapprove" || action === "assess_return") &&
+            remarksState !== "show"
+        ) {
             setRemarksState("show");
+            return; // Don't submit yet
+        }
+        const statusMap = {
+            assessed: "ASSESSED",
+            assess_return: "RETURNED",
+            approve_dh: "PENDING_OD_APPROVAL",
+            approve_od: "APPROVED",
+            disapprove: "DISAPPROVED",
+        };
+        console.log(action);
+        console.log(userAccountType);
+        const updateData = {
+            status: statusMap[action], // dynamically map the action to status
+            updated_by: emp_data.emp_id,
+            remark: addTicketData.remarks || "",
+            role: userAccountType, // PROGRAMMER, DEPARTMENT_MANAGER, OD
+        };
+
+        if (!updateData.status) {
+            console.warn("Invalid action:", action);
+            return;
         }
 
-        // Your database save logic
-        // saveToDatabase({ status: action, ... });
+        router.put(
+            `/tickets/update-status/${btoa(addTicketData.ticket_id)}`,
+            updateData,
+            {
+                onSuccess: () => {
+                    setUiState({
+                        status: "success",
+                        message: "Ticket updated successfully",
+                    });
+                },
+                onError: () => {
+                    setUiState({
+                        status: "error",
+                        message: "Failed to update ticket",
+                    });
+                },
+            }
+        );
+
+        // Show remarks input if disapproved or returned
+        if (action === "disapprove" || action === "assess_return") {
+            setRemarksState("show");
+        }
     };
+
     return {
         emp_data,
         requestType,

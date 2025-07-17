@@ -172,31 +172,43 @@ class TicketingController extends Controller
         WHERE DELETED_AT IS NULL
     ";
 
-        // Apply filtering based on user account type
+        $filters = [];
+
+        // REQUESTOR filter
         if ($this->isRequestorAccount($empData)) {
-            // REQUESTOR ACCOUNT: Can only view their own tickets when rejected/pending
-            $ticketsQuery .= " AND REQUESTOR_ID = '{$userId}' 
-                          AND STATUS IN ('REJECTED', 'PENDING')";
-        } elseif ($this->isAssessedByProgrammer($empData)) {
-            // ASSESSED BY PROGRAMMER: MIS department with 'programmer' in job title
-            $ticketsQuery .= " AND (
-            (ASSESSED_BY_PROGRAMMER IS NULL OR ASSESSED_BY_PROGRAMMER = '') 
-            OR 
-            (ASSESSED_BY_PROGRAMMER IS NOT NULL AND STATUS = 'RETURNED')
-        )";
-        } elseif ($this->isODAccount($empData)) {
-            // OD ACCOUNT: Can see tickets approved by programmer and department head
-            $ticketsQuery .= " AND ASSESSED_BY_PROGRAMMER IS NOT NULL 
-                          AND STATUS = 'APPROVED_BY_DH'";
-        } elseif ($this->isDepartmentHead($empData)) {
-            // DEPARTMENT HEAD: Can see tickets that need their approval
-            $ticketsQuery .= " AND ASSESSED_BY_PROGRAMMER IS NOT NULL 
-                          AND STATUS = 'PENDING_APPROVAL'
-                         ";
-        } elseif ($this->isMISSupervisor($empData)) {
-            // MIS SUPERVISOR: Can see tickets approved by OD for programmer assignment
-            $ticketsQuery .= " AND STATUS = 'APPROVED_BY_OD'";
+            $filters[] = "(REQUESTOR_ID = '{$userId}' AND STATUS IN ('DISAPPROVED', 'PENDING'))";
         }
+
+        // PROGRAMMER filter
+        if ($this->isAssessedByProgrammer($empData)) {
+            $filters[] = "(
+        (PROG_ACTION_BY IS NULL OR PROG_ACTION_BY = '') 
+        OR 
+        (PROG_ACTION_BY IS NOT NULL AND STATUS = 'RETURNED')
+    )";
+        }
+
+        // OD filter
+        if ($this->isODAccount($empData)) {
+            $filters[] = "(PROG_ACTION_BY IS NOT NULL AND STATUS = 'PENDING_OD_APPROVAL')";
+        }
+
+        // DEPARTMENT HEAD filter
+        if ($this->isDepartmentHead($empData)) {
+            $filters[] = "(PROG_ACTION_BY IS NOT NULL AND STATUS = 'ASSESSED')";
+        }
+
+        // MIS SUPERVISOR filter
+        if ($this->isMISSupervisor($empData)) {
+            $filters[] = "(STATUS = 'APPROVED')";
+        }
+
+        $ticketsQuery = "SELECT * FROM tickets WHERE DELETED_AT IS NULL";
+
+        if (!empty($filters)) {
+            $ticketsQuery .= " AND (" . implode(" OR ", $filters) . ")";
+        }
+
 
         $ticketsQuery .= " ORDER BY CREATED_AT DESC";
 
@@ -214,17 +226,17 @@ class TicketingController extends Controller
         ]);
     }
 
-    // Update ticket status
     public function updateStatus(Request $request, $hash)
     {
         $ticketId = base64_decode($hash);
-        $validated = $request->validate([
-            'status' => 'required|string|in:OPEN,IN_PROGRESS,PENDING_APPROVAL,APPROVED,REJECTED,RETURNED,CLOSED,ON_HOLD,CANCELLED',
-            'remark' => 'nullable|string',
-            'updated_by' => 'required|string|max:100'
-        ]);
 
-        // Get current ticket
+        $validated = $request->validate([
+            'status' => 'required|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_OD_APPROVAL,APPROVED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED',
+            'remark' => 'nullable|string',
+            'updated_by' => 'required|string|max:100',
+            'role' => 'required|string|in:PROGRAMMER,DEPARTMENT_HEAD,OD',
+        ]);
+        // dd($ticketId, $validated);
         $currentTicket = DB::selectOne('SELECT STATUS FROM tickets WHERE TICKET_ID = ?', [$ticketId]);
         if (!$currentTicket) {
             abort(404, 'Ticket not found');
@@ -232,21 +244,53 @@ class TicketingController extends Controller
 
         $oldStatus = $currentTicket->STATUS;
         $newStatus = strtoupper($validated['status']);
+        $updatedBy = $validated['updated_by'];
+        $role = strtoupper($validated['role']);
+        $now = now();
 
-        // Update ticket status
-        DB::update('
-            UPDATE tickets 
-            SET STATUS = ?, UPDATED_AT = ? 
-            WHERE TICKET_ID = ?
-        ', [$newStatus, now(), $ticketId]);
+        $actionFields = [];
 
-        // Log status change in history
-        $this->logTicketHistory($ticketId, 'STATUS_CHANGE', 'STATUS', $oldStatus, $newStatus, $validated['updated_by']);
+        // Dynamically determine which fields to update
+        switch ($role) {
+            case 'PROGRAMMER':
+                $actionFields = [
+                    'prog_action_by' => "{$updatedBy} ({$newStatus})",
+                    'prog_action_at' => $now,
+                ];
+                break;
+            case 'DEPARTMENT_HEAD':
+                $actionFields = [
+                    'dm_action_by' => "{$updatedBy} ({$newStatus})",
+                    'dm_action_at' => $now,
+                ];
+                break;
+            case 'OD':
+                $actionFields = [
+                    'od_action_by' => "{$updatedBy} ({$newStatus})",
+                    'od_action_at' => $now,
+                ];
+                break;
+        }
 
-        // Add remark for status change
+        $fieldsToUpdate = array_merge([
+            'STATUS' => $newStatus,
+            'UPDATED_AT' => $now,
+        ], $actionFields);
+
+        // Build dynamic update query
+        $setClause = implode(', ', array_map(fn($key) => "$key = ?", array_keys($fieldsToUpdate)));
+        $values = array_values($fieldsToUpdate);
+        $values[] = $ticketId;
+
+        DB::update("UPDATE tickets SET $setClause WHERE TICKET_ID = ?", $values);
+
+        // History log
+        $this->logTicketHistory($ticketId, 'STATUS_CHANGE', 'STATUS', $oldStatus, $newStatus, $updatedBy);
+
+        // Remarks
         $this->insertRemark(
             $ticketId,
-            $validated['updated_by'],
+            $updatedBy,
             'STATUS_CHANGE',
             $validated['remark'] ?? "Status changed from {$oldStatus} to {$newStatus}",
             $oldStatus,
@@ -255,6 +299,8 @@ class TicketingController extends Controller
 
         return redirect()->back()->with('success', 'Ticket status updated successfully!');
     }
+
+
 
     // Assign ticket
     public function assignTicket(Request $request, $hash)
@@ -422,17 +468,17 @@ class TicketingController extends Controller
             'type_of_request' => 'required|string|max:100',
             'project_name' => 'required|string|max:255',
             'details' => 'required|string',
-            'status' => 'nullable|string|in:OPEN,IN_PROGRESS,PENDING_APPROVAL,APPROVED,REJECTED,RETURNED,CLOSED,ON_HOLD,CANCELLED',
+            'status' => 'nullable|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_OD_APPROVAL,APPROVED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED',
             'ticket_level' => 'nullable|string|max:50',
             'parent_ticket_id' => 'nullable|string|max:20',
-            'assessed_by_programmer' => 'nullable|string|max:100',
-            'date_assessed_by_programmer' => 'nullable|date',
-            'assessed_by_supervisor' => 'nullable|string|max:100',
-            'date_assessed_by_supervisor' => 'nullable|date',
-            'approved_by_dm' => 'nullable|string|max:100',
-            'date_approved_by_dm' => 'nullable|date',
-            'approved_by_od' => 'nullable|string|max:100',
-            'date_approved_by_od' => 'nullable|date',
+            'prog_action_by' => 'nullable|string|max:100',
+            'prog_action_at' => 'nullable|date',
+            'mis_sup_action_by' => 'nullable|string|max:100',
+            'mis_sup_action_at' => 'nullable|date',
+            'dm_action_by' => 'nullable|string|max:100',
+            'dm_action_ay' => 'nullable|date',
+            'od_action_by' => 'nullable|string|max:100',
+            'od_action_at' => 'nullable|date',
             'assigned_to' => 'nullable|string|max:100',
             'date_assigned' => 'nullable|date',
         ];
@@ -490,13 +536,27 @@ class TicketingController extends Controller
 
     private function getUserAccountType($empData)
     {
-        // Check in priority order to avoid conflicts
-        if ($this->isAssessedByProgrammer($empData)) return 'PROGRAMMER';
-        if ($this->isMISSupervisor($empData)) return 'MIS_SUPERVISOR';
-        if ($this->isODAccount($empData)) return 'OD';
-        if ($this->isDepartmentHead($empData)) return 'DEPARTMENT_HEAD';
-        if ($this->isRequestorAccount($empData)) return 'REQUESTOR';
+        $roles = [];
 
-        return 'UNKNOWN';
+        if ($this->isMISSupervisor($empData)) {
+            $roles[] = 'MIS_SUPERVISOR';
+            $roles[] = 'PROGRAMMER'; // MIS Supervisor can assess too
+        } elseif ($this->isAssessedByProgrammer($empData)) {
+            $roles[] = 'PROGRAMMER';
+        }
+
+        if ($this->isODAccount($empData)) {
+            $roles[] = 'OD';
+        }
+
+        if ($this->isDepartmentHead($empData)) {
+            $roles[] = 'DEPARTMENT_HEAD';
+        }
+
+        if ($this->isRequestorAccount($empData)) {
+            $roles[] = 'REQUESTOR';
+        }
+
+        return $roles ?: ['UNKNOWN'];
     }
 }

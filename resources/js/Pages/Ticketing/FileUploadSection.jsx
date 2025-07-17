@@ -73,6 +73,7 @@ const FileUploadSection = ({
                                     <td>{file.type || "Unknown"}</td>
                                     <td>
                                         <button
+                                            type="button"
                                             className="btn btn-sm btn-error btn-outline"
                                             onClick={() => handleRemove(index)}
                                         >
@@ -99,9 +100,10 @@ const FileUploadSection = ({
                                 </td>
                                 <td>{file.FILE_TYPE || file.file_type}</td>
                                 {mode === "create" && <td></td>}
-                                {mode === "viewing" && (
+                                {mode != "create" && (
                                     <td>
                                         <button
+                                            type="button"
                                             className="btn btn-sm btn-primary"
                                             onClick={() => handleViewFile(file)}
                                         >

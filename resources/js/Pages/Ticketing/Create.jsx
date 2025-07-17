@@ -348,8 +348,8 @@ const Create = () => {
                                         </>
                                     )}
                                 </div>
-                                {formState}
-                                {userAccountType}
+                                {/* {formState}
+                                {userAccountType} */}
                                 {formState === "assessing" &&
                                     userAccountType === "PROGRAMMER" && (
                                         <button className="btn btn-success">

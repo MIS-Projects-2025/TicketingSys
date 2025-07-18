@@ -2,7 +2,7 @@ import { act, useState } from "react";
 import { router, usePage } from "@inertiajs/react";
 
 export function useTicketManagement() {
-    const { emp_data } = usePage().props;
+    const { emp_data, progList = [] } = usePage().props;
     console.log(usePage().props);
     const [addTicketData, setAddTicketData] = useState({
         employee_id: emp_data?.emp_id ?? "",
@@ -14,6 +14,10 @@ export function useTicketManagement() {
         status: "OPEN",
         ticket_level: "parent",
         assessed_by_prog: "",
+    });
+    const [assignmentData, setAssignmentData] = useState({
+        assignedTo: "",
+        remark: "",
     });
     const [requestType, setRequestType] = useState("");
     const [userAccountType, setUserAccountType] = useState("");
@@ -31,6 +35,13 @@ export function useTicketManagement() {
             [field]: value,
         }));
     };
+    const handleAssignmentChange = (field, value) => {
+        setAssignmentData((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
+    };
+
     const handleAddTicket = (e) => {
         e.preventDefault();
         setUiState({ status: "processing", message: "" });
@@ -143,7 +154,52 @@ export function useTicketManagement() {
             setRemarksState("show");
         }
     };
+    const handleAssignment = ({ assignedTo, remark = "" }) => {
+        if (!emp_data?.emp_id) {
+            setUiState({ status: "error", message: "Missing supervisor ID." });
+            return;
+        }
 
+        setUiState({ status: "processing", message: "Assigning ticket..." });
+
+        router.put(
+            `/assign-ticket/${btoa(addTicketData.ticket_id)}`,
+            {
+                assigned_to: assignedTo,
+                mis_action_by: emp_data.emp_id,
+                remark: remark,
+            },
+            {
+                onSuccess: () => {
+                    setUiState({
+                        status: "success",
+                        message: "Ticket assigned successfully!",
+                    });
+                },
+                onError: () => {
+                    setUiState({
+                        status: "error",
+                        message: "Failed to assign ticket. Please try again.",
+                    });
+                },
+                onFinish: () => {
+                    setTimeout(() => {
+                        if (
+                            uiState.status !== "success" &&
+                            uiState.status !== "error"
+                        ) {
+                            setUiState({ status: "idle", message: "" });
+                        }
+                    }, 500);
+                },
+            }
+        );
+    };
+    console.log("progList from props:", progList);
+    const assignmentOptions = progList.map((emp) => ({
+        value: emp.EMPLOYID,
+        label: emp.EMPNAME,
+    }));
     return {
         emp_data,
         requestType,
@@ -154,9 +210,13 @@ export function useTicketManagement() {
         uiState,
         remarksState,
         userAccountType,
+        assignmentData,
+        assignmentOptions,
+        setAssignmentData,
         setUserAccountType,
         setRemarksState,
         handleFormChange,
+        handleAssignmentChange,
         handleAddTicket,
         setAddTicketData,
         setRequestType,
@@ -165,6 +225,7 @@ export function useTicketManagement() {
         setExistingFiles,
         handleFileChange,
         handleApprovalAction,
+        handleAssignment,
         handleRemove,
     };
 }

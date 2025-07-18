@@ -143,6 +143,10 @@ class TicketingController extends Controller
             WHERE DELETED_AT IS NULL
             ORDER BY CREATED_AT DESC
         ');
+        $progList = DB::connection('masterlist')->select("
+    SELECT * FROM employee_masterlist
+    WHERE DEPARTMENT = 'MIS' AND LOWER(JOB_TITLE) LIKE '%programmer%' AND ACCSTATUS !=2
+");
         // dd($formState, $userAccountType, $ticket, $childTickets, $attachments, $remarks, $history, $ticketOptions);
         return Inertia::render('Ticketing/Create', [
             'formState' => $formState,
@@ -151,6 +155,7 @@ class TicketingController extends Controller
             'childTickets' => $childTickets,
             'attachments' => $attachments,
             'remarks' => $remarks,
+            'progList' => $progList,
             'history' => $history,
             'ticketOptions' => $ticketOptions,
         ]);
@@ -231,7 +236,7 @@ class TicketingController extends Controller
         $ticketId = base64_decode($hash);
 
         $validated = $request->validate([
-            'status' => 'required|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_OD_APPROVAL,APPROVED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED',
+            'status' => 'required|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_OD_APPROVAL,APPROVED,ASSIGNED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED',
             'remark' => 'nullable|string',
             'updated_by' => 'required|string|max:100',
             'role' => 'required|string|in:PROGRAMMER,DEPARTMENT_HEAD,OD',
@@ -305,10 +310,11 @@ class TicketingController extends Controller
     // Assign ticket
     public function assignTicket(Request $request, $hash)
     {
+
         $ticketId = base64_decode($hash);
         $validated = $request->validate([
             'assigned_to' => 'required|string|max:100',
-            'assigned_by' => 'required|string|max:100',
+            'mis_action_by' => 'required|string|max:100',
             'remark' => 'nullable|string'
         ]);
 
@@ -320,21 +326,36 @@ class TicketingController extends Controller
 
         $oldAssignedTo = $currentTicket->ASSIGNED_TO;
         $newAssignedTo = $validated['assigned_to'];
+        $supervisorEmpId = $validated['mis_action_by'];
 
-        // Update assignment
+        // Update assignment and supervisor action
         DB::update('
-            UPDATE tickets 
-            SET ASSIGNED_TO = ?, DATE_ASSIGNED = ?, UPDATED_AT = ? 
-            WHERE TICKET_ID = ?
-        ', [$newAssignedTo, now(), now(), $ticketId]);
+        UPDATE tickets 
+        SET 
+            STATUS = ?,
+            ASSIGNED_TO = ?, 
+            DATE_ASSIGNED = ?, 
+            MIS_SUP_ACTION_BY = ?, 
+            MIS_SUP_ACTION_AT = ?, 
+            UPDATED_AT = ? 
+        WHERE TICKET_ID = ?
+    ', [
+            'ASSIGNED',
+            $newAssignedTo,
+            now(),
+            $supervisorEmpId,
+            now(),
+            now(),
+            $ticketId
+        ]);
 
         // Log assignment change in history
-        $this->logTicketHistory($ticketId, 'ASSIGNMENT', 'ASSIGNED_TO', $oldAssignedTo, $newAssignedTo, $validated['assigned_by']);
+        $this->logTicketHistory($ticketId, 'ASSIGNMENT', 'ASSIGNED_TO', $oldAssignedTo, $newAssignedTo, $supervisorEmpId);
 
         // Add remark for assignment
         $this->insertRemark(
             $ticketId,
-            $validated['assigned_by'],
+            $supervisorEmpId,
             'ASSIGNMENT',
             $validated['remark'] ?? "Ticket assigned to {$newAssignedTo}",
             null,
@@ -345,6 +366,7 @@ class TicketingController extends Controller
 
         return redirect()->back()->with('success', 'Ticket assigned successfully!');
     }
+
 
     // Add remark to ticket (public method for HTTP requests)
     public function addRemark(Request $request, $hash)
@@ -468,7 +490,7 @@ class TicketingController extends Controller
             'type_of_request' => 'required|string|max:100',
             'project_name' => 'required|string|max:255',
             'details' => 'required|string',
-            'status' => 'nullable|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_OD_APPROVAL,APPROVED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED',
+            'status' => 'nullable|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_OD_APPROVAL,APPROVED,ASSIGNED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED',
             'ticket_level' => 'nullable|string|max:50',
             'parent_ticket_id' => 'nullable|string|max:20',
             'prog_action_by' => 'nullable|string|max:100',

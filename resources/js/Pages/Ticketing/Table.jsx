@@ -165,7 +165,7 @@ const Table = () => {
         { label: "Details", key: "DETAILS" },
         { label: "Date Requested", key: "CREATED_AT" },
         { label: "Status", key: "STATUS" },
-        { label: "Requestor", key: "REQUESTOR_NAME" },
+        { label: "Requestor", key: "EMPNAME" },
         {
             label: "Action",
             key: "action", // This will now find the action property we added

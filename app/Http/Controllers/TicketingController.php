@@ -28,14 +28,33 @@ class TicketingController extends Controller
     public function showTicketForm(): Response
     {
         $ticketOptions = DB::select('
-            SELECT 
-                TICKET_ID as value, 
-                CONCAT(TICKET_ID, " - ", PROJECT_NAME) as label 
-            FROM tickets 
-            WHERE DELETED_AT IS NULL
-            ORDER BY CREATED_AT DESC
-        ');
-        return Inertia::render('Ticketing/Create', ['ticketOptions' => $ticketOptions]);
+        SELECT 
+            TICKET_ID as value,
+            CONCAT(TICKET_ID, " - ", PROJECT_NAME) as label
+        FROM tickets 
+        WHERE DELETED_AT IS NULL
+        ORDER BY CREATED_AT DESC
+    ');
+
+        // Create a separate object mapping ticket_id to project_name
+        $ticketProjects = DB::select('
+        SELECT 
+            TICKET_ID,
+            PROJECT_NAME
+        FROM tickets 
+        WHERE DELETED_AT IS NULL
+    ');
+
+        // Convert to associative array: ticket_id => project_name
+        $ticketProjectMap = [];
+        foreach ($ticketProjects as $ticket) {
+            $ticketProjectMap[$ticket->TICKET_ID] = $ticket->PROJECT_NAME;
+        }
+
+        return Inertia::render('Ticketing/Create', [
+            'ticketOptions' => $ticketOptions,
+            'ticketProjects' => $ticketProjectMap
+        ]);
     }
 
     // Save Ticket
@@ -44,16 +63,26 @@ class TicketingController extends Controller
         $validated = $request->validate($this->ticketValidationRules());
 
         $now = now();
-        $ticketId = $this->generateTicketNumber();
-        // dd($request->all());
+
+        // Check if this is a child ticket
+        if (!empty($validated['parent_ticket_id'])) {
+            // This is a child ticket
+            $ticketId = $this->generateChildTicketId($validated['parent_ticket_id']);
+            $ticketLevel = 'child';
+        } else {
+            // This is a parent ticket
+            $ticketId = $this->generateTicketNumber();
+            $ticketLevel = 'parent';
+        }
+
         // Insert ticket
         DB::insert('
-            INSERT INTO tickets (
-                TICKET_ID, EMPLOYEE_ID, EMPNAME, DEPARTMENT, TYPE_OF_REQUEST, 
-                PROJECT_NAME, DETAILS, STATUS, TICKET_LEVEL, PARENT_TICKET_ID, 
-                CREATED_AT, UPDATED_AT
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ', [
+        INSERT INTO tickets (
+            TICKET_ID, EMPLOYEE_ID, EMPNAME, DEPARTMENT, TYPE_OF_REQUEST, 
+            PROJECT_NAME, DETAILS, STATUS, TICKET_LEVEL, PARENT_TICKET_ID, 
+            CREATED_AT, UPDATED_AT
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ', [
             $ticketId,
             $validated['employee_id'],
             $validated['employee_name'],
@@ -62,7 +91,7 @@ class TicketingController extends Controller
             $validated['project_name'],
             $validated['details'],
             strtoupper($validated['status'] ?? 'OPEN'),
-            $validated['ticket_level'] ?? null,
+            $ticketLevel,
             $validated['parent_ticket_id'] ?? null,
             $now,
             $now
@@ -72,14 +101,80 @@ class TicketingController extends Controller
         $this->logTicketHistory($ticketId, 'CREATED', null, null, null, $validated['employee_id']);
 
         // Add initial remark
-        $this->insertRemark($ticketId, $validated['employee_id'], 'COMMENT', 'Ticket created');
+        $remarkText = $ticketLevel === 'child'
+            ? 'Child ticket created from parent: ' . $validated['parent_ticket_id']
+            : 'Ticket created';
+
+        $this->insertRemark($ticketId, $validated['employee_id'], 'COMMENT', $remarkText);
+
+        // If this is a child ticket, also log in parent ticket
+        if ($ticketLevel === 'child') {
+            $this->logTicketHistory($validated['parent_ticket_id'], 'CHILD_CREATED', 'CHILD_TICKET_ID', null, $ticketId, $validated['employee_id']);
+            $this->insertRemark($validated['parent_ticket_id'], $validated['employee_id'], 'COMMENT', 'Child ticket created: ' . $ticketId);
+        }
 
         // Handle attachments
         if ($request->hasFile('attachments') && $ticketId) {
             $this->handleAttachments($request->file('attachments'), $ticketId, $validated['employee_id']);
         }
 
-        return redirect('/tickets')->with('success', 'Ticket created successfully!');
+        return redirect('/tickets')->with('success', 'Ticket created successfully! Ticket ID: ' . $ticketId);
+    }
+    public function createChildTicket(Request $request, $parentTicketId)
+    {
+        $validated = $request->validate($this->ticketValidationRules());
+
+        // Verify parent ticket exists
+        $parentTicket = DB::selectOne('
+        SELECT * FROM tickets 
+        WHERE TICKET_ID = ? AND DELETED_AT IS NULL
+    ', [$parentTicketId]);
+
+        if (!$parentTicket) {
+            abort(404, 'Parent ticket not found');
+        }
+
+        $now = now();
+        $childTicketId = $this->generateChildTicketId($parentTicketId);
+
+        // Insert child ticket
+        DB::insert('
+        INSERT INTO tickets (
+            TICKET_ID, EMPLOYEE_ID, EMPNAME, DEPARTMENT, TYPE_OF_REQUEST, 
+            PROJECT_NAME, DETAILS, STATUS, TICKET_LEVEL, PARENT_TICKET_ID, 
+            CREATED_AT, UPDATED_AT
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ', [
+            $childTicketId,
+            $validated['employee_id'],
+            $validated['employee_name'],
+            $validated['department'],
+            $validated['type_of_request'],
+            $validated['project_name'],
+            $validated['details'],
+            strtoupper($validated['status'] ?? 'OPEN'),
+            'child', // Set ticket level as 'child'
+            $parentTicketId,
+            $now,
+            $now
+        ]);
+
+        // Log child ticket creation in history
+        $this->logTicketHistory($childTicketId, 'CREATED', null, null, null, $validated['employee_id']);
+
+        // Add initial remark
+        $this->insertRemark($childTicketId, $validated['employee_id'], 'COMMENT', 'Child ticket created from parent: ' . $parentTicketId);
+
+        // Also log in parent ticket history
+        $this->logTicketHistory($parentTicketId, 'CHILD_CREATED', 'CHILD_TICKET_ID', null, $childTicketId, $validated['employee_id']);
+        $this->insertRemark($parentTicketId, $validated['employee_id'], 'COMMENT', 'Child ticket created: ' . $childTicketId);
+
+        // Handle attachments if any
+        if ($request->hasFile('attachments')) {
+            $this->handleAttachments($request->file('attachments'), $childTicketId, $validated['employee_id']);
+        }
+
+        return redirect('/tickets')->with('success', 'Child ticket created successfully! Ticket ID: ' . $childTicketId);
     }
 
     // Show specific ticket
@@ -88,11 +183,17 @@ class TicketingController extends Controller
         $decodedData = base64_decode($hash);
         $parts = explode(':', $decodedData);
 
-        if (count($parts) !== 3) {
+        if (count($parts) === 1) {
+            // Handle single ticket ID format (for viewing)
+            $ticketId = $parts[0];
+            $formState = 'viewing';
+            $userAccountType = 'user';
+        } elseif (count($parts) === 3) {
+            // Handle full format with ticket:formState:userAccountType
+            [$ticketId, $formState, $userAccountType] = $parts;
+        } else {
             abort(400, 'Invalid hash format');
         }
-
-        [$ticketId, $formState, $userAccountType] = $parts;
 
         if (!$ticketId) {
             abort(400, 'Ticket ID is required');
@@ -166,10 +267,19 @@ class TicketingController extends Controller
     public function showTable()
     {
         $empData = session('emp_data');
-        $userDepartment = $empData['emp_dept'];
-        $userJobTitle = $empData['emp_jobtitle'];
         $userId = $empData['emp_id'];
-        $userRole = $empData['emp_system_role'];
+        $empName = $empData['emp_name'];
+        // Get EMPLOYEE IDs where the current user is both APPROVER1 and APPROVER2
+        $odApproverIds = DB::connection('masterlist')->select("
+    SELECT EMPLOYID FROM employee_masterlist 
+    WHERE (APPROVER2 = ? OR APPROVER3 = ?) AND ACCSTATUS = 1
+", [$empData['emp_id'], $empData['emp_id']]);
+
+
+        // Convert to flat array
+        $odEmployeeIds = array_map(function ($row) {
+            return $row->EMPLOYID;
+        }, $odApproverIds);
 
         // Base query for tickets
         $ticketsQuery = "
@@ -181,32 +291,78 @@ class TicketingController extends Controller
 
         // REQUESTOR filter
         if ($this->isRequestorAccount($empData)) {
-            $filters[] = "(REQUESTOR_ID = '{$userId}' AND STATUS IN ('DISAPPROVED', 'PENDING'))";
+            $filters[] = "(
+        EMPLOYEE_ID = '{$userId}' 
+        AND STATUS IN ('DISAPPROVED', 'PENDING')
+    )";
         }
 
         // PROGRAMMER filter
         if ($this->isAssessedByProgrammer($empData)) {
             $filters[] = "(
-        (PROG_ACTION_BY IS NULL OR PROG_ACTION_BY = '') 
-        OR 
-        (PROG_ACTION_BY IS NOT NULL AND STATUS = 'RETURNED')
+        (
+            (PROG_ACTION_BY IS NULL OR PROG_ACTION_BY = '')
+            AND EMPLOYEE_ID != '{$userId}'
+        )
+        OR
+        (
+            PROG_ACTION_BY IS NOT NULL
+            AND STATUS = 'RETURNED'
+            AND EMPLOYEE_ID != '{$userId}'
+        )
     )";
         }
 
-        // OD filter
+        // OD filter — ❌ EXCLUDE adjustment/enhancement
         if ($this->isODAccount($empData)) {
-            $filters[] = "(PROG_ACTION_BY IS NOT NULL AND STATUS = 'PENDING_OD_APPROVAL')";
+            $filters[] = "(
+            TYPE_OF_REQUEST NOT IN ('adjustment', 'enhancement') 
+            AND PROG_ACTION_BY IS NOT NULL 
+            AND STATUS = 'PENDING_OD_APPROVAL'
+        )";
+        }
+        // dd($odEmployeeIds);
+        if ($this->isDepartmentHead($empData)) {
+            if ($this->isODAccount($empData)) {
+                // OD + DH — only show records for employees where OD is both Approver1 and Approver2
+                if (!empty($odEmployeeIds)) {
+                    $idList = implode(",", array_map('intval', $odEmployeeIds));
+                    $filters[] = "(
+                TYPE_OF_REQUEST NOT IN ('adjustment', 'enhancement') 
+                AND PROG_ACTION_BY IS NOT NULL 
+                AND STATUS = 'ASSESSED'
+                AND EMPLOYEE_ID IN ({$idList})
+            )";
+                }
+            } else {
+                // Normal DH
+                $filters[] = "(
+            TYPE_OF_REQUEST NOT IN ('adjustment', 'enhancement') 
+            AND PROG_ACTION_BY IS NOT NULL 
+            AND STATUS = 'ASSESSED'
+        )";
+            }
         }
 
-        // DEPARTMENT HEAD filter
-        if ($this->isDepartmentHead($empData)) {
-            $filters[] = "(PROG_ACTION_BY IS NOT NULL AND STATUS = 'ASSESSED')";
-        }
 
         // MIS SUPERVISOR filter
         if ($this->isMISSupervisor($empData)) {
-            $filters[] = "(STATUS = 'APPROVED')";
+            $filters[] = "(
+        (
+            TYPE_OF_REQUEST = 'request_form' AND 
+            STATUS = 'APPROVED' AND 
+            EMPLOYEE_ID != '{$userId}'
+        )
+        OR
+        (
+            TYPE_OF_REQUEST != 'request_form' AND 
+            STATUS = 'ASSESSED' AND 
+            EMPLOYEE_ID != '{$userId}'
+        )
+    )";
         }
+
+
 
         $ticketsQuery = "SELECT * FROM tickets WHERE DELETED_AT IS NULL";
 
@@ -415,6 +571,38 @@ class TicketingController extends Controller
         }
 
         return $prefix . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
+    }
+    private function generateChildTicketId($parentTicketId)
+    {
+        // Get existing child tickets for this parent
+        $existingChildTickets = DB::select('
+        SELECT TICKET_ID FROM tickets 
+        WHERE PARENT_TICKET_ID = ? 
+        AND DELETED_AT IS NULL
+        ORDER BY TICKET_ID DESC
+    ', [$parentTicketId]);
+
+        // If no child tickets exist, start with '-1'
+        if (empty($existingChildTickets)) {
+            return $parentTicketId . '-1';
+        }
+
+        // Extract the numeric suffix and find the highest number
+        $maxNumber = 0;
+        foreach ($existingChildTickets as $childTicket) {
+            $parts = explode('-', $childTicket->TICKET_ID);
+            $lastPart = end($parts);
+
+            // Ensure it's a number before comparing
+            if (ctype_digit($lastPart)) {
+                $maxNumber = max($maxNumber, (int)$lastPart);
+            }
+        }
+
+        // Generate the next number
+        $nextNumber = $maxNumber + 1;
+
+        return $parentTicketId . '-' . $nextNumber;
     }
 
     private function handleAttachments($files, $ticketId, $uploadedBy)

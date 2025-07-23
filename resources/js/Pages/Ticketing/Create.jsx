@@ -80,6 +80,7 @@ const Create = () => {
         handleAssignment,
         handleFileChange,
         handleRemove,
+        getTicketTypeDisplay,
     } = useTicketManagement();
 
     useEffect(() => {
@@ -107,7 +108,7 @@ const Create = () => {
             setExistingFiles(attachments || []);
         }
     }, [initialFormState, ticket]);
-
+    const ticketTypeDisplay = getTicketTypeDisplay();
     return (
         <AuthenticatedLayout>
             <div className="flex min-h-screen justify-center items-center bg-base-200">
@@ -137,6 +138,13 @@ const Create = () => {
                         <form onSubmit={handleAddTicket}>
                             {/* Form Fields */}
                             <div className="space-y-6">
+                                {ticketTypeDisplay.show && (
+                                    <div
+                                        className={`alert alert-${ticketTypeDisplay.type}`}
+                                    >
+                                        <span>{ticketTypeDisplay.message}</span>
+                                    </div>
+                                )}
                                 <div className="flex items-stretch gap-2 w-full">
                                     <label className="floating-label w-full">
                                         <Select
@@ -257,6 +265,9 @@ const Create = () => {
                                             <option value="request_form">
                                                 Request Form
                                             </option>
+                                            <option value="testing_form">
+                                                Testing Form
+                                            </option>
                                             <option value="adjustment_form">
                                                 Adjustment Form
                                             </option>
@@ -292,7 +303,8 @@ const Create = () => {
                                     handleRemove={handleRemove}
                                 />
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                    {formState === "viewing" && (
+                                    {(formState === "viewing" ||
+                                        formState === "approving") && (
                                         <>
                                             {addTicketData.employee_id &&
                                                 addTicketData.employee_name && (
@@ -489,6 +501,8 @@ const Create = () => {
                                 {/* Department Manager: Approve or Disapprove */}
                                 {formState === "approving" &&
                                     userAccountType === "DEPARTMENT_HEAD" &&
+                                    addTicketData?.type_of_request ===
+                                        "request_form" &&
                                     remarksState !== "show" && (
                                         <div className="flex gap-2">
                                             <button
@@ -516,10 +530,10 @@ const Create = () => {
                                         </div>
                                     )}
 
-                                {/* OD: Approve or Disapprove */}
-                                {/* OD Approval */}
                                 {formState === "approving" &&
                                     userAccountType === "OD" &&
+                                    addTicketData?.type_of_request ===
+                                        "request_form" &&
                                     remarksState !== "show" && (
                                         <div className="flex gap-2">
                                             <button
@@ -586,7 +600,7 @@ const Create = () => {
                                             handleApprovalAction("disapprove")
                                         }
                                     >
-                                        Confirm Disapprove
+                                        Submit
                                     </button>
                                 </div>
                             )}

@@ -597,7 +597,7 @@ const Create = () => {
                                         type="button"
                                         className="btn btn-error mt-2"
                                         onClick={() =>
-                                            handleApprovalAction("disapprove")
+                                            handleApprovalAction(null)
                                         }
                                     >
                                         Submit

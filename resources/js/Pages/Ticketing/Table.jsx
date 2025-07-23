@@ -64,7 +64,18 @@ const Table = () => {
 
         // ✅ Handle Programmer (non-supervisor)
         if (isProgrammer) {
-            if (!ticket.PROG_ACTION_BY || ticket.PROG_ACTION_BY === "") {
+            if (ticket.EMPLOYEE_ID === emp_data.emp_id) {
+                // Own ticket → View only
+                return (
+                    <button
+                        onClick={() => handleAction(ticket, "viewing")}
+                        className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
+                    >
+                        View
+                    </button>
+                );
+            } else if (ticket.STATUS === "OPEN") {
+                // Not own, status is OPEN → Assess
                 return (
                     <button
                         onClick={() => handleAction(ticket, "assessing")}
@@ -73,25 +84,17 @@ const Table = () => {
                         Assess
                     </button>
                 );
-            } else if (ticket.STATUS === "RETURNED") {
+            } else {
+                // Any other case (optional fallback)
                 return (
                     <button
-                        onClick={() => handleAction(ticket, "assessing")}
-                        className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-sm"
+                        onClick={() => handleAction(ticket, "viewing")}
+                        className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
                     >
-                        Re-assess
+                        View
                     </button>
                 );
             }
-
-            return (
-                <button
-                    onClick={() => handleAction(ticket, "viewing")}
-                    className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-sm"
-                >
-                    View
-                </button>
-            );
         }
 
         // ✅ Department Head

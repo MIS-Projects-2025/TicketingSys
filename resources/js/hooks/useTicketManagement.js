@@ -29,6 +29,8 @@ export function useTicketManagement() {
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [existingFiles, setExistingFiles] = useState([]);
     const [remarksState, setRemarksState] = useState("");
+    const [pendingApprovalAction, setPendingApprovalAction] = useState("");
+
     const [uiState, setUiState] = useState({
         status: "idle", // "idle" | "processing" | "success" | "error"
         message: "",
@@ -254,16 +256,7 @@ export function useTicketManagement() {
     const handleRemove = (index) => {
         setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
     };
-
     const handleApprovalAction = (action) => {
-        if (
-            (action === "disapprove" || action === "assess_return") &&
-            remarksState !== "show"
-        ) {
-            setRemarksState("show");
-            return; // Don't submit yet
-        }
-
         const statusMap = {
             assessed: "ASSESSED",
             assess_return: "RETURNED",
@@ -272,30 +265,50 @@ export function useTicketManagement() {
             disapprove: "DISAPPROVED",
         };
 
-        console.log(action);
-        console.log(userAccountType);
-
-        const updateData = {
-            status: statusMap[action],
-            updated_by: emp_data.emp_id,
-            remark: addTicketData.remarks || "",
-            role: userAccountType,
-        };
-
-        if (!updateData.status) {
-            console.warn("Invalid action:", action);
+        // If remarks are required, show textarea first and remember the action
+        if (
+            (action === "disapprove" || action === "assess_return") &&
+            remarksState !== "show"
+        ) {
+            setPendingApprovalAction(action); // ✅ store action
+            setRemarksState("show");
             return;
         }
 
-        router.put(
+        // Use the stored action if triggered by "Submit" button
+        const finalAction = action || pendingApprovalAction;
+        const newStatus = statusMap[finalAction];
+
+        if (!newStatus) {
+            console.warn("Invalid action:", finalAction);
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("status", newStatus);
+        formData.append("updated_by", emp_data.emp_id);
+        formData.append("remark", addTicketData.remarks || "");
+        formData.append("role", userAccountType);
+
+        if (selectedFiles.length > 0) {
+            selectedFiles.forEach((file) => {
+                formData.append("attachments[]", file);
+            });
+        }
+
+        router.post(
             `/tickets/update-status/${btoa(addTicketData.ticket_id)}`,
-            updateData,
+            formData,
             {
+                forceFormData: true,
                 onSuccess: () => {
                     setUiState({
                         status: "success",
                         message: "Ticket updated successfully",
                     });
+                    setSelectedFiles([]);
+                    setRemarksState("hide");
+                    setPendingApprovalAction(null);
                 },
                 onError: () => {
                     setUiState({
@@ -305,11 +318,6 @@ export function useTicketManagement() {
                 },
             }
         );
-
-        // Show remarks input if disapproved or returned
-        if (action === "disapprove" || action === "assess_return") {
-            setRemarksState("show");
-        }
     };
 
     const handleAssignment = ({ assignedTo, remark = "" }) => {

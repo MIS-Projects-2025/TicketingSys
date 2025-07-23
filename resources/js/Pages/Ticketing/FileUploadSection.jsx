@@ -21,32 +21,47 @@ const FileUploadSection = ({
         setModalFile(null);
     };
 
+    // Format date for display
+    const formatDate = (dateString) => {
+        if (!dateString) return "N/A";
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString() + " " + date.toLocaleTimeString();
+        } catch (error) {
+            return dateString;
+        }
+    };
+
     return (
         <div className="mt-6">
             <label className="label">
                 <span className="label-text font-medium text-lg">
-                    {mode === "create" ? "Attach Files" : "Uploaded Files"}
+                    {mode === "create" || mode === "assessing"
+                        ? "Attach Files"
+                        : "Uploaded Files"}
                 </span>
-                {mode === "create" && (
-                    <span className="label-text-alt text-sm text-base-content/60">
-                        You can upload multiple files. Max size: 2MB each.
-                    </span>
-                )}
+                {mode === "create" ||
+                    (mode === "assessing" && (
+                        <span className="label-text-alt text-sm text-base-content/60">
+                            You can upload multiple files. Max size: 2MB each.
+                        </span>
+                    ))}
             </label>
 
-            {mode === "create" && (
-                <div className="flex items-center space-x-4 mb-4">
-                    <label className="btn btn-primary cursor-pointer">
-                        + Add File
-                        <input
-                            type="file"
-                            className="hidden"
-                            multiple
-                            onChange={handleFileChange}
-                        />
-                    </label>
-                </div>
-            )}
+            {mode === "create" ||
+                (mode === "assessing" && (
+                    <div className="flex items-center space-x-4 mb-4">
+                        <label className="btn btn-primary cursor-pointer">
+                            + Add File
+                            <input
+                                type="file"
+                                className="hidden"
+                                multiple
+                                onChange={handleFileChange}
+                            />
+                        </label>
+                    </div>
+                ))}
 
             <div className="overflow-x-auto">
                 <table className="table table-zebra w-full text-sm">
@@ -56,12 +71,14 @@ const FileUploadSection = ({
                             <th>File Name</th>
                             <th>Size</th>
                             <th>Type</th>
+                            {mode !== "create" && <th>Uploaded By</th>}
+                            {mode !== "create" && <th>Uploaded At</th>}
+                            {mode !== "create" && <th>Action</th>}
                             {mode === "create" && <th>Action</th>}
-                            {mode === "viewing" && <th>View</th>}
                         </tr>
                     </thead>
                     <tbody>
-                        {mode === "create" &&
+                        {(mode === "create" || mode === "assessing") &&
                             selectedFiles.map((file, index) => (
                                 <tr key={index}>
                                     <td>{index + 1}</td>
@@ -71,6 +88,12 @@ const FileUploadSection = ({
                                         MB
                                     </td>
                                     <td>{file.type || "Unknown"}</td>
+                                    {mode !== "create" && (
+                                        <>
+                                            <td>-</td>
+                                            <td>-</td>
+                                        </>
+                                    )}
                                     <td>
                                         <button
                                             type="button"
@@ -99,17 +122,45 @@ const FileUploadSection = ({
                                         : ""}
                                 </td>
                                 <td>{file.FILE_TYPE || file.file_type}</td>
-                                {mode === "create" && <td></td>}
-                                {mode != "create" && (
+                                {mode === "viewing" && (
                                     <td>
-                                        <button
-                                            type="button"
-                                            className="btn btn-sm btn-primary"
-                                            onClick={() => handleViewFile(file)}
-                                        >
-                                            View
-                                        </button>
+                                        {file.UPLOADED_BY ||
+                                            file.uploaded_by ||
+                                            "N/A"}
                                     </td>
+                                )}
+                                {mode === "viewing" && (
+                                    <td>
+                                        {formatDate(
+                                            file.UPLOADED_AT || file.uploaded_at
+                                        )}
+                                    </td>
+                                )}
+                                {mode === "create" && <td></td>}
+                                {mode !== "create" && (
+                                    <>
+                                        <td>
+                                            {" "}
+                                            {file.UPLOADED_BY ||
+                                                file.uploaded_by}
+                                        </td>
+                                        <td>
+                                            {" "}
+                                            {file.UPLOADED_AT ||
+                                                file.uploaded_at}
+                                        </td>
+                                        <td>
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-primary"
+                                                onClick={() =>
+                                                    handleViewFile(file)
+                                                }
+                                            >
+                                                View
+                                            </button>
+                                        </td>
+                                    </>
                                 )}
                             </tr>
                         ))}
@@ -118,7 +169,7 @@ const FileUploadSection = ({
                             selectedFiles.length === 0 && (
                                 <tr>
                                     <td
-                                        colSpan={mode === "create" ? 5 : 5}
+                                        colSpan={mode === "create" ? 5 : 7}
                                         className="text-center text-base-content/60"
                                     >
                                         No files uploaded yet.

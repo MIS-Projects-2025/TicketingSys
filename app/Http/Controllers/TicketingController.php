@@ -27,6 +27,7 @@ class TicketingController extends Controller
     // Show Ticket Form
     public function showTicketForm(): Response
     {
+        $empData = session('emp_data');
         $ticketOptions = DB::select('
         SELECT 
             TICKET_ID as value,
@@ -53,7 +54,8 @@ class TicketingController extends Controller
 
         return Inertia::render('Ticketing/Create', [
             'ticketOptions' => $ticketOptions,
-            'ticketProjects' => $ticketProjectMap
+            'ticketProjects' => $ticketProjectMap,
+            'userAccountType' => $this->getUserAccountType($empData)
         ]);
     }
 
@@ -293,25 +295,18 @@ class TicketingController extends Controller
         if ($this->isRequestorAccount($empData)) {
             $filters[] = "(
         EMPLOYEE_ID = '{$userId}' 
-        AND STATUS IN ('DISAPPROVED', 'PENDING')
+        AND STATUS IN ('DISAPPROVED', 'PENDING','OPEN','RETURNED')
     )";
         }
 
         // PROGRAMMER filter
         if ($this->isAssessedByProgrammer($empData)) {
             $filters[] = "(
-        (
-            (PROG_ACTION_BY IS NULL OR PROG_ACTION_BY = '')
-            AND EMPLOYEE_ID != '{$userId}'
-        )
-        OR
-        (
-            PROG_ACTION_BY IS NOT NULL
-            AND STATUS = 'RETURNED'
-            AND EMPLOYEE_ID != '{$userId}'
-        )
+        STATUS IN ('OPEN','ASSESSED')
+    
     )";
         }
+
 
         // OD filter — ❌ EXCLUDE adjustment/enhancement
         if ($this->isODAccount($empData)) {
@@ -396,8 +391,9 @@ class TicketingController extends Controller
             'remark' => 'nullable|string',
             'updated_by' => 'required|string|max:100',
             'role' => 'required|string|in:PROGRAMMER,DEPARTMENT_HEAD,OD',
+            'attachments.*' => 'file|max:10240', // 10MB limit per file (adjust as needed)
         ]);
-        // dd($ticketId, $validated);
+
         $currentTicket = DB::selectOne('SELECT STATUS FROM tickets WHERE TICKET_ID = ?', [$ticketId]);
         if (!$currentTicket) {
             abort(404, 'Ticket not found');
@@ -411,7 +407,6 @@ class TicketingController extends Controller
 
         $actionFields = [];
 
-        // Dynamically determine which fields to update
         switch ($role) {
             case 'PROGRAMMER':
                 $actionFields = [
@@ -438,17 +433,17 @@ class TicketingController extends Controller
             'UPDATED_AT' => $now,
         ], $actionFields);
 
-        // Build dynamic update query
+        // Build and execute the update query
         $setClause = implode(', ', array_map(fn($key) => "$key = ?", array_keys($fieldsToUpdate)));
         $values = array_values($fieldsToUpdate);
         $values[] = $ticketId;
 
         DB::update("UPDATE tickets SET $setClause WHERE TICKET_ID = ?", $values);
 
-        // History log
+        // Log status history
         $this->logTicketHistory($ticketId, 'STATUS_CHANGE', 'STATUS', $oldStatus, $newStatus, $updatedBy);
 
-        // Remarks
+        // Insert remarks
         $this->insertRemark(
             $ticketId,
             $updatedBy,
@@ -458,8 +453,13 @@ class TicketingController extends Controller
             $newStatus
         );
 
-        return redirect()->back()->with('success', 'Ticket status updated successfully!');
+        if ($request->hasFile('attachments')) {
+            $this->handleAttachments($request->file('attachments'), $ticketId, $updatedBy);
+        }
+
+        return redirect()->back()->with('success', 'Ticket status and files updated successfully!');
     }
+
 
 
 

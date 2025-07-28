@@ -40,28 +40,26 @@ const FileUploadSection = ({
                         ? "Attach Files"
                         : "Uploaded Files"}
                 </span>
-                {mode === "create" ||
-                    (mode === "assessing" && (
-                        <span className="label-text-alt text-sm text-base-content/60">
-                            You can upload multiple files. Max size: 2MB each.
-                        </span>
-                    ))}
+                {(mode === "create" || mode === "assessing") && (
+                    <span className="label-text-alt text-sm text-base-content/60">
+                        You can upload multiple files. Max size: 2MB each.
+                    </span>
+                )}
             </label>
-
-            {mode === "create" ||
-                (mode === "assessing" && (
-                    <div className="flex items-center space-x-4 mb-4">
-                        <label className="btn btn-primary cursor-pointer">
-                            + Add File
-                            <input
-                                type="file"
-                                className="hidden"
-                                multiple
-                                onChange={handleFileChange}
-                            />
-                        </label>
-                    </div>
-                ))}
+            {(mode === "create" || mode === "assessing") && (
+                <div className="flex items-center space-x-4 mb-4">
+                    <label className="btn btn-primary cursor-pointer">
+                        + Add File
+                        <input
+                            type="file"
+                            className="hidden"
+                            multiple
+                            onChange={handleFileChange}
+                            accept="*/*"
+                        />
+                    </label>
+                </div>
+            )}
 
             <div className="overflow-x-auto">
                 <table className="table table-zebra w-full text-sm">

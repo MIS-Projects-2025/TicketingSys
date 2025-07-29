@@ -31,8 +31,28 @@ export default function NavLinks() {
                 notifications={5}
             /> */}
             <SidebarLink
+                href={route("tickets-table")}
+                label="Ticket List"
+                icon={
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth="1.5"
+                        stroke="currentColor"
+                        className="w-5 h-5"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"
+                        />
+                    </svg>
+                }
+            />
+            <SidebarLink
                 href={route("tickets")}
-                label="Tickets"
+                label="Generate Ticket"
                 icon={
                     // Ticket icon (FontAwesome style)
                     <svg
@@ -49,26 +69,6 @@ export default function NavLinks() {
                             d="M4.5 4.5h15v2.25a1.5 1.5 0 010 3V16.5a1.5 1.5 0 010 3V19.5h-15v-2.25a1.5 1.5 0 010-3V7.5a1.5 1.5 0 010-3V4.5z"
                         />
                         <circle cx="12" cy="12" r="1.5" />
-                    </svg>
-                }
-            />
-            <SidebarLink
-                href={route("tickets-table")}
-                label="Table"
-                icon={
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth="1.5"
-                        stroke="currentColor"
-                        className="w-5 h-5"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M3 6h18M3 10h18M3 14h18M3 18h18M6 3v18M10 3v18M14 3v18M18 3v18"
-                        />
                     </svg>
                 }
             />

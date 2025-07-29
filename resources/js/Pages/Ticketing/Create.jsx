@@ -46,6 +46,19 @@ const Create = () => {
             color: "white",
         }),
     };
+    function getTicketIdFromUrl() {
+        const path = window.location.pathname;
+        // Assumes route is /tickets/:hash
+        const match = path.match(/^\/tickets\/([^/]+)/);
+        if (!match) return null;
+        try {
+            const decoded = atob(match[1]);
+            const parts = decoded.split(":");
+            return parts[0]; // ticketId is always the first part
+        } catch (e) {
+            return null;
+        }
+    }
 
     const {
         formState: initialFormState,
@@ -109,6 +122,7 @@ const Create = () => {
         }
     }, [initialFormState, ticket]);
     const ticketTypeDisplay = getTicketTypeDisplay();
+    const currentTicketId = getTicketIdFromUrl();
     return (
         <AuthenticatedLayout>
             <div className="flex min-h-screen justify-center items-center bg-base-200">
@@ -138,13 +152,16 @@ const Create = () => {
                         <form onSubmit={handleAddTicket}>
                             {/* Form Fields */}
                             <div className="space-y-6">
-                                {ticketTypeDisplay.show && (
-                                    <div
-                                        className={`alert alert-${ticketTypeDisplay.type}`}
-                                    >
-                                        <span>{ticketTypeDisplay.message}</span>
-                                    </div>
-                                )}
+                                {ticketTypeDisplay.show &&
+                                    formState === "create" && (
+                                        <div
+                                            className={`alert alert-${ticketTypeDisplay.type}`}
+                                        >
+                                            <span>
+                                                {ticketTypeDisplay.message}
+                                            </span>
+                                        </div>
+                                    )}
                                 <div className="flex items-stretch gap-2 w-full">
                                     <label className="floating-label w-full">
                                         <Select
@@ -176,11 +193,8 @@ const Create = () => {
                                     </label>
 
                                     {addTicketData.ticket_id &&
-                                        !window.location.pathname.includes(
-                                            `/tickets/${btoa(
-                                                addTicketData.ticket_id
-                                            )}`
-                                        ) && (
+                                        addTicketData.ticket_id !==
+                                            currentTicketId && (
                                             <a
                                                 href={`/tickets/${btoa(
                                                     addTicketData.ticket_id

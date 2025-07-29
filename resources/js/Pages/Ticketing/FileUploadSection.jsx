@@ -120,7 +120,7 @@ const FileUploadSection = ({
                                         : ""}
                                 </td>
                                 <td>{file.FILE_TYPE || file.file_type}</td>
-                                {mode === "viewing" && (
+                                {/* {mode === "viewing" && (
                                     <td>
                                         {file.UPLOADED_BY ||
                                             file.uploaded_by ||
@@ -133,7 +133,7 @@ const FileUploadSection = ({
                                             file.UPLOADED_AT || file.uploaded_at
                                         )}
                                     </td>
-                                )}
+                                )} */}
                                 {mode === "create" && <td></td>}
                                 {mode !== "create" && (
                                     <>

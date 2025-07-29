@@ -250,6 +250,7 @@ class TicketingController extends Controller
     SELECT * FROM employee_masterlist
     WHERE DEPARTMENT = 'MIS' AND LOWER(JOB_TITLE) LIKE '%programmer%' AND ACCSTATUS !=2
 ");
+
         // dd($formState, $userAccountType, $ticket, $childTickets, $attachments, $remarks, $history, $ticketOptions);
         return Inertia::render('Ticketing/Create', [
             'formState' => $formState,

@@ -221,7 +221,7 @@ const StatusCell = ({ value, row }) => (
 );
 
 const StatCard = ({ title, value, color, icon: Icon }) => (
-    <div className="card bg-base-100 border border-base-300 rounded-xl shadow-sm hover:shadow-md transition duration-200">
+    <div className="card bg-base-100 border border-base-500 rounded-xl shadow-md hover:shadow-xl transition duration-200">
         <div className="card-body p-4 flex-row items-center justify-between">
             <div>
                 <p className={`text-sm font-medium ${color}`}>{title}</p>
@@ -402,7 +402,7 @@ const Table = () => {
                 </div>
 
                 {/* Tabs */}
-                <div className="bg-base-100 rounded-lg shadow-sm border border-base-200">
+                <div className="bg-base-200 rounded-lg shadow-md border border-base-500">
                     <div className="border-b border-base-200">
                         <div className="tabs">
                             {tabs.map((tab) => (
@@ -428,7 +428,7 @@ const Table = () => {
                     {/* Tab Content */}
                     <div className="p-6">
                         {/* Tab description */}
-                        <div className="mb-4 p-3 bg-base-200 rounded-lg">
+                        <div className="mb-4 p-3 bg-base-500 rounded-lg">
                             <p className="text-sm text-base-content">
                                 <strong>{currentTab?.label}:</strong>{" "}
                                 {currentTab?.description}

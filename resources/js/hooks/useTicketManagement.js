@@ -1,11 +1,15 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { router, usePage } from "@inertiajs/react";
 
 export function useTicketManagement() {
     const { emp_data, progList = [], ticketProjects = {} } = usePage().props;
-    console.log(usePage().props);
 
-    const [addTicketData, setAddTicketData] = useState({
+    // ========================================
+    // STATE MANAGEMENT (Grouped by purpose)
+    // ========================================
+
+    // Form data state
+    const [formData, setFormData] = useState({
         employee_id: emp_data?.emp_id ?? "",
         department: emp_data?.emp_dept ?? "",
         employee_name: emp_data?.emp_name ?? "",
@@ -15,143 +19,395 @@ export function useTicketManagement() {
         status: "OPEN",
         ticket_level: "parent",
         assessed_by_prog: "",
-        ticket_id: "", // Added this for parent ticket selection
+        ticket_id: "",
     });
 
+    // UI state
+    const [uiState, setUiState] = useState({
+        status: "idle", // "idle" | "processing" | "success" | "error"
+        message: "",
+        requestType: "",
+        userAccountType: "",
+        formState: "create",
+        remarksState: "",
+        pendingApprovalAction: "",
+        showChildTicketsModal: false,
+    });
+
+    // File state
+    const [fileState, setFileState] = useState({
+        selectedFiles: [],
+        existingFiles: [],
+    });
+
+    // Assignment state
     const [assignmentData, setAssignmentData] = useState({
         assignedTo: "",
         remark: "",
     });
 
-    const [requestType, setRequestType] = useState("");
-    const [userAccountType, setUserAccountType] = useState("");
-    const [formState, setFormState] = useState("create");
-    const [selectedFiles, setSelectedFiles] = useState([]);
-    const [existingFiles, setExistingFiles] = useState([]);
-    const [remarksState, setRemarksState] = useState("");
-    const [pendingApprovalAction, setPendingApprovalAction] = useState("");
-    const [showChildTicketsModal, setShowChildTicketsModal] = useState(false);
-    const [uiState, setUiState] = useState({
-        status: "idle", // "idle" | "processing" | "success" | "error"
-        message: "",
-    });
+    // ========================================
+    // BUSINESS LOGIC (Pure functions)
+    // ========================================
 
-    // Enhanced form change handler with child ticket logic
-    const handleFormChange = (field, value) => {
-        setAddTicketData((prev) => {
-            const updated = { ...prev, [field]: value };
+    const determineTicketType = useCallback(
+        (data = formData) => {
+            if (!data.ticket_id) return "parent";
 
-            // Clear ticket_id when switching to request_form
-            if (field === "type_of_request" && value === "request_form") {
-                updated.ticket_id = "";
+            if (
+                data.ticket_id &&
+                (data.type_of_request === "adjustment_form" ||
+                    data.type_of_request === "enhancement_form")
+            ) {
+                return "child";
             }
 
-            // Auto-determine ticket type based on current values
-            const ticketType = determineTicketType(updated);
-            updated.ticket_level = ticketType;
-
-            return updated;
-        });
-
-        // Update request type state for UI logic
-        if (field === "type_of_request") {
-            setRequestType(value);
-        }
-    };
-
-    const handleAssignmentChange = (field, value) => {
-        setAssignmentData((prev) => ({
-            ...prev,
-            [field]: value,
-        }));
-    };
-
-    // Child ticket detection logic
-    const isChildTicket = (data = addTicketData) => {
-        return (
-            data.ticket_id &&
-            data.type_of_request !== "request_form" &&
-            data.type_of_request !== ""
-        );
-    };
-
-    // Determine ticket type with optional data parameter
-    const determineTicketType = (data = addTicketData) => {
-        // If no ticket_id selected, it's definitely a parent ticket
-        if (!data.ticket_id) {
             return "parent";
-        }
+        },
+        [formData]
+    );
 
-        // If ticket_id exists and type is adjustment/enhancement, it's a child
-        if (
-            data.ticket_id &&
-            (data.type_of_request === "adjustment_form" ||
-                data.type_of_request === "enhancement_form")
-        ) {
-            return "child";
-        }
+    const isChildTicket = useCallback(
+        (data = formData) => {
+            return (
+                data.ticket_id &&
+                data.type_of_request !== "request_form" &&
+                data.type_of_request !== ""
+            );
+        },
+        [formData]
+    );
 
-        // If ticket_id exists but type is request_form, it's still a parent
-        return "parent";
-    };
-
-    // Form validation
-    const validateForm = () => {
+    const validateForm = useCallback(() => {
         const ticketType = determineTicketType();
 
         // Basic required fields
         if (
-            !addTicketData.employee_name ||
-            !addTicketData.department ||
-            !addTicketData.type_of_request ||
-            !addTicketData.project_name ||
-            !addTicketData.details
+            !formData.employee_name ||
+            !formData.department ||
+            !formData.type_of_request ||
+            !formData.project_name ||
+            !formData.details
         ) {
-            setUiState({
-                status: "error",
+            return {
+                isValid: false,
                 message: "Please fill in all required fields.",
-            });
-            return false;
+            };
         }
 
         if (ticketType === "child") {
-            // For child tickets, ensure parent ticket is selected
-            if (!addTicketData.ticket_id) {
-                setUiState({
-                    status: "error",
+            if (!formData.ticket_id) {
+                return {
+                    isValid: false,
                     message:
                         "Please select a parent ticket for adjustment/enhancement forms.",
-                });
-                return false;
+                };
             }
 
-            // Ensure type is adjustment or enhancement
             if (
                 !["adjustment_form", "enhancement_form"].includes(
-                    addTicketData.type_of_request
+                    formData.type_of_request
                 )
             ) {
-                setUiState({
-                    status: "error",
+                return {
+                    isValid: false,
                     message:
                         "Adjustment and Enhancement forms require a parent ticket.",
-                });
-                return false;
+                };
             }
         }
 
-        return true;
-    };
+        return { isValid: true };
+    }, [formData, determineTicketType]);
 
-    // Enhanced UI feedback
-    const getTicketTypeDisplay = () => {
+    // ========================================
+    // FORM HANDLERS
+    // ========================================
+
+    const handleFormChange = useCallback(
+        (field, value) => {
+            setFormData((prev) => {
+                const updated = { ...prev, [field]: value };
+
+                // Clear ticket_id when switching to request_form
+                if (field === "type_of_request" && value === "request_form") {
+                    updated.ticket_id = "";
+                }
+
+                // Auto-determine ticket type
+                const ticketType = determineTicketType(updated);
+                updated.ticket_level = ticketType;
+
+                return updated;
+            });
+
+            // Update UI state for request type
+            if (field === "type_of_request") {
+                setUiState((prev) => ({ ...prev, requestType: value }));
+            }
+        },
+        [determineTicketType]
+    );
+
+    const handleAssignmentChange = useCallback((field, value) => {
+        setAssignmentData((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
+    }, []);
+
+    // ========================================
+    // FILE HANDLERS
+    // ========================================
+
+    const handleFileChange = useCallback((e) => {
+        const files = Array.from(e.target.files);
+        setFileState((prev) => ({
+            ...prev,
+            selectedFiles: [...prev.selectedFiles, ...files],
+        }));
+    }, []);
+
+    const handleRemoveFile = useCallback((index) => {
+        setFileState((prev) => ({
+            ...prev,
+            selectedFiles: prev.selectedFiles.filter((_, i) => i !== index),
+        }));
+    }, []);
+
+    // ========================================
+    // API HANDLERS
+    // ========================================
+
+    const handleSubmit = useCallback(
+        (e) => {
+            e.preventDefault();
+
+            const validation = validateForm();
+            if (!validation.isValid) {
+                setUiState((prev) => ({
+                    ...prev,
+                    status: "error",
+                    message: validation.message,
+                }));
+                return;
+            }
+
+            setUiState((prev) => ({
+                ...prev,
+                status: "processing",
+                message: "",
+            }));
+
+            const submitData = new FormData();
+            const ticketType = determineTicketType();
+
+            const ticketData = {
+                ...formData,
+                ticket_level: ticketType,
+                parent_ticket_id:
+                    ticketType === "child" ? formData.ticket_id : null,
+            };
+
+            // Remove ticket_id for child tickets (backend generates new ID)
+            if (ticketType === "child") {
+                delete ticketData.ticket_id;
+            }
+
+            Object.entries(ticketData).forEach(([key, value]) => {
+                if (value !== null && value !== undefined) {
+                    submitData.append(key, value);
+                }
+            });
+
+            fileState.selectedFiles.forEach((file) => {
+                submitData.append("attachments[]", file);
+            });
+
+            router.post("/add-ticket", submitData, {
+                onSuccess: () => {
+                    setUiState((prev) => ({
+                        ...prev,
+                        status: "success",
+                        message: "Ticket submitted successfully! Reloading...",
+                    }));
+
+                    setTimeout(() => {
+                        // Reset all states
+                        setFormData({
+                            employee_id: emp_data?.emp_id ?? "",
+                            department: emp_data?.emp_dept ?? "",
+                            employee_name: emp_data?.emp_name ?? "",
+                            type_of_request: "",
+                            project_name: "",
+                            details: "",
+                            status: "OPEN",
+                            ticket_level: "parent",
+                            assessed_by_prog: "",
+                            ticket_id: "",
+                        });
+                        setFileState((prev) => ({
+                            ...prev,
+                            selectedFiles: [],
+                        }));
+                        setUiState((prev) => ({
+                            ...prev,
+                            status: "idle",
+                            message: "",
+                            requestType: "",
+                        }));
+                    }, 2000);
+                },
+                onError: (errors) => {
+                    console.error("Form submission errors:", errors);
+                    setUiState((prev) => ({
+                        ...prev,
+                        status: "error",
+                        message:
+                            "Failed to submit ticket. Please check your input and try again.",
+                    }));
+                },
+            });
+        },
+        [
+            formData,
+            fileState.selectedFiles,
+            validateForm,
+            determineTicketType,
+            emp_data,
+        ]
+    );
+
+    const handleApprovalAction = useCallback(
+        (action) => {
+            const statusMap = {
+                assessed: "ASSESSED",
+                assess_return: "RETURNED",
+                approve_dh: "PENDING_OD_APPROVAL",
+                approve_od: "APPROVED",
+                disapprove: "DISAPPROVED",
+            };
+
+            // Handle remarks requirement
+            if (
+                (action === "disapprove" || action === "assess_return") &&
+                uiState.remarksState !== "show"
+            ) {
+                setUiState((prev) => ({
+                    ...prev,
+                    pendingApprovalAction: action,
+                    remarksState: "show",
+                }));
+                return;
+            }
+
+            const finalAction = action || uiState.pendingApprovalAction;
+            const newStatus = statusMap[finalAction];
+
+            if (!newStatus) {
+                console.warn("Invalid action:", finalAction);
+                return;
+            }
+
+            const submitData = new FormData();
+            submitData.append("status", newStatus);
+            submitData.append("updated_by", emp_data.emp_id);
+            submitData.append("remark", formData.remarks || "");
+            submitData.append("role", uiState.userAccountType);
+
+            fileState.selectedFiles.forEach((file) => {
+                submitData.append("attachments[]", file);
+            });
+
+            router.post(
+                `/tickets/update-status/${btoa(formData.ticket_id)}`,
+                submitData,
+                {
+                    forceFormData: true,
+                    onSuccess: () => {
+                        setUiState((prev) => ({
+                            ...prev,
+                            status: "success",
+                            message: "Ticket updated successfully",
+                            remarksState: "hide",
+                            pendingApprovalAction: "",
+                        }));
+                        setFileState((prev) => ({
+                            ...prev,
+                            selectedFiles: [],
+                        }));
+                    },
+                    onError: () => {
+                        setUiState((prev) => ({
+                            ...prev,
+                            status: "error",
+                            message: "Failed to update ticket",
+                        }));
+                    },
+                }
+            );
+        },
+        [formData, fileState.selectedFiles, uiState, emp_data]
+    );
+
+    const handleAssignment = useCallback(
+        ({ assignedTo, remark = "" }) => {
+            if (!emp_data?.emp_id) {
+                setUiState((prev) => ({
+                    ...prev,
+                    status: "error",
+                    message: "Missing supervisor ID.",
+                }));
+                return;
+            }
+
+            setUiState((prev) => ({
+                ...prev,
+                status: "processing",
+                message: "Assigning ticket...",
+            }));
+
+            router.put(
+                `/assign-ticket/${btoa(formData.ticket_id)}`,
+                {
+                    assigned_to: assignedTo,
+                    mis_action_by: emp_data.emp_id,
+                    remark: remark,
+                },
+                {
+                    onSuccess: () => {
+                        setUiState((prev) => ({
+                            ...prev,
+                            status: "success",
+                            message: "Ticket assigned successfully!",
+                        }));
+                    },
+                    onError: () => {
+                        setUiState((prev) => ({
+                            ...prev,
+                            status: "error",
+                            message:
+                                "Failed to assign ticket. Please try again.",
+                        }));
+                    },
+                }
+            );
+        },
+        [formData.ticket_id, emp_data]
+    );
+
+    // ========================================
+    // UI HELPERS
+    // ========================================
+
+    const getTicketTypeDisplay = useCallback(() => {
         const ticketType = determineTicketType();
 
         if (ticketType === "child") {
-            const parentTicketId = addTicketData.ticket_id;
-            const parentProjectName = ticketProjects[parentTicketId]; // Use ticketProjects mapping
+            const parentTicketId = formData.ticket_id;
+            const parentProjectName = ticketProjects[parentTicketId];
             const requestTypeLabel =
-                addTicketData.type_of_request === "adjustment_form"
+                formData.type_of_request === "adjustment_form"
                     ? "Adjustment"
                     : "Enhancement";
 
@@ -163,9 +419,13 @@ export function useTicketManagement() {
         }
 
         return { show: false };
-    };
+    }, [formData, ticketProjects, determineTicketType]);
 
-    function getStatusBadgeClass(status) {
+    // ========================================
+    // UTILITY FUNCTIONS (Keep as pure functions)
+    // ========================================
+
+    const getStatusBadgeClass = useCallback((status) => {
         switch (status?.toLowerCase()) {
             case "pending":
                 return "badge-warning";
@@ -183,9 +443,9 @@ export function useTicketManagement() {
             default:
                 return "badge-neutral";
         }
-    }
+    }, []);
 
-    function formatDate(dateString) {
+    const formatDate = useCallback((dateString) => {
         if (!dateString) return "N/A";
         return new Date(dateString).toLocaleDateString("en-US", {
             year: "numeric",
@@ -194,264 +454,86 @@ export function useTicketManagement() {
             hour: "2-digit",
             minute: "2-digit",
         });
-    }
+    }, []);
 
-    function getTicketIdFromUrl() {
+    const getTicketIdFromUrl = useCallback(() => {
         const path = window.location.pathname;
-        // Assumes route is /tickets/:hash
         const match = path.match(/^\/tickets\/([^/]+)/);
         if (!match) return null;
         try {
             const decoded = atob(match[1]);
             const parts = decoded.split(":");
-            return parts[0]; // ticketId is always the first part
+            return parts[0];
         } catch (e) {
             return null;
         }
-    }
-    // Updated handleAddTicket function
-    const handleAddTicket = (e) => {
-        e.preventDefault();
+    }, []);
 
-        // Validate form before submission
-        if (!validateForm()) {
-            return;
-        }
+    // ========================================
+    // COMPUTED VALUES
+    // ========================================
 
-        setUiState({ status: "processing", message: "" });
-
-        const formData = new FormData();
-
-        // Determine if this is a child ticket and set appropriate data
-        const ticketType = determineTicketType();
-        const ticketData = {
-            ...addTicketData,
-            ticket_level: ticketType,
-            parent_ticket_id:
-                ticketType === "child" ? addTicketData.ticket_id : null,
-        };
-
-        // If it's a child ticket, don't send ticket_id as the new ticket ID
-        // The backend will generate the child ticket ID
-        if (ticketType === "child") {
-            delete ticketData.ticket_id;
-        }
-
-        Object.entries(ticketData).forEach(([key, value]) => {
-            if (value !== null && value !== undefined) {
-                formData.append(key, value);
-            }
-        });
-
-        selectedFiles.forEach((file) => {
-            formData.append("attachments[]", file);
-        });
-
-        router.post("/add-ticket", formData, {
-            onSuccess: () => {
-                setUiState({
-                    status: "success",
-                    message: "Ticket submitted successfully! Reloading...",
-                });
-                setTimeout(() => {
-                    // Reset form
-                    setAddTicketData({
-                        employee_id: emp_data?.emp_id ?? "",
-                        department: emp_data?.emp_dept ?? "",
-                        employee_name: emp_data?.emp_name ?? "",
-                        type_of_request: "",
-                        project_name: "",
-                        details: "",
-                        status: "OPEN",
-                        ticket_level: "parent",
-                        assessed_by_prog: "",
-                        ticket_id: "",
-                    });
-                    setSelectedFiles([]);
-                    setRequestType("");
-                    setUiState({ status: "idle", message: "" });
-                }, 2000);
-            },
-            onError: (errors) => {
-                console.error("Form submission errors:", errors);
-                setUiState({
-                    status: "error",
-                    message:
-                        "Failed to submit ticket. Please check your input and try again.",
-                });
-            },
-            onFinish: () => {
-                setTimeout(() => {
-                    if (
-                        uiState.status !== "success" &&
-                        uiState.status !== "error"
-                    ) {
-                        setUiState({ status: "idle", message: "" });
-                    }
-                }, 500);
-            },
-        });
-    };
-
-    const handleFileChange = (e) => {
-        const files = Array.from(e.target.files);
-        setSelectedFiles((prev) => [...prev, ...files]);
-    };
-
-    const handleRemove = (index) => {
-        setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
-    };
-    const handleApprovalAction = (action) => {
-        const statusMap = {
-            assessed: "ASSESSED",
-            assess_return: "RETURNED",
-            approve_dh: "PENDING_OD_APPROVAL",
-            approve_od: "APPROVED",
-            disapprove: "DISAPPROVED",
-        };
-
-        // If remarks are required, show textarea first and remember the action
-        if (
-            (action === "disapprove" || action === "assess_return") &&
-            remarksState !== "show"
-        ) {
-            setPendingApprovalAction(action); // ✅ store action
-            setRemarksState("show");
-            return;
-        }
-
-        // Use the stored action if triggered by "Submit" button
-        const finalAction = action || pendingApprovalAction;
-        const newStatus = statusMap[finalAction];
-
-        if (!newStatus) {
-            console.warn("Invalid action:", finalAction);
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append("status", newStatus);
-        formData.append("updated_by", emp_data.emp_id);
-        formData.append("remark", addTicketData.remarks || "");
-        formData.append("role", userAccountType);
-
-        if (selectedFiles.length > 0) {
-            selectedFiles.forEach((file) => {
-                formData.append("attachments[]", file);
-            });
-        }
-
-        router.post(
-            `/tickets/update-status/${btoa(addTicketData.ticket_id)}`,
-            formData,
-            {
-                forceFormData: true,
-                onSuccess: () => {
-                    setUiState({
-                        status: "success",
-                        message: "Ticket updated successfully",
-                    });
-                    setSelectedFiles([]);
-                    setRemarksState("hide");
-                    setPendingApprovalAction(null);
-                },
-                onError: () => {
-                    setUiState({
-                        status: "error",
-                        message: "Failed to update ticket",
-                    });
-                },
-            }
-        );
-    };
-
-    const handleAssignment = ({ assignedTo, remark = "" }) => {
-        if (!emp_data?.emp_id) {
-            setUiState({ status: "error", message: "Missing supervisor ID." });
-            return;
-        }
-
-        setUiState({ status: "processing", message: "Assigning ticket..." });
-
-        router.put(
-            `/assign-ticket/${btoa(addTicketData.ticket_id)}`,
-            {
-                assigned_to: assignedTo,
-                mis_action_by: emp_data.emp_id,
-                remark: remark,
-            },
-            {
-                onSuccess: () => {
-                    setUiState({
-                        status: "success",
-                        message: "Ticket assigned successfully!",
-                    });
-                },
-                onError: () => {
-                    setUiState({
-                        status: "error",
-                        message: "Failed to assign ticket. Please try again.",
-                    });
-                },
-                onFinish: () => {
-                    setTimeout(() => {
-                        if (
-                            uiState.status !== "success" &&
-                            uiState.status !== "error"
-                        ) {
-                            setUiState({ status: "idle", message: "" });
-                        }
-                    }, 500);
-                },
-            }
-        );
-    };
-
-    console.log("progList from props:", progList);
     const assignmentOptions = progList.map((emp) => ({
         value: emp.EMPLOYID,
         label: emp.EMPNAME,
     }));
 
+    // ========================================
+    // PUBLIC API (Clean interface for components)
+    // ========================================
+
     return {
-        emp_data,
-        requestType,
-        formState,
-        selectedFiles,
-        existingFiles,
-        addTicketData,
-        uiState,
-        remarksState,
-        userAccountType,
+        // State (grouped and renamed for clarity)
+        formData,
+        selectedFiles: fileState.selectedFiles,
+        existingFiles: fileState.existingFiles,
         assignmentData,
         assignmentOptions,
-        // Functions
-        setAssignmentData,
-        setUserAccountType,
-        setRemarksState,
+
+        // UI State
+        uiState: {
+            status: uiState.status,
+            message: uiState.message,
+        },
+        requestType: uiState.requestType,
+        formState: uiState.formState,
+        userAccountType: uiState.userAccountType,
+        remarksState: uiState.remarksState,
+        showChildTicketsModal: uiState.showChildTicketsModal,
+
+        // Main Actions (simple, clear names)
+        handleSubmit,
         handleFormChange,
         handleAssignmentChange,
-        handleAddTicket,
-        setAddTicketData,
-        setRequestType,
-        setFormState,
-        setSelectedFiles,
-        setExistingFiles,
-        handleFileChange,
         handleApprovalAction,
         handleAssignment,
-        handleRemove,
-        // New functions for child ticket support
+        handleFileChange,
+        removeFile: handleRemoveFile,
+
+        // UI Helpers
+        getTicketTypeDisplay,
+        getStatusBadgeClass,
+        formatDate,
+        getTicketIdFromUrl,
+
+        // Business Logic Helpers
         isChildTicket,
         determineTicketType,
         validateForm,
-        getTicketTypeDisplay,
 
-        getStatusBadgeClass,
-        getTicketIdFromUrl,
-        formatDate,
+        // Setters (for initialization in components)
+        setFormData,
+        setFormState: (value) =>
+            setUiState((prev) => ({ ...prev, formState: value })),
+        setUserAccountType: (value) =>
+            setUiState((prev) => ({ ...prev, userAccountType: value })),
+        setExistingFiles: (files) =>
+            setFileState((prev) => ({ ...prev, existingFiles: files })),
+        setShowChildTicketsModal: (show) =>
+            setUiState((prev) => ({ ...prev, showChildTicketsModal: show })),
+        setAssignmentData,
 
-        setShowChildTicketsModal,
-        showChildTicketsModal,
+        // Data from props
+        emp_data,
     };
 }

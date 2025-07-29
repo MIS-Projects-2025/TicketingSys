@@ -1,12 +1,13 @@
 import { usePage } from "@inertiajs/react";
 import { Ticket, View, Eye, X } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import FileUploadSection from "./FileUploadSection";
 import { useTicketManagement } from "../../hooks/useTicketManagement";
 import Select from "react-select";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import ChildTicketsModal from "./ChildTicketsModal";
 import { customDarkStyles } from "@/styles/customDarkStyles";
+
 const Create = () => {
     const {
         formState: initialFormState,
@@ -18,39 +19,48 @@ const Create = () => {
         emp_data,
     } = usePage().props;
 
+    // Use the improved hook with cleaner interface
     const {
-        requestType,
-        formState,
+        // State (cleaner names)
+        formData,
         selectedFiles,
         existingFiles,
-        addTicketData,
-        uiState,
-        remarksState,
-        userAccountType,
         assignmentData,
         assignmentOptions,
+
+        // UI State
+        uiState,
+        requestType,
+        formState,
+        userAccountType,
+        remarksState,
         showChildTicketsModal,
-        setShowChildTicketsModal,
-        setAssignmentData,
-        setUserAccountType,
-        setExistingFiles,
-        setRequestType,
-        setFormState,
-        setAddTicketData,
+
+        // Main Actions (simple, clear names)
+        handleSubmit,
         handleFormChange,
         handleAssignmentChange,
-        handleAddTicket,
         handleApprovalAction,
         handleAssignment,
         handleFileChange,
-        handleRemove,
+        removeFile,
+        isChildTicket,
+        // UI Helpers
         getTicketTypeDisplay,
-
         getStatusBadgeClass,
-        getTicketIdFromUrl,
         formatDate,
+        getTicketIdFromUrl,
+
+        // Setters for initialization
+        setFormData,
+        setFormState,
+        setUserAccountType,
+        setExistingFiles,
+        setShowChildTicketsModal,
+        setAssignmentData,
     } = useTicketManagement();
 
+    // Clean initialization effect
     useEffect(() => {
         if (initialFormState) {
             setFormState(initialFormState);
@@ -58,8 +68,8 @@ const Create = () => {
         if (initialUserAccountType) {
             setUserAccountType(initialUserAccountType);
         }
-        if (initialFormState != "create" && ticket) {
-            setAddTicketData({
+        if (initialFormState !== "create" && ticket) {
+            setFormData({
                 employee_id: ticket.EMPLOYEE_ID,
                 employee_name: ticket.EMPNAME,
                 ticket_id: ticket.TICKET_ID,
@@ -68,6 +78,7 @@ const Create = () => {
                 project_name: ticket.PROJECT_NAME,
                 details: ticket.DETAILS,
                 status: ticket.STATUS,
+                parent_ticket_id: ticket.PARENT_TICKET_ID,
                 ticket_level: ticket.TICKET_LEVEL,
                 prog_action_by: ticket.PROG_ACTION_BY,
                 dm_action_by: ticket.DM_ACTION_BY,
@@ -75,11 +86,11 @@ const Create = () => {
             });
             setExistingFiles(attachments || []);
         }
-    }, [initialFormState, ticket]);
+    }, [initialFormState, initialUserAccountType, ticket, attachments]);
 
+    // UI computed values
     const ticketTypeDisplay = getTicketTypeDisplay();
     const currentTicketId = getTicketIdFromUrl();
-
     return (
         <AuthenticatedLayout>
             <div className="flex min-h-screen justify-center items-center bg-base-200">
@@ -102,7 +113,33 @@ const Create = () => {
                                 </p>
                             )}
                         </div>
-
+                        {isChildTicket(formData) &&
+                            formData.parent_ticket_id && (
+                                <div className="flex items-stretch gap-2 w-full mb-4">
+                                    <label className="floating-label w-full">
+                                        <input
+                                            type="text"
+                                            className="input input-bordered w-full input-disabled bg-base-200"
+                                            value={formData.parent_ticket_id}
+                                            readOnly
+                                        />
+                                        <span>Parent Ticket ID</span>
+                                    </label>
+                                    <a
+                                        href={`/tickets/${btoa(
+                                            formData.parent_ticket_id
+                                        )}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-outline btn-primary px-4"
+                                        style={{ height: "38px" }}
+                                        title="View Parent Ticket"
+                                    >
+                                        <View className="w-5 h-5 mr-1" />
+                                        View
+                                    </a>
+                                </div>
+                            )}
                         {/* Child Tickets Button - Show only when viewing/editing existing tickets */}
                         {formState !== "create" &&
                             childTickets &&
@@ -132,7 +169,7 @@ const Create = () => {
                                 <span>{uiState.message}</span>
                             </div>
                         )}
-                        <form onSubmit={handleAddTicket}>
+                        <form onSubmit={handleSubmit}>
                             {/* Form Fields */}
                             <div className="space-y-6">
                                 {ticketTypeDisplay.show &&
@@ -156,7 +193,7 @@ const Create = () => {
                                                 ticketOptions.find(
                                                     (opt) =>
                                                         opt.value ===
-                                                        addTicketData.ticket_id
+                                                        formData.ticket_id
                                                 ) || null
                                             }
                                             onChange={(option) =>
@@ -167,20 +204,20 @@ const Create = () => {
                                             }
                                             options={ticketOptions}
                                             styles={customDarkStyles}
-                                            placeholder="Choose Ticket No."
+                                            placeholder="Choose Ticket ID"
                                             isClearable
                                             menuPortalTarget={document.body}
                                             menuPosition="fixed"
                                         />
-                                        <span>Ticket No.</span>
+                                        <span>Ticket ID</span>
                                     </label>
 
-                                    {addTicketData.ticket_id &&
-                                        addTicketData.ticket_id !==
+                                    {formData.ticket_id &&
+                                        formData.ticket_id !==
                                             currentTicketId && (
                                             <a
                                                 href={`/tickets/${btoa(
-                                                    addTicketData.ticket_id
+                                                    formData.ticket_id
                                                 )}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
@@ -197,7 +234,7 @@ const Create = () => {
                                     <input
                                         type="hidden"
                                         name="EMPNAME"
-                                        value={addTicketData.employee_name}
+                                        value={formData.employee_name}
                                     />
 
                                     <label className="floating-label">
@@ -206,7 +243,7 @@ const Create = () => {
                                             placeholder="Employee ID"
                                             className="input input-bordered w-full input-disabled bg-base-200"
                                             readOnly
-                                            value={addTicketData.employee_id}
+                                            value={formData.employee_id}
                                         />
 
                                         <span>Employee ID</span>
@@ -218,7 +255,7 @@ const Create = () => {
                                             placeholder="Department"
                                             className="input input-bordered w-full input-disabled bg-base-200"
                                             readOnly
-                                            value={addTicketData.department}
+                                            value={formData.department}
                                         />
                                         <span>Department</span>
                                     </label>
@@ -230,7 +267,7 @@ const Create = () => {
                                             placeholder="Project Name"
                                             className="input input-bordered w-full"
                                             readOnly={formState != "create"}
-                                            value={addTicketData.project_name}
+                                            value={formData.project_name}
                                             onChange={(e) =>
                                                 handleFormChange(
                                                     "project_name",
@@ -245,9 +282,7 @@ const Create = () => {
                                         <select
                                             className="select select-bordered w-full"
                                             disabled={formState != "create"}
-                                            value={
-                                                addTicketData.type_of_request
-                                            }
+                                            value={formData.type_of_request}
                                             onChange={(e) => {
                                                 handleFormChange(
                                                     "type_of_request",
@@ -281,7 +316,7 @@ const Create = () => {
                                             className="textarea textarea-bordered w-full h-24"
                                             placeholder="Details of the request"
                                             readOnly={formState != "create"}
-                                            value={addTicketData.details}
+                                            value={formData.details}
                                             onChange={(e) =>
                                                 handleFormChange(
                                                     "details",
@@ -297,28 +332,28 @@ const Create = () => {
                                     existingFiles={existingFiles}
                                     selectedFiles={selectedFiles}
                                     handleFileChange={handleFileChange}
-                                    handleRemove={handleRemove}
+                                    handleRemove={removeFile}
                                 />
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                                     {(formState === "viewing" ||
                                         formState === "approving") && (
                                         <>
-                                            {addTicketData.employee_id &&
-                                                addTicketData.employee_name && (
+                                            {formData.employee_id &&
+                                                formData.employee_name && (
                                                     <label className="floating-label">
                                                         <input
                                                             type="text"
                                                             placeholder="Requested By"
                                                             className="input input-bordered w-full input-disabled bg-base-200"
                                                             readOnly
-                                                            value={`${addTicketData.employee_id} - ${addTicketData.employee_name}`}
+                                                            value={`${formData.employee_id} - ${formData.employee_name}`}
                                                         />
                                                         <span>
                                                             Requested By
                                                         </span>
                                                     </label>
                                                 )}
-                                            {addTicketData.prog_action_by && (
+                                            {formData.prog_action_by && (
                                                 <label className="floating-label">
                                                     <input
                                                         type="text"
@@ -326,13 +361,13 @@ const Create = () => {
                                                         className="input input-bordered w-full input-disabled bg-base-200"
                                                         readOnly
                                                         value={
-                                                            addTicketData.prog_action_by
+                                                            formData.prog_action_by
                                                         }
                                                     />
                                                     <span>Assessed By</span>
                                                 </label>
                                             )}
-                                            {addTicketData.dm_action_by && (
+                                            {formData.dm_action_by && (
                                                 <label className="floating-label">
                                                     <input
                                                         type="text"
@@ -340,13 +375,13 @@ const Create = () => {
                                                         className="input input-bordered w-full input-disabled bg-base-200"
                                                         readOnly
                                                         value={
-                                                            addTicketData.dm_action_by
+                                                            formData.dm_action_by
                                                         }
                                                     />
                                                     <span>Approved By</span>
                                                 </label>
                                             )}
-                                            {addTicketData.od_action_by && (
+                                            {formData.od_action_by && (
                                                 <label className="floating-label">
                                                     <input
                                                         type="text"
@@ -354,7 +389,7 @@ const Create = () => {
                                                         className="input input-bordered w-full input-disabled bg-base-200"
                                                         readOnly
                                                         value={
-                                                            addTicketData.od_action_by
+                                                            formData.od_action_by
                                                         }
                                                     />
                                                     <span>Approved By</span>
@@ -498,7 +533,7 @@ const Create = () => {
                                 {/* Department Manager: Approve or Disapprove */}
                                 {formState === "approving" &&
                                     userAccountType === "DEPARTMENT_HEAD" &&
-                                    addTicketData?.type_of_request ===
+                                    formData?.type_of_request ===
                                         "request_form" &&
                                     remarksState !== "show" && (
                                         <div className="flex gap-2">
@@ -529,7 +564,7 @@ const Create = () => {
 
                                 {formState === "approving" &&
                                     userAccountType === "OD" &&
-                                    addTicketData?.type_of_request ===
+                                    formData?.type_of_request ===
                                         "request_form" &&
                                     remarksState !== "show" && (
                                         <div className="flex gap-2">
@@ -579,7 +614,7 @@ const Create = () => {
                                         <textarea
                                             className="textarea textarea-bordered w-full"
                                             placeholder="Enter remarks here"
-                                            value={addTicketData.remarks || ""}
+                                            value={formData.remarks || ""}
                                             onChange={(e) =>
                                                 handleFormChange(
                                                     "remarks",

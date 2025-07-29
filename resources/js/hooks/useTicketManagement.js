@@ -30,7 +30,7 @@ export function useTicketManagement() {
     const [existingFiles, setExistingFiles] = useState([]);
     const [remarksState, setRemarksState] = useState("");
     const [pendingApprovalAction, setPendingApprovalAction] = useState("");
-
+    const [showChildTicketsModal, setShowChildTicketsModal] = useState(false);
     const [uiState, setUiState] = useState({
         status: "idle", // "idle" | "processing" | "success" | "error"
         message: "",
@@ -164,6 +164,51 @@ export function useTicketManagement() {
 
         return { show: false };
     };
+
+    function getStatusBadgeClass(status) {
+        switch (status?.toLowerCase()) {
+            case "pending":
+                return "badge-warning";
+            case "approved":
+                return "badge-success";
+            case "disapproved":
+            case "rejected":
+                return "badge-error";
+            case "in_progress":
+                return "badge-info";
+            case "completed":
+                return "badge-success";
+            case "assessed":
+                return "badge-primary";
+            default:
+                return "badge-neutral";
+        }
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return "N/A";
+        return new Date(dateString).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    }
+
+    function getTicketIdFromUrl() {
+        const path = window.location.pathname;
+        // Assumes route is /tickets/:hash
+        const match = path.match(/^\/tickets\/([^/]+)/);
+        if (!match) return null;
+        try {
+            const decoded = atob(match[1]);
+            const parts = decoded.split(":");
+            return parts[0]; // ticketId is always the first part
+        } catch (e) {
+            return null;
+        }
+    }
     // Updated handleAddTicket function
     const handleAddTicket = (e) => {
         e.preventDefault();
@@ -401,5 +446,12 @@ export function useTicketManagement() {
         determineTicketType,
         validateForm,
         getTicketTypeDisplay,
+
+        getStatusBadgeClass,
+        getTicketIdFromUrl,
+        formatDate,
+
+        setShowChildTicketsModal,
+        showChildTicketsModal,
     };
 }

@@ -1,70 +1,19 @@
 import { usePage } from "@inertiajs/react";
-import { Ticket, View } from "lucide-react";
-import React, { useEffect } from "react";
+import { Ticket, View, Eye, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import FileUploadSection from "./FileUploadSection";
 import { useTicketManagement } from "../../hooks/useTicketManagement";
 import Select from "react-select";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-
+import ChildTicketsModal from "./ChildTicketsModal";
+import { customDarkStyles } from "@/styles/customDarkStyles";
 const Create = () => {
-    const customDarkStyles = {
-        control: (provided, state) => ({
-            ...provided,
-            backgroundColor: "#191e24",
-            borderColor: state.isFocused ? "#4b5563" : "#374151",
-            boxShadow: state.isFocused ? "0 0 0 1px #4b5563" : "none",
-            color: "white",
-            zIndex: 10,
-        }),
-        menu: (provided) => ({
-            ...provided,
-            backgroundColor: "#191e24",
-            color: "white",
-            zIndex: 9999,
-        }),
-        menuPortal: (provided) => ({
-            ...provided,
-            zIndex: 9999,
-        }),
-        option: (provided, state) => ({
-            ...provided,
-            backgroundColor: state.isFocused ? "#374151" : "#191e24",
-            color: "white",
-            cursor: "pointer",
-            zIndex: 9999,
-        }),
-        singleValue: (provided) => ({
-            ...provided,
-            color: "white",
-        }),
-        placeholder: (provided) => ({
-            ...provided,
-            color: "#9ca3af",
-        }),
-        input: (provided) => ({
-            ...provided,
-            color: "white",
-        }),
-    };
-    function getTicketIdFromUrl() {
-        const path = window.location.pathname;
-        // Assumes route is /tickets/:hash
-        const match = path.match(/^\/tickets\/([^/]+)/);
-        if (!match) return null;
-        try {
-            const decoded = atob(match[1]);
-            const parts = decoded.split(":");
-            return parts[0]; // ticketId is always the first part
-        } catch (e) {
-            return null;
-        }
-    }
-
     const {
         formState: initialFormState,
         userAccountType: initialUserAccountType,
         ticket,
         attachments,
+        childTickets = [],
         ticketOptions = [],
         emp_data,
     } = usePage().props;
@@ -80,6 +29,8 @@ const Create = () => {
         userAccountType,
         assignmentData,
         assignmentOptions,
+        showChildTicketsModal,
+        setShowChildTicketsModal,
         setAssignmentData,
         setUserAccountType,
         setExistingFiles,
@@ -94,6 +45,10 @@ const Create = () => {
         handleFileChange,
         handleRemove,
         getTicketTypeDisplay,
+
+        getStatusBadgeClass,
+        getTicketIdFromUrl,
+        formatDate,
     } = useTicketManagement();
 
     useEffect(() => {
@@ -121,8 +76,10 @@ const Create = () => {
             setExistingFiles(attachments || []);
         }
     }, [initialFormState, ticket]);
+
     const ticketTypeDisplay = getTicketTypeDisplay();
     const currentTicketId = getTicketIdFromUrl();
+
     return (
         <AuthenticatedLayout>
             <div className="flex min-h-screen justify-center items-center bg-base-200">
@@ -133,11 +90,37 @@ const Create = () => {
                             <h1 className="text-2xl font-bold text-base-content mb-2">
                                 System Ticketing System
                             </h1>
-                            <p className="text-base-content/60">
-                                Generate a new ticket by filling out the form
-                                below.
-                            </p>
+
+                            {formState === "create" ? (
+                                <p className="text-base-content/60">
+                                    Generate a new ticket by filling out the
+                                    form below.
+                                </p>
+                            ) : (
+                                <p className="text-base-content/60">
+                                    View or update the details of your ticket.
+                                </p>
+                            )}
                         </div>
+
+                        {/* Child Tickets Button - Show only when viewing/editing existing tickets */}
+                        {formState !== "create" &&
+                            childTickets &&
+                            childTickets.length > 0 && (
+                                <div className="mb-4">
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline btn-info gap-2"
+                                        onClick={() =>
+                                            setShowChildTicketsModal(true)
+                                        }
+                                    >
+                                        <Eye className="w-4 h-4" />
+                                        View Child Tickets (
+                                        {childTickets.length})
+                                    </button>
+                                </div>
+                            )}
 
                         {uiState.status === "success" && (
                             <div className="alert alert-success shadow-sm flex items-center justify-between">
@@ -622,6 +605,14 @@ const Create = () => {
                     </div>
                 </div>
             </div>
+
+            <ChildTicketsModal
+                open={showChildTicketsModal}
+                onClose={() => setShowChildTicketsModal(false)}
+                childTickets={childTickets}
+                getStatusBadgeClass={getStatusBadgeClass}
+                formatDate={formatDate}
+            />
         </AuthenticatedLayout>
     );
 };

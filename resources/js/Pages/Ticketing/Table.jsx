@@ -68,11 +68,26 @@ const priorityBadgeStyles = {
 };
 
 // Custom hooks
-const useTicketLogic = (userAccountType, empData) => {
+const useTicketLogic = (userAccountType, empData, handleAction) => {
     const hasRole = useCallback(
         (role) =>
             Array.isArray(userAccountType) && userAccountType.includes(role),
         [userAccountType]
+    );
+
+    const createActionButton = useCallback(
+        (label, className, formState, actionType, priority) => ({
+            component: (
+                <ActionButton
+                    label={label}
+                    className={className}
+                    onClick={(ticket) => handleAction(ticket, formState)}
+                />
+            ),
+            actionType,
+            priority,
+        }),
+        [handleAction]
     );
 
     const getActionButton = useCallback(
@@ -163,26 +178,8 @@ const useTicketLogic = (userAccountType, empData) => {
                 PRIORITY_LEVELS.LOW
             );
         },
-        [hasRole, empData]
+        [hasRole, empData, createActionButton]
     );
-
-    const createActionButton = (
-        label,
-        className,
-        formState,
-        actionType,
-        priority
-    ) => ({
-        component: (
-            <ActionButton
-                label={label}
-                className={className}
-                onClick={(ticket) => handleAction(ticket, formState)}
-            />
-        ),
-        actionType,
-        priority,
-    });
 
     return { getActionButton, hasRole };
 };
@@ -268,8 +265,6 @@ const Table = () => {
     } = usePage().props;
     const [activeTab, setActiveTab] = useState("active-tickets");
 
-    const { getActionButton } = useTicketLogic(userAccountType, emp_data);
-
     // Handle action button clicks
     const handleAction = useCallback(
         (ticket, formState) => {
@@ -278,6 +273,12 @@ const Table = () => {
             router.visit(route("tickets.show", hash), { method: "get" });
         },
         [userAccountType]
+    );
+
+    const { getActionButton } = useTicketLogic(
+        userAccountType,
+        emp_data,
+        handleAction
     );
 
     // Process tickets with action information

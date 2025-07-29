@@ -3,14 +3,6 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { usePage } from "@inertiajs/react";
 import { router } from "@inertiajs/react";
 import React, { useState, useMemo } from "react";
-import {
-    Bolt,
-    AlarmClock,
-    Eye,
-    BarChart3,
-    PartyPopper,
-    ClipboardList,
-} from "lucide-react";
 
 const Table = () => {
     const { tickets, masterlist, emp_data, userAccountType } = usePage().props;
@@ -255,18 +247,19 @@ const Table = () => {
             : "Unknown account type";
     };
 
-    // Priority badge using DaisyUI
+    // Get priority badge
     const getPriorityBadge = (priority) => {
-        const badgeMap = {
-            urgent: "badge badge-error",
-            high: "badge badge-warning",
-            medium: "badge badge-info",
-            low: "badge badge-success",
+        const badges = {
+            urgent: "bg-red-100 text-red-800 border border-red-200",
+            high: "bg-orange-100 text-orange-800 border border-orange-200",
+            medium: "bg-yellow-100 text-yellow-800 border border-yellow-200",
+            low: "bg-green-100 text-green-800 border border-green-200",
         };
+
         return (
             <span
-                className={`badge badge-sm ${
-                    badgeMap[priority] || badgeMap.low
+                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    badges[priority] || badges.low
                 }`}
             >
                 {priority.charAt(0).toUpperCase() + priority.slice(1)}
@@ -315,8 +308,8 @@ const Table = () => {
             label: "Active Tickets",
             count: categorizedTickets.activeTickets.length,
             data: categorizedTickets.activeTickets,
-            color: "text-error",
-            icon: <Bolt size={18} className="mr-1" />,
+            color: "red",
+            icon: "⚡",
             description: "Tickets requiring your action",
         },
         {
@@ -324,8 +317,8 @@ const Table = () => {
             label: "View Only",
             count: categorizedTickets.viewOnlyTickets.length,
             data: categorizedTickets.viewOnlyTickets,
-            color: "text-info",
-            icon: <Eye size={18} className="mr-1" />,
+            color: "blue",
+            icon: "👁️",
             description: "Tickets for reference only",
         },
     ];
@@ -337,95 +330,99 @@ const Table = () => {
         <AuthenticatedLayout>
             <div className="space-y-6">
                 {/* Header */}
-                {/* <div className="bg-base-200 rounded-2xl p-6 shadow-md text-base-content">
-                    <h1 className="text-3xl font-semibold mb-2 text-base-content">
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-lg p-6 text-white">
+                    <h1 className="text-3xl font-bold mb-2">
                         Ticket Dashboard
                     </h1>
-                    <p className="text-sm text-muted-content">
-                        <strong className="text-base-content">Role:</strong>{" "}
-                        {getAccountTypeDescription()}
+                    <p className="text-blue-100">
+                        <strong>Role:</strong> {getAccountTypeDescription()}
                     </p>
-                </div> */}
+                </div>
 
                 {/* Quick Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="card bg-base-100 border border-base-300 rounded-xl shadow-sm hover:shadow-md transition duration-200">
-                        <div className="card-body p-4 flex-row items-center justify-between">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-error">
+                                <p className="text-red-600 text-sm font-medium">
                                     Active Tickets
                                 </p>
-                                <p className="text-2xl font-bold text-error">
+                                <p className="text-2xl font-bold text-red-700">
                                     {categorizedTickets.activeTickets.length}
                                 </p>
                             </div>
-                            <Bolt className="text-error w-6 h-6" />
+                            <div className="text-2xl">⚡</div>
                         </div>
                     </div>
-
-                    <div className="card bg-base-100 border border-base-300 rounded-xl shadow-sm hover:shadow-md transition duration-200">
-                        <div className="card-body p-4 flex-row items-center justify-between">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-warning">
+                                <p className="text-yellow-600 text-sm font-medium">
                                     Urgent
                                 </p>
-                                <p className="text-2xl font-bold text-warning">
+                                <p className="text-2xl font-bold text-yellow-700">
                                     {categorizedTickets.urgent.length}
                                 </p>
                             </div>
-                            <AlarmClock className="text-warning w-6 h-6" />
+                            <div className="text-2xl">🚨</div>
                         </div>
                     </div>
-
-                    <div className="card bg-base-100 border border-base-300 rounded-xl shadow-sm hover:shadow-md transition duration-200">
-                        <div className="card-body p-4 flex-row items-center justify-between">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-info">
+                                <p className="text-blue-600 text-sm font-medium">
                                     View Only
                                 </p>
-                                <p className="text-2xl font-bold text-info">
+                                <p className="text-2xl font-bold text-blue-700">
                                     {categorizedTickets.viewOnlyTickets.length}
                                 </p>
                             </div>
-                            <Eye className="text-info w-6 h-6" />
+                            <div className="text-2xl">👁️</div>
                         </div>
                     </div>
-
-                    <div className="card bg-base-100 border border-base-300 rounded-xl shadow-sm hover:shadow-md transition duration-200">
-                        <div className="card-body p-4 flex-row items-center justify-between">
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-base-content">
+                                <p className="text-gray-600 text-sm font-medium">
                                     Total Tickets
                                 </p>
-                                <p className="text-2xl font-bold text-base-content">
+                                <p className="text-2xl font-bold text-gray-700">
                                     {processedTickets.length}
                                 </p>
                             </div>
-                            <BarChart3 className="text-base-content w-6 h-6" />
+                            <div className="text-2xl">📊</div>
                         </div>
                     </div>
                 </div>
 
                 {/* Tabs */}
-                <div className="bg-base-100 rounded-lg shadow-sm border border-base-200">
-                    <div className="border-b border-base-200">
-                        <div className="tabs">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="border-b border-gray-200">
+                        <div className="flex overflow-x-auto">
                             {tabs.map((tab) => (
-                                <a
+                                <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`tab tab-bordered text-sm font-medium flex items-center gap-1 ${
-                                        activeTab === tab.id ? "tab-active" : ""
+                                    className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+                                        activeTab === tab.id
+                                            ? `border-${tab.color}-500 text-${tab.color}-600 bg-${tab.color}-50`
+                                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                                     }`}
                                 >
-                                    {tab.icon}
+                                    <span>{tab.icon}</span>
                                     <span>{tab.label}</span>
                                     {tab.count > 0 && (
-                                        <span className="badge badge-xs badge-outline ml-1">
+                                        <span
+                                            className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                                activeTab === tab.id
+                                                    ? `bg-${tab.color}-100 text-${tab.color}-700`
+                                                    : "bg-gray-100 text-gray-600"
+                                            }`}
+                                        >
                                             {tab.count}
                                         </span>
                                     )}
-                                </a>
+                                </button>
                             ))}
                         </div>
                     </div>
@@ -433,12 +430,12 @@ const Table = () => {
                     {/* Tab Content */}
                     <div className="p-6">
                         {/* Tab description */}
-                        <div className="mb-4 p-3 bg-base-200 rounded-lg">
-                            <p className="text-sm text-base-content">
+                        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                            <p className="text-sm text-gray-600">
                                 <strong>{currentTab?.label}:</strong>{" "}
                                 {currentTab?.description}
                             </p>
-                            <p className="text-sm text-base-content mt-1">
+                            <p className="text-sm text-gray-500 mt-1">
                                 Showing {currentTabData.length} tickets
                             </p>
                         </div>
@@ -456,19 +453,17 @@ const Table = () => {
                             />
                         ) : (
                             <div className="text-center py-12">
-                                <div className="text-4xl mb-4 flex justify-center">
-                                    {activeTab === "active-tickets" ? (
-                                        <PartyPopper size={40} />
-                                    ) : (
-                                        <ClipboardList size={40} />
-                                    )}
+                                <div className="text-4xl mb-4">
+                                    {activeTab === "active-tickets"
+                                        ? "🎉"
+                                        : "📋"}
                                 </div>
-                                <h3 className="text-lg font-medium text-base-content mb-2">
+                                <h3 className="text-lg font-medium text-gray-900 mb-2">
                                     {activeTab === "active-tickets"
                                         ? "No active tickets!"
                                         : "No tickets to view"}
                                 </h3>
-                                <p className="text-base-content">
+                                <p className="text-gray-500">
                                     {activeTab === "active-tickets"
                                         ? "Great job! All caught up with your tasks."
                                         : "No tickets available for viewing at the moment."}

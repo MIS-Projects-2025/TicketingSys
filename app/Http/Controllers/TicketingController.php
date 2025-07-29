@@ -312,8 +312,8 @@ class TicketingController extends Controller
         if ($this->isODAccount($empData)) {
             $filters[] = "(
             TYPE_OF_REQUEST NOT IN ('adjustment', 'enhancement') 
-            AND PROG_ACTION_BY IS NOT NULL 
-            AND STATUS = 'PENDING_OD_APPROVAL'
+      
+           
         )";
         }
         // dd($odEmployeeIds);
@@ -324,8 +324,6 @@ class TicketingController extends Controller
                     $idList = implode(",", array_map('intval', $odEmployeeIds));
                     $filters[] = "(
                 TYPE_OF_REQUEST NOT IN ('adjustment', 'enhancement') 
-                AND PROG_ACTION_BY IS NOT NULL 
-                AND STATUS = 'ASSESSED'
                 AND EMPLOYEE_ID IN ({$idList})
             )";
                 }
@@ -333,8 +331,6 @@ class TicketingController extends Controller
                 // Normal DH
                 $filters[] = "(
             TYPE_OF_REQUEST NOT IN ('adjustment', 'enhancement') 
-            AND PROG_ACTION_BY IS NOT NULL 
-            AND STATUS = 'ASSESSED'
         )";
             }
         }

@@ -10,6 +10,10 @@ import {
     BarChart3,
     PartyPopper,
     ClipboardList,
+    UserCheck,
+    ClipboardCheck,
+    ThumbsUp,
+    User2,
 } from "lucide-react";
 
 // Constants
@@ -42,7 +46,12 @@ const ACTION_TYPES = {
     APPROVE: "approve",
     VIEW: "view",
 };
-
+const ACTION_ICONS = {
+    assign: UserCheck,
+    assess: ClipboardCheck,
+    approve: ThumbsUp,
+    view: Eye,
+};
 // Configuration objects
 const roleDescriptions = {
     [ACCOUNT_TYPES.REQUESTOR]: "Requestor",
@@ -106,6 +115,7 @@ const getActionConfig = (ticket, userAccountType, empData) => {
                 formState: "assigning_programmer",
                 actionType: ACTION_TYPES.ASSIGN,
                 priority: PRIORITY_LEVELS.HIGH,
+                icon: ACTION_ICONS.assign,
             };
         }
 
@@ -124,6 +134,7 @@ const getActionConfig = (ticket, userAccountType, empData) => {
                 priority: isReturned
                     ? PRIORITY_LEVELS.URGENT
                     : PRIORITY_LEVELS.HIGH,
+                icon: ACTION_ICONS.assess,
             };
         }
     }
@@ -140,6 +151,7 @@ const getActionConfig = (ticket, userAccountType, empData) => {
             formState: "assessing",
             actionType: ACTION_TYPES.ASSESS,
             priority: PRIORITY_LEVELS.HIGH,
+            icon: ACTION_ICONS.assess,
         };
     }
 
@@ -151,6 +163,7 @@ const getActionConfig = (ticket, userAccountType, empData) => {
             formState: "approving",
             actionType: ACTION_TYPES.APPROVE,
             priority: PRIORITY_LEVELS.HIGH,
+            icon: ACTION_ICONS.approve,
         };
     }
 
@@ -162,6 +175,7 @@ const getActionConfig = (ticket, userAccountType, empData) => {
             formState: "approving",
             actionType: ACTION_TYPES.APPROVE,
             priority: PRIORITY_LEVELS.HIGH,
+            icon: ACTION_ICONS.approve,
         };
     }
 
@@ -174,18 +188,24 @@ const getActionConfig = (ticket, userAccountType, empData) => {
         formState: "viewing",
         actionType: ACTION_TYPES.VIEW,
         priority: PRIORITY_LEVELS.LOW,
+        icon: ACTION_ICONS.view,
     };
 };
-
 // Components
-const ActionButton = ({ config, ticket, userAccountType }) => (
-    <button
-        onClick={() => handleAction(ticket, config.formState, userAccountType)}
-        className={`px-3 py-1 text-white rounded text-sm ${config.className}`}
-    >
-        {config.label}
-    </button>
-);
+const ActionButton = ({ config, ticket, userAccountType }) => {
+    const Icon = config.icon || Eye;
+    return (
+        <button
+            onClick={() =>
+                handleAction(ticket, config.formState, userAccountType)
+            }
+            className={`px-3 py-1 text-white rounded text-sm flex items-center gap-2 ${config.className}`}
+        >
+            <Icon size={16} />
+            <span>{config.label}</span>
+        </button>
+    );
+};
 
 const PriorityBadge = ({ priority }) => (
     <span

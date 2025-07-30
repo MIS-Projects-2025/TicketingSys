@@ -1,5 +1,6 @@
 import React from "react";
 import { Eye, X } from "lucide-react";
+import DataTable from "@/Components/DataTable";
 
 const ChildTicketsModal = ({
     open,
@@ -9,6 +10,47 @@ const ChildTicketsModal = ({
     formatDate,
 }) => {
     if (!open) return null;
+
+    // DataTable expects columns with key/label
+    const columns = [
+        { key: "TICKET_ID", label: "Ticket ID" },
+        { key: "PROJECT_NAME", label: "Project Name" },
+        { key: "TYPE_OF_REQUEST", label: "Type" },
+        { key: "STATUS", label: "Status" },
+        { key: "CREATED_AT", label: "Created Date" },
+        { key: "actions", label: "Actions" },
+    ];
+
+    // Map childTickets to add custom rendering for actions and other fields
+    const tableData = childTickets.map((row) => ({
+        ...row,
+        TYPE_OF_REQUEST: (
+            <span className="badge badge-outline badge-sm">
+                {row.TYPE_OF_REQUEST?.replace("_", " ").toUpperCase()}
+            </span>
+        ),
+        STATUS: (
+            <span
+                className={`badge badge-sm ${getStatusBadgeClass(row.STATUS)}`}
+            >
+                {row.STATUS}
+            </span>
+        ),
+        CREATED_AT: (
+            <span className="text-sm">{formatDate(row.CREATED_AT)}</span>
+        ),
+        actions: (
+            <a
+                href={`/tickets/${btoa(row.TICKET_ID)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-xs btn-outline btn-primary"
+                title="View Ticket"
+            >
+                <Eye className="w-3 h-3" />
+            </a>
+        ),
+    }));
 
     return (
         <div className="modal modal-open">
@@ -33,70 +75,16 @@ const ChildTicketsModal = ({
                             </p>
                         </div>
                     ) : (
-                        <table className="table table-zebra w-full">
-                            <thead>
-                                <tr>
-                                    <th>Ticket ID</th>
-                                    <th>Project Name</th>
-                                    <th>Type</th>
-                                    <th>Status</th>
-                                    <th>Created Date</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {childTickets.map((childTicket) => (
-                                    <tr key={childTicket.TICKET_ID}>
-                                        <td className="font-mono text-sm">
-                                            {childTicket.TICKET_ID}
-                                        </td>
-                                        <td>
-                                            <div
-                                                className="max-w-xs truncate"
-                                                title={childTicket.PROJECT_NAME}
-                                            >
-                                                {childTicket.PROJECT_NAME}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span className="badge badge-outline badge-sm">
-                                                {childTicket.TYPE_OF_REQUEST?.replace(
-                                                    "_",
-                                                    " "
-                                                ).toUpperCase()}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span
-                                                className={`badge badge-sm ${getStatusBadgeClass(
-                                                    childTicket.STATUS
-                                                )}`}
-                                            >
-                                                {childTicket.STATUS}
-                                            </span>
-                                        </td>
-                                        <td className="text-sm">
-                                            {formatDate(childTicket.CREATED_AT)}
-                                        </td>
-                                        <td>
-                                            <div className="flex gap-1">
-                                                <a
-                                                    href={`/tickets/${btoa(
-                                                        childTicket.TICKET_ID
-                                                    )}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="btn btn-xs btn-outline btn-primary"
-                                                    title="View Ticket"
-                                                >
-                                                    <Eye className="w-3 h-3" />
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <DataTable
+                            columns={columns}
+                            data={tableData}
+                            routeName="tickets.index"
+                            rowKey="TICKET_ID"
+                            // showExport={true}
+                            onSelectionChange={(selectedRows) => {
+                                console.log("Selected Rows:", selectedRows);
+                            }}
+                        />
                     )}
                 </div>
 

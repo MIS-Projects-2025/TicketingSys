@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import FilePreviewModal from "./FilePreviewModal";
+import { UploadCloud, UploadIcon } from "lucide-react";
 
 const FileUploadSection = ({
     mode = "create",
@@ -34,32 +35,36 @@ const FileUploadSection = ({
 
     return (
         <div className="mt-6">
-            <label className="label">
-                <span className="label-text font-medium text-lg">
-                    {mode === "create" || mode === "assessing"
-                        ? "Attach Files"
-                        : "Uploaded Files"}
-                </span>
-                {(mode === "create" || mode === "assessing") && (
-                    <span className="label-text-alt text-sm text-base-content/60">
-                        You can upload multiple files. Max size: 2MB each.
-                    </span>
-                )}
-            </label>
-            {(mode === "create" || mode === "assessing") && (
-                <div className="flex items-center space-x-4 mb-4">
-                    <label className="btn btn-primary cursor-pointer">
-                        + Add File
-                        <input
-                            type="file"
-                            className="hidden"
-                            multiple
-                            onChange={handleFileChange}
-                            accept="*/*"
-                        />
-                    </label>
+            <div className="flex flex-col space-y-2 mb-4">
+                <div className="flex flex-wrap justify-between items-center">
+                    <div>
+                        <span className="label-text font-medium text-lg">
+                            {mode === "create" || mode === "assessing"
+                                ? "Attach Files"
+                                : "Uploaded Files"}
+                        </span>
+                        {(mode === "create" || mode === "assessing") && (
+                            <p className="text-sm text-base-content/60">
+                                You can upload multiple files. Max size: 2MB
+                                each.
+                            </p>
+                        )}
+                    </div>
+                    {(mode === "create" || mode === "assessing") && (
+                        <label className="btn btn-sm md:btn-md btn-primary cursor-pointer mt-2 md:mt-0">
+                            <UploadIcon className="w-4 h-4" />
+                            Add File
+                            <input
+                                type="file"
+                                className="hidden"
+                                multiple
+                                onChange={handleFileChange}
+                                accept="*/*"
+                            />
+                        </label>
+                    )}
                 </div>
-            )}
+            </div>
 
             <div className="overflow-x-auto">
                 <table className="table table-zebra w-full text-sm">

@@ -1,5 +1,12 @@
 import React from "react";
-import { Ticket } from "lucide-react";
+import {
+    Ticket,
+    CheckCircle,
+    Undo2,
+    ThumbsUp,
+    ThumbsDown,
+    Loader2,
+} from "lucide-react";
 
 const TicketActionButtons = ({
     actions,
@@ -77,58 +84,63 @@ const TicketActionButtons = ({
             </div>
         )}
         <div className="flex flex-wrap gap-2">
-            {" "}
             {actions.canAssessTicket && (
                 <button
                     type="button"
-                    className="btn btn-success"
+                    className="btn btn-success gap-2"
                     onClick={() => handleApprovalAction("assessed")}
                 >
+                    <CheckCircle className="w-4 h-4" />
                     Assess Ticket
                 </button>
             )}
             {actions.canReturnTicket && (
                 <button
                     type="button"
-                    className="btn btn-success"
+                    className="btn btn-success gap-2"
                     onClick={() => handleApprovalAction("assess_return")}
                 >
+                    <Undo2 className="w-4 h-4" />
                     Return Ticket
                 </button>
             )}
             {actions.canApproveDH && (
                 <button
                     type="button"
-                    className="btn btn-warning"
+                    className="btn btn-warning gap-2"
                     onClick={() => handleApprovalAction("approve_dh")}
                 >
+                    <ThumbsUp className="w-4 h-4" />
                     Approve
                 </button>
             )}
             {actions.canDisapproveDH && (
                 <button
                     type="button"
-                    className="btn btn-error"
+                    className="btn btn-error gap-2"
                     onClick={() => handleApprovalAction("disapprove")}
                 >
+                    <ThumbsDown className="w-4 h-4" />
                     Disapprove
                 </button>
             )}
             {actions.canApproveOD && (
                 <button
                     type="button"
-                    className="btn btn-warning"
+                    className="btn btn-warning gap-2"
                     onClick={() => handleApprovalAction("approve_od")}
                 >
+                    <ThumbsUp className="w-4 h-4" />
                     Approve
                 </button>
             )}
             {actions.canDisapproveOD && (
                 <button
                     type="button"
-                    className="btn btn-error"
+                    className="btn btn-error gap-2"
                     onClick={() => handleApprovalAction("disapprove")}
                 >
+                    <ThumbsDown className="w-4 h-4" />
                     Disapprove
                 </button>
             )}
@@ -140,10 +152,17 @@ const TicketActionButtons = ({
                 className="btn btn-primary gap-2"
                 disabled={uiState.status === "processing"}
             >
-                <Ticket className="w-5 h-5" />
-                {uiState.status === "processing"
-                    ? "Generating Ticket ..."
-                    : "Generate"}
+                {uiState.status === "processing" ? (
+                    <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Generating Ticket ...
+                    </>
+                ) : (
+                    <>
+                        <Ticket className="w-4 h-4" />
+                        Generate
+                    </>
+                )}
             </button>
         )}
     </>

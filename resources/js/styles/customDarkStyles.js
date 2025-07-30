@@ -1,43 +1,103 @@
-/**
- * Dark theme styles for react-select components.
- * Usage: import { customDarkStyles } from '@/styles/reactSelectDarkStyles';
- */
 export const customDarkStyles = {
-    control: (provided, state) => ({
-        ...provided,
-        backgroundColor: "#191e24",
-        borderColor: state.isFocused ? "#4b5563" : "#374151",
-        boxShadow: state.isFocused ? "0 0 0 1px #4b5563" : "none",
-        color: "white",
-        zIndex: 10,
-    }),
-    menu: (provided) => ({
-        ...provided,
-        backgroundColor: "#191e24",
-        color: "white",
-        zIndex: 9999,
-    }),
+    control: (provided, state) => {
+        // Get current theme colors
+        const isDark =
+            document.documentElement
+                .getAttribute("data-theme")
+                ?.includes("dark") ||
+            document.documentElement.classList.contains("dark");
+
+        return {
+            ...provided,
+            backgroundColor: isDark ? "#191e24" : "#ffffff",
+            borderColor: state.isFocused
+                ? isDark
+                    ? "#4b5563"
+                    : "#d1d5db"
+                : isDark
+                ? "#374151"
+                : "#e5e7eb",
+            boxShadow: state.isFocused
+                ? `0 0 0 1px ${isDark ? "#4b5563" : "#d1d5db"}`
+                : "none",
+            color: isDark ? "white" : "black",
+            zIndex: 10,
+        };
+    },
+    menu: (provided) => {
+        const isDark =
+            document.documentElement
+                .getAttribute("data-theme")
+                ?.includes("dark") ||
+            document.documentElement.classList.contains("dark");
+
+        return {
+            ...provided,
+            backgroundColor: isDark ? "#191e24" : "#ffffff",
+            color: isDark ? "white" : "black",
+            zIndex: 9999,
+            border: `1px solid ${isDark ? "#374151" : "#e5e7eb"}`,
+        };
+    },
     menuPortal: (provided) => ({
         ...provided,
         zIndex: 9999,
     }),
-    option: (provided, state) => ({
-        ...provided,
-        backgroundColor: state.isFocused ? "#374151" : "#191e24",
-        color: "white",
-        cursor: "pointer",
-        zIndex: 9999,
-    }),
-    singleValue: (provided) => ({
-        ...provided,
-        color: "white",
-    }),
-    placeholder: (provided) => ({
-        ...provided,
-        color: "#9ca3af",
-    }),
-    input: (provided) => ({
-        ...provided,
-        color: "white",
-    }),
+    option: (provided, state) => {
+        const isDark =
+            document.documentElement
+                .getAttribute("data-theme")
+                ?.includes("dark") ||
+            document.documentElement.classList.contains("dark");
+
+        return {
+            ...provided,
+            backgroundColor: state.isFocused
+                ? isDark
+                    ? "#374151"
+                    : "#f3f4f6"
+                : isDark
+                ? "#191e24"
+                : "#ffffff",
+            color: isDark ? "white" : "black",
+            cursor: "pointer",
+            zIndex: 9999,
+        };
+    },
+    singleValue: (provided) => {
+        const isDark =
+            document.documentElement
+                .getAttribute("data-theme")
+                ?.includes("dark") ||
+            document.documentElement.classList.contains("dark");
+
+        return {
+            ...provided,
+            color: isDark ? "white" : "black",
+        };
+    },
+    placeholder: (provided) => {
+        const isDark =
+            document.documentElement
+                .getAttribute("data-theme")
+                ?.includes("dark") ||
+            document.documentElement.classList.contains("dark");
+
+        return {
+            ...provided,
+            color: isDark ? "#9ca3af" : "#6b7280",
+        };
+    },
+    input: (provided) => {
+        const isDark =
+            document.documentElement
+                .getAttribute("data-theme")
+                ?.includes("dark") ||
+            document.documentElement.classList.contains("dark");
+
+        return {
+            ...provided,
+            color: isDark ? "white" : "black",
+        };
+    },
 };

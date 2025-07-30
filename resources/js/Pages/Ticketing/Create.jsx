@@ -91,7 +91,7 @@ const Create = () => {
     return (
         <AuthenticatedLayout>
             <div className="flex min-h-screen justify-center items-center bg-base-200">
-                <div className="card bg-base-100 w-full max-w-4xl shadow-xl">
+                <div className="card bg-base-200 w-full max-w-5xl shadow-xl">
                     <div className="card-body p-8">
                         {/* Header */}
                         <div className="text-center mb-8">
@@ -139,15 +139,15 @@ const Create = () => {
                         {formState !== "create" &&
                             childTickets &&
                             childTickets.length > 0 && (
-                                <div className="mb-4">
+                                <div className="mb-4 flex">
                                     <button
                                         type="button"
-                                        className="btn btn-outline btn-info gap-2"
+                                        className="btn btn-outline btn-info gap-2 ml-auto"
                                         onClick={() =>
                                             setShowChildTicketsModal(true)
                                         }
                                     >
-                                        <Eye className="w-4 h-4" />
+                                        <Ticket className="w-4 h-4" />
                                         View Child Tickets (
                                         {childTickets.length})
                                     </button>

@@ -1,13 +1,26 @@
 import React, { useState } from "react";
 import FilePreviewModal from "./FilePreviewModal";
-import { UploadCloud, UploadIcon } from "lucide-react";
+import { UploadIcon, Eye, X } from "lucide-react";
+import DataTable from "@/Components/DataTable";
 
+/**
+ * FileUploadSection
+ *
+ * Props:
+ * - mode: "create" | "assessing" | "viewing"
+ * - existingFiles: Array of files already uploaded (from backend)
+ * - selectedFiles: Array of files selected for upload (File objects)
+ * - handleFileChange: function to handle file input change
+ * - handleRemove: function to remove a selected file
+ * - currentUserId: (optional) for future separation of files by uploader
+ */
 const FileUploadSection = ({
     mode = "create",
     existingFiles = [],
     selectedFiles = [],
     handleFileChange,
     handleRemove,
+    currentUserId,
 }) => {
     const [modalOpen, setModalOpen] = useState(false);
     const [modalFile, setModalFile] = useState(null);
@@ -32,6 +45,93 @@ const FileUploadSection = ({
             return dateString;
         }
     };
+
+    // Columns for DataTable
+    const columns = [
+        { key: "index", label: "#" },
+        { key: "fileName", label: "File Name" },
+        { key: "fileSize", label: "Size" },
+        { key: "fileType", label: "Type" },
+        ...(mode !== "create"
+            ? [
+                  { key: "uploadedBy", label: "Uploaded By" },
+                  { key: "uploadedAt", label: "Uploaded At" },
+                  { key: "actions", label: "Actions" },
+              ]
+            : [{ key: "actions", label: "Action" }]),
+    ];
+
+    // Data for DataTable
+    let tableData = [];
+
+    // For create/assessing mode, show selectedFiles (to be uploaded)
+    if (mode === "create" || mode === "assessing") {
+        tableData = selectedFiles.map((file, idx) => ({
+            index: idx + 1,
+            fileName: file.name,
+            fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+            fileType: file.type || "Unknown",
+            actions: (
+                <button
+                    type="button"
+                    className="btn btn-sm btn-error btn-outline"
+                    onClick={() => handleRemove(idx)}
+                >
+                    Remove
+                </button>
+            ),
+        }));
+    }
+    const filteredExistingFiles = currentUserId
+        ? existingFiles.filter(
+              (file) => (file.UPLOADED_BY || file.uploaded_by) === currentUserId
+          )
+        : existingFiles;
+    // Always show existingFiles (already uploaded)
+    const existingFilesData = filteredExistingFiles.map((file, idx) => ({
+        index: idx + 1,
+        fileName: file.FILE_NAME || file.file_name,
+        fileSize: file.FILE_SIZE
+            ? `${(file.FILE_SIZE / 1024).toFixed(1)} KB`
+            : file.file_size
+            ? `${(file.file_size / 1024).toFixed(1)} KB`
+            : "",
+        fileType: file.FILE_TYPE || file.file_type,
+        uploadedBy: file.UPLOADED_BY || file.uploaded_by || "-",
+        uploadedAt: formatDate(file.UPLOADED_AT || file.uploaded_at),
+        actions:
+            mode !== "create" ? (
+                <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    onClick={() => handleViewFile(file)}
+                    title="View File"
+                >
+                    <Eye className="w-4 h-4" />
+                </button>
+            ) : null,
+        _rawFile: file, // for rowKey
+    }));
+
+    // Combine selectedFiles (for create/assessing) and existingFiles
+    let combinedData = [];
+    if (mode === "create" || mode === "assessing") {
+        combinedData = [
+            ...tableData,
+            ...existingFilesData.map((row, i) => ({
+                ...row,
+                actions: null, // No actions for already uploaded files in create mode
+            })),
+        ];
+    } else {
+        combinedData = existingFilesData;
+    }
+
+    // DataTable expects a unique rowKey
+    const rowKey = (row, idx) =>
+        row._rawFile && row._rawFile.id
+            ? row._rawFile.id
+            : row.fileName + "-" + idx;
 
     return (
         <div className="mt-6">
@@ -67,120 +167,18 @@ const FileUploadSection = ({
             </div>
 
             <div className="overflow-x-auto">
-                <table className="table table-zebra w-full text-sm">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>File Name</th>
-                            <th>Size</th>
-                            <th>Type</th>
-                            {mode !== "create" && <th>Uploaded By</th>}
-                            {mode !== "create" && <th>Uploaded At</th>}
-                            {mode !== "create" && <th>Action</th>}
-                            {mode === "create" && <th>Action</th>}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {(mode === "create" || mode === "assessing") &&
-                            selectedFiles.map((file, index) => (
-                                <tr key={index}>
-                                    <td>{index + 1}</td>
-                                    <td>{file.name}</td>
-                                    <td>
-                                        {(file.size / 1024 / 1024).toFixed(2)}{" "}
-                                        MB
-                                    </td>
-                                    <td>{file.type || "Unknown"}</td>
-                                    {mode !== "create" && (
-                                        <>
-                                            <td>-</td>
-                                            <td>-</td>
-                                        </>
-                                    )}
-                                    <td>
-                                        <button
-                                            type="button"
-                                            className="btn btn-sm btn-error btn-outline"
-                                            onClick={() => handleRemove(index)}
-                                        >
-                                            Remove
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-
-                        {existingFiles.map((file, index) => (
-                            <tr key={`existing-${index}`}>
-                                <td>{index + 1}</td>
-                                <td>{file.FILE_NAME || file.file_name}</td>
-                                <td>
-                                    {file.FILE_SIZE
-                                        ? `${(file.FILE_SIZE / 1024).toFixed(
-                                              1
-                                          )} KB`
-                                        : file.file_size
-                                        ? `${(file.file_size / 1024).toFixed(
-                                              1
-                                          )} KB`
-                                        : ""}
-                                </td>
-                                <td>{file.FILE_TYPE || file.file_type}</td>
-                                {/* {mode === "viewing" && (
-                                    <td>
-                                        {file.UPLOADED_BY ||
-                                            file.uploaded_by ||
-                                            "N/A"}
-                                    </td>
-                                )}
-                                {mode === "viewing" && (
-                                    <td>
-                                        {formatDate(
-                                            file.UPLOADED_AT || file.uploaded_at
-                                        )}
-                                    </td>
-                                )} */}
-                                {mode === "create" && <td></td>}
-                                {mode !== "create" && (
-                                    <>
-                                        <td>
-                                            {" "}
-                                            {file.UPLOADED_BY ||
-                                                file.uploaded_by}
-                                        </td>
-                                        <td>
-                                            {" "}
-                                            {file.UPLOADED_AT ||
-                                                file.uploaded_at}
-                                        </td>
-                                        <td>
-                                            <button
-                                                type="button"
-                                                className="btn btn-sm btn-primary"
-                                                onClick={() =>
-                                                    handleViewFile(file)
-                                                }
-                                            >
-                                                View
-                                            </button>
-                                        </td>
-                                    </>
-                                )}
-                            </tr>
-                        ))}
-
-                        {existingFiles.length === 0 &&
-                            selectedFiles.length === 0 && (
-                                <tr>
-                                    <td
-                                        colSpan={mode === "create" ? 5 : 7}
-                                        className="text-center text-base-content/60"
-                                    >
-                                        No files uploaded yet.
-                                    </td>
-                                </tr>
-                            )}
-                    </tbody>
-                </table>
+                {combinedData.length === 0 ? (
+                    <div className="text-center py-8 text-base-content/60">
+                        No files uploaded yet.
+                    </div>
+                ) : (
+                    <DataTable
+                        columns={columns}
+                        data={combinedData}
+                        rowKey={rowKey}
+                        // routeName, showExport, etc. can be added for future scalability
+                    />
+                )}
             </div>
 
             <FilePreviewModal

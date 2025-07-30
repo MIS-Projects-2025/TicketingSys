@@ -2,7 +2,7 @@ import DataTable from "@/Components/DataTable";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { usePage } from "@inertiajs/react";
 import { router } from "@inertiajs/react";
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo } from "react";
 import {
     Bolt,
     AlarmClock,
@@ -43,7 +43,7 @@ const ACTION_TYPES = {
     VIEW: "view",
 };
 
-// Utility functions
+// Configuration objects
 const roleDescriptions = {
     [ACCOUNT_TYPES.REQUESTOR]: "Requestor",
     [ACCOUNT_TYPES.PROGRAMMER]: "Programmer",
@@ -67,130 +67,123 @@ const priorityBadgeStyles = {
     [PRIORITY_LEVELS.LOW]: "badge badge-success",
 };
 
-// Custom hooks
-const useTicketLogic = (userAccountType, empData, handleAction) => {
-    const hasRole = useCallback(
-        (role) =>
-            Array.isArray(userAccountType) && userAccountType.includes(role),
-        [userAccountType]
-    );
+// Utility functions (moved outside component to avoid recreation)
+const hasRole = (userAccountType, role) =>
+    Array.isArray(userAccountType) && userAccountType.includes(role);
 
-    const createActionButton = useCallback(
-        (label, className, formState, actionType, priority) => ({
-            component: (
-                <ActionButton
-                    label={label}
-                    className={className}
-                    onClick={(ticket) => handleAction(ticket, formState)}
-                />
-            ),
-            actionType,
-            priority,
-        }),
-        [handleAction]
-    );
+// const getAccountTypeDescription = (userAccountType) => {
+//     if (!Array.isArray(userAccountType)) return "Unknown account type";
 
-    const getActionButton = useCallback(
-        (ticket) => {
-            const isMIS = hasRole(ACCOUNT_TYPES.MIS_SUPERVISOR);
-            const isProgrammer = hasRole(ACCOUNT_TYPES.PROGRAMMER);
-            const isDeptHead = hasRole(ACCOUNT_TYPES.DEPARTMENT_HEAD);
-            const isOD = hasRole(ACCOUNT_TYPES.OD);
-            const isRequestor = hasRole(ACCOUNT_TYPES.REQUESTOR);
+//     const descriptions = userAccountType
+//         .filter((role) => roleDescriptions[role])
+//         .map((role) => roleDescriptions[role]);
 
-            // MIS Supervisor logic
-            if (isMIS) {
-                if (ticket.STATUS === TICKET_STATUS.APPROVED) {
-                    return createActionButton(
-                        "Assign Programmer",
-                        "bg-purple-500 hover:bg-purple-600",
-                        "assigning_programmer",
-                        ACTION_TYPES.ASSIGN,
-                        PRIORITY_LEVELS.HIGH
-                    );
-                }
+//     return descriptions.length > 0
+//         ? descriptions.join(" | ")
+//         : "Unknown account type";
+// };
 
-                if (
-                    !ticket.PROG_ACTION_BY ||
-                    ticket.STATUS === TICKET_STATUS.RETURNED
-                ) {
-                    const isReturned = ticket.STATUS === TICKET_STATUS.RETURNED;
-                    return createActionButton(
-                        isReturned ? "Re-assess" : "Assess",
-                        isReturned
-                            ? "bg-yellow-500 hover:bg-yellow-600"
-                            : "bg-green-500 hover:bg-green-600",
-                        "assessing",
-                        ACTION_TYPES.ASSESS,
-                        isReturned
-                            ? PRIORITY_LEVELS.URGENT
-                            : PRIORITY_LEVELS.HIGH
-                    );
-                }
-            }
+const handleAction = (ticket, formState, userAccountType) => {
+    const dataToHash = `${ticket.TICKET_ID}:${formState}:${userAccountType}`;
+    const hash = btoa(dataToHash);
+    router.visit(route("tickets.show", hash), { method: "get" });
+};
 
-            // Programmer logic
-            if (
-                isProgrammer &&
-                ticket.EMPLOYEE_ID !== empData?.emp_id &&
-                ticket.STATUS === TICKET_STATUS.OPEN
-            ) {
-                return createActionButton(
-                    "Assess",
-                    "bg-green-500 hover:bg-green-600",
-                    "assessing",
-                    ACTION_TYPES.ASSESS,
-                    PRIORITY_LEVELS.HIGH
-                );
-            }
+// Get action configuration for a ticket
+const getActionConfig = (ticket, userAccountType, empData) => {
+    const isMIS = hasRole(userAccountType, ACCOUNT_TYPES.MIS_SUPERVISOR);
+    const isProgrammer = hasRole(userAccountType, ACCOUNT_TYPES.PROGRAMMER);
+    const isDeptHead = hasRole(userAccountType, ACCOUNT_TYPES.DEPARTMENT_HEAD);
+    const isOD = hasRole(userAccountType, ACCOUNT_TYPES.OD);
+    const isRequestor = hasRole(userAccountType, ACCOUNT_TYPES.REQUESTOR);
 
-            // Department Head logic
-            if (isDeptHead && ticket.STATUS === TICKET_STATUS.ASSESSED) {
-                return createActionButton(
-                    "Approve",
-                    "bg-green-500 hover:bg-green-600",
-                    "approving",
-                    ACTION_TYPES.APPROVE,
-                    PRIORITY_LEVELS.HIGH
-                );
-            }
+    // MIS Supervisor logic
+    if (isMIS) {
+        if (ticket.STATUS === TICKET_STATUS.APPROVED) {
+            return {
+                label: "Assign Programmer",
+                className: "bg-purple-500 hover:bg-purple-600",
+                formState: "assigning_programmer",
+                actionType: ACTION_TYPES.ASSIGN,
+                priority: PRIORITY_LEVELS.HIGH,
+            };
+        }
 
-            // OD logic
-            if (isOD && ticket.STATUS === TICKET_STATUS.PENDING_OD_APPROVAL) {
-                return createActionButton(
-                    "Approve",
-                    "bg-green-500 hover:bg-green-600",
-                    "approving",
-                    ACTION_TYPES.APPROVE,
-                    PRIORITY_LEVELS.HIGH
-                );
-            }
+        if (
+            !ticket.PROG_ACTION_BY ||
+            ticket.STATUS === TICKET_STATUS.RETURNED
+        ) {
+            const isReturned = ticket.STATUS === TICKET_STATUS.RETURNED;
+            return {
+                label: isReturned ? "Re-assess" : "Assess",
+                className: isReturned
+                    ? "bg-yellow-500 hover:bg-yellow-600"
+                    : "bg-green-500 hover:bg-green-600",
+                formState: "assessing",
+                actionType: ACTION_TYPES.ASSESS,
+                priority: isReturned
+                    ? PRIORITY_LEVELS.URGENT
+                    : PRIORITY_LEVELS.HIGH,
+            };
+        }
+    }
 
-            // Default view button
-            const buttonStyle = isRequestor
-                ? "bg-blue-500 hover:bg-blue-600"
-                : "bg-gray-500 hover:bg-gray-600";
-            return createActionButton(
-                "View",
-                buttonStyle,
-                "viewing",
-                ACTION_TYPES.VIEW,
-                PRIORITY_LEVELS.LOW
-            );
-        },
-        [hasRole, empData, createActionButton]
-    );
+    // Programmer logic
+    if (
+        isProgrammer &&
+        ticket.EMPLOYEE_ID !== empData?.emp_id &&
+        ticket.STATUS === TICKET_STATUS.OPEN
+    ) {
+        return {
+            label: "Assess",
+            className: "bg-green-500 hover:bg-green-600",
+            formState: "assessing",
+            actionType: ACTION_TYPES.ASSESS,
+            priority: PRIORITY_LEVELS.HIGH,
+        };
+    }
 
-    return { getActionButton, hasRole };
+    // Department Head logic
+    if (isDeptHead && ticket.STATUS === TICKET_STATUS.ASSESSED) {
+        return {
+            label: "Approve",
+            className: "bg-green-500 hover:bg-green-600",
+            formState: "approving",
+            actionType: ACTION_TYPES.APPROVE,
+            priority: PRIORITY_LEVELS.HIGH,
+        };
+    }
+
+    // OD logic
+    if (isOD && ticket.STATUS === TICKET_STATUS.PENDING_OD_APPROVAL) {
+        return {
+            label: "Approve",
+            className: "bg-green-500 hover:bg-green-600",
+            formState: "approving",
+            actionType: ACTION_TYPES.APPROVE,
+            priority: PRIORITY_LEVELS.HIGH,
+        };
+    }
+
+    // Default view button
+    return {
+        label: "View",
+        className: isRequestor
+            ? "bg-blue-500 hover:bg-blue-600"
+            : "bg-gray-500 hover:bg-gray-600",
+        formState: "viewing",
+        actionType: ACTION_TYPES.VIEW,
+        priority: PRIORITY_LEVELS.LOW,
+    };
 };
 
 // Components
-const ActionButton = ({ label, className, onClick, ticket }) => (
+const ActionButton = ({ config, ticket, userAccountType }) => (
     <button
-        onClick={() => onClick(ticket)}
-        className={`px-3 py-1 text-white rounded text-sm ${className}`}
+        onClick={() => handleAction(ticket, config.formState, userAccountType)}
+        className={`px-3 py-1 text-white rounded text-sm ${config.className}`}
     >
-        {label}
+        {config.label}
     </button>
 );
 
@@ -257,47 +250,36 @@ const EmptyState = ({ activeTab }) => {
 
 // Main component
 const Table = () => {
-    const {
-        tickets = [],
-        masterlist,
-        emp_data,
-        userAccountType,
-    } = usePage().props;
+    const { tickets = [], emp_data, userAccountType } = usePage().props;
     const [activeTab, setActiveTab] = useState("active-tickets");
 
-    // Handle action button clicks
-    const handleAction = useCallback(
-        (ticket, formState) => {
-            const dataToHash = `${ticket.TICKET_ID}:${formState}:${userAccountType}`;
-            const hash = btoa(dataToHash);
-            router.visit(route("tickets.show", hash), { method: "get" });
-        },
-        [userAccountType]
-    );
-
-    const { getActionButton } = useTicketLogic(
-        userAccountType,
-        emp_data,
-        handleAction
-    );
-
-    // Process tickets with action information
+    // Process tickets with action information - this is the main expensive computation
     const processedTickets = useMemo(() => {
         if (!Array.isArray(tickets)) return [];
 
         return tickets.map((ticket) => {
-            const actionInfo = getActionButton(ticket);
+            const actionConfig = getActionConfig(
+                ticket,
+                userAccountType,
+                emp_data
+            );
             return {
                 ...ticket,
-                action: React.cloneElement(actionInfo.component, { ticket }),
-                actionType: actionInfo.actionType,
-                priority: actionInfo.priority,
+                action: (
+                    <ActionButton
+                        config={actionConfig}
+                        ticket={ticket}
+                        userAccountType={userAccountType}
+                    />
+                ),
+                actionType: actionConfig.actionType,
+                priority: actionConfig.priority,
             };
         });
-    }, [tickets, getActionButton]);
+    }, [tickets, userAccountType, emp_data]);
 
     // Categorize tickets
-    const categorizedTickets = useMemo(() => {
+    const { activeTickets, viewOnlyTickets, urgent } = useMemo(() => {
         const activeTickets = processedTickets.filter(
             (ticket) => ticket.actionType !== ACTION_TYPES.VIEW
         );
@@ -311,20 +293,7 @@ const Table = () => {
         return { activeTickets, viewOnlyTickets, urgent };
     }, [processedTickets]);
 
-    // Get account type description
-    const getAccountTypeDescription = useCallback(() => {
-        if (!Array.isArray(userAccountType)) return "Unknown account type";
-
-        const descriptions = userAccountType
-            .filter((role) => roleDescriptions[role])
-            .map((role) => roleDescriptions[role]);
-
-        return descriptions.length > 0
-            ? descriptions.join(" | ")
-            : "Unknown account type";
-    }, [userAccountType]);
-
-    // Table columns configuration
+    // Table columns configuration (memoized since it's used in render)
     const columns = useMemo(
         () => [
             { label: "Ticket No", key: "TICKET_ID" },
@@ -343,29 +312,26 @@ const Table = () => {
     );
 
     // Tab configuration
-    const tabs = useMemo(
-        () => [
-            {
-                id: "active-tickets",
-                label: "Active Tickets",
-                count: categorizedTickets.activeTickets.length,
-                data: categorizedTickets.activeTickets,
-                color: "text-error",
-                icon: <Bolt size={18} className="mr-1" />,
-                description: "Tickets requiring your action",
-            },
-            {
-                id: "view-only",
-                label: "View Only",
-                count: categorizedTickets.viewOnlyTickets.length,
-                data: categorizedTickets.viewOnlyTickets,
-                color: "text-info",
-                icon: <Eye size={18} className="mr-1" />,
-                description: "Tickets for reference only",
-            },
-        ],
-        [categorizedTickets]
-    );
+    const tabs = [
+        {
+            id: "active-tickets",
+            label: "Active Tickets",
+            count: activeTickets.length,
+            data: activeTickets,
+            color: "text-error",
+            icon: <Bolt size={18} className="mr-1" />,
+            description: "Tickets requiring your action",
+        },
+        {
+            id: "view-only",
+            label: "View Only",
+            count: viewOnlyTickets.length,
+            data: viewOnlyTickets,
+            color: "text-info",
+            icon: <Eye size={18} className="mr-1" />,
+            description: "Tickets for reference only",
+        },
+    ];
 
     const currentTab = tabs.find((tab) => tab.id === activeTab);
     const currentTabData = currentTab?.data || [];
@@ -377,19 +343,19 @@ const Table = () => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <StatCard
                         title="Active Tickets"
-                        value={categorizedTickets.activeTickets.length}
+                        value={activeTickets.length}
                         color="text-error"
                         icon={Bolt}
                     />
                     <StatCard
                         title="Urgent"
-                        value={categorizedTickets.urgent.length}
+                        value={urgent.length}
                         color="text-warning"
                         icon={AlarmClock}
                     />
                     <StatCard
                         title="View Only"
-                        value={categorizedTickets.viewOnlyTickets.length}
+                        value={viewOnlyTickets.length}
                         color="text-info"
                         icon={Eye}
                     />

@@ -7,6 +7,8 @@ import Select from "react-select";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import ChildTicketsModal from "./ChildTicketsModal";
 import { customDarkStyles } from "@/styles/customDarkStyles";
+import { getAvailableActions } from "./ticketActionPermissions";
+import TicketActionButtons from "./TicketActionButtons";
 
 const Create = () => {
     const {
@@ -19,24 +21,18 @@ const Create = () => {
         emp_data,
     } = usePage().props;
 
-    // Use the improved hook with cleaner interface
     const {
-        // State (cleaner names)
         formData,
         selectedFiles,
         existingFiles,
         assignmentData,
         assignmentOptions,
-
-        // UI State
         uiState,
         requestType,
         formState,
         userAccountType,
         remarksState,
         showChildTicketsModal,
-
-        // Main Actions (simple, clear names)
         handleSubmit,
         handleFormChange,
         handleAssignmentChange,
@@ -45,29 +41,22 @@ const Create = () => {
         handleFileChange,
         removeFile,
         isChildTicket,
-        // UI Helpers
         getTicketTypeDisplay,
         getStatusBadgeClass,
         formatDate,
         getTicketIdFromUrl,
-
-        // Setters for initialization
         setFormData,
         setFormState,
         setUserAccountType,
         setExistingFiles,
         setShowChildTicketsModal,
         setAssignmentData,
+        setRequestType,
     } = useTicketManagement();
 
-    // Clean initialization effect
     useEffect(() => {
-        if (initialFormState) {
-            setFormState(initialFormState);
-        }
-        if (initialUserAccountType) {
-            setUserAccountType(initialUserAccountType);
-        }
+        if (initialFormState) setFormState(initialFormState);
+        if (initialUserAccountType) setUserAccountType(initialUserAccountType);
         if (initialFormState !== "create" && ticket) {
             setFormData({
                 employee_id: ticket.EMPLOYEE_ID,
@@ -88,9 +77,17 @@ const Create = () => {
         }
     }, [initialFormState, initialUserAccountType, ticket, attachments]);
 
-    // UI computed values
     const ticketTypeDisplay = getTicketTypeDisplay();
     const currentTicketId = getTicketIdFromUrl();
+
+    // Centralized action permissions
+    const actions = getAvailableActions({
+        formState,
+        userAccountType,
+        typeOfRequest: formData?.type_of_request,
+        remarksState,
+    });
+
     return (
         <AuthenticatedLayout>
             <div className="flex min-h-screen justify-center items-center bg-base-200">
@@ -101,7 +98,6 @@ const Create = () => {
                             <h1 className="text-2xl font-bold text-base-content mb-2">
                                 System Ticketing System
                             </h1>
-
                             {formState === "create" ? (
                                 <p className="text-base-content/60">
                                     Generate a new ticket by filling out the
@@ -140,7 +136,6 @@ const Create = () => {
                                     </a>
                                 </div>
                             )}
-                        {/* Child Tickets Button - Show only when viewing/editing existing tickets */}
                         {formState !== "create" &&
                             childTickets &&
                             childTickets.length > 0 && (
@@ -170,7 +165,6 @@ const Create = () => {
                             </div>
                         )}
                         <form onSubmit={handleSubmit}>
-                            {/* Form Fields */}
                             <div className="space-y-6">
                                 {ticketTypeDisplay.show &&
                                     formState === "create" && (
@@ -334,279 +328,19 @@ const Create = () => {
                                     handleFileChange={handleFileChange}
                                     handleRemove={removeFile}
                                 />
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                    {(formState === "viewing" ||
-                                        formState === "approving") && (
-                                        <>
-                                            {formData.employee_id &&
-                                                formData.employee_name && (
-                                                    <label className="floating-label">
-                                                        <input
-                                                            type="text"
-                                                            placeholder="Requested By"
-                                                            className="input input-bordered w-full input-disabled bg-base-200"
-                                                            readOnly
-                                                            value={`${formData.employee_id} - ${formData.employee_name}`}
-                                                        />
-                                                        <span>
-                                                            Requested By
-                                                        </span>
-                                                    </label>
-                                                )}
-                                            {formData.prog_action_by && (
-                                                <label className="floating-label">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Assessed By"
-                                                        className="input input-bordered w-full input-disabled bg-base-200"
-                                                        readOnly
-                                                        value={
-                                                            formData.prog_action_by
-                                                        }
-                                                    />
-                                                    <span>Assessed By</span>
-                                                </label>
-                                            )}
-                                            {formData.dm_action_by && (
-                                                <label className="floating-label">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Assessed By"
-                                                        className="input input-bordered w-full input-disabled bg-base-200"
-                                                        readOnly
-                                                        value={
-                                                            formData.dm_action_by
-                                                        }
-                                                    />
-                                                    <span>Approved By</span>
-                                                </label>
-                                            )}
-                                            {formData.od_action_by && (
-                                                <label className="floating-label">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Assessed By"
-                                                        className="input input-bordered w-full input-disabled bg-base-200"
-                                                        readOnly
-                                                        value={
-                                                            formData.od_action_by
-                                                        }
-                                                    />
-                                                    <span>Approved By</span>
-                                                </label>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-                                {/* {formState}
-                                {userAccountType} */}
-                                {formState === "assigning_programmer" &&
-                                    (userAccountType.includes(
-                                        "MIS_SUPERVISOR"
-                                    ) ||
-                                        userAccountType.includes(
-                                            "PROGRAMMER"
-                                        )) && (
-                                        <div className="flex flex-col gap-2 mt-4">
-                                            <div className="flex flex-col md:flex-row gap-2 items-center w-full">
-                                                {/* Assignee Dropdown */}
-                                                <div className="w-full md:w-5/12">
-                                                    <Select
-                                                        value={
-                                                            assignmentOptions.find(
-                                                                (opt) =>
-                                                                    String(
-                                                                        opt.value
-                                                                    ) ===
-                                                                    String(
-                                                                        assignmentData.assignedTo
-                                                                    )
-                                                            ) || null
-                                                        }
-                                                        onChange={(option) => {
-                                                            console.log(
-                                                                "Selected Assignee:",
-                                                                option
-                                                            );
-                                                            handleAssignmentChange(
-                                                                "assignedTo",
-                                                                option
-                                                                    ? option.value
-                                                                    : ""
-                                                            );
-                                                        }}
-                                                        options={
-                                                            assignmentOptions
-                                                        }
-                                                        placeholder="Select Assignee"
-                                                        isClearable
-                                                        styles={
-                                                            customDarkStyles
-                                                        }
-                                                        menuPortalTarget={
-                                                            document.body
-                                                        }
-                                                        menuPosition="fixed"
-                                                    />
-                                                </div>
-
-                                                {/* Remarks Input */}
-                                                <div className="w-full md:w-5/12">
-                                                    <label className="floating-label w-full">
-                                                        <input
-                                                            type="text"
-                                                            placeholder="Enter remark"
-                                                            className="input input-bordered w-full"
-                                                            value={
-                                                                assignmentData.remark
-                                                            }
-                                                            onChange={(e) => {
-                                                                console.log(
-                                                                    "Remark input:",
-                                                                    e.target
-                                                                        .value
-                                                                );
-                                                                handleAssignmentChange(
-                                                                    "remark",
-                                                                    e.target
-                                                                        .value
-                                                                );
-                                                            }}
-                                                        />
-                                                        <span>Remarks</span>
-                                                    </label>
-                                                </div>
-
-                                                {/* Assign Button */}
-                                                <div className="w-full md:w-2/12">
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-primary w-full"
-                                                        disabled={
-                                                            !assignmentData.assignedTo
-                                                        }
-                                                        onClick={() =>
-                                                            handleAssignment({
-                                                                assignedTo:
-                                                                    assignmentData.assignedTo,
-                                                                remark: assignmentData.remark,
-                                                            })
-                                                        }
-                                                    >
-                                                        Assign Programmer
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                {/* Programmer: Return ticket */}
-                                {formState === "assessing" &&
-                                    userAccountType === "PROGRAMMER" && (
-                                        <div className="flex gap-2">
-                                            <button
-                                                type="button"
-                                                className="btn btn-success"
-                                                onClick={() =>
-                                                    handleApprovalAction(
-                                                        "assessed"
-                                                    )
-                                                }
-                                            >
-                                                Assess Ticket
-                                            </button>
-
-                                            <button
-                                                type="button"
-                                                className="btn btn-success"
-                                                onClick={() =>
-                                                    handleApprovalAction(
-                                                        "assess_return"
-                                                    )
-                                                }
-                                            >
-                                                Return Ticket
-                                            </button>
-                                        </div>
-                                    )}
-                                {/* {formState} */}
-                                {/* Department Manager: Approve or Disapprove */}
-                                {formState === "approving" &&
-                                    userAccountType === "DEPARTMENT_HEAD" &&
-                                    formData?.type_of_request ===
-                                        "request_form" &&
-                                    remarksState !== "show" && (
-                                        <div className="flex gap-2">
-                                            <button
-                                                type="button"
-                                                className="btn btn-warning"
-                                                onClick={() =>
-                                                    handleApprovalAction(
-                                                        "approve_dh"
-                                                    )
-                                                }
-                                            >
-                                                Approve
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="btn btn-error"
-                                                onClick={() =>
-                                                    handleApprovalAction(
-                                                        "disapprove"
-                                                    )
-                                                }
-                                            >
-                                                Disapprove
-                                            </button>
-                                        </div>
-                                    )}
-
-                                {formState === "approving" &&
-                                    userAccountType === "OD" &&
-                                    formData?.type_of_request ===
-                                        "request_form" &&
-                                    remarksState !== "show" && (
-                                        <div className="flex gap-2">
-                                            <button
-                                                type="button"
-                                                className="btn btn-warning"
-                                                onClick={() =>
-                                                    handleApprovalAction(
-                                                        "approve_od"
-                                                    )
-                                                }
-                                            >
-                                                Approve
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="btn btn-error"
-                                                onClick={() =>
-                                                    handleApprovalAction(
-                                                        "disapprove"
-                                                    )
-                                                }
-                                            >
-                                                Disapprove
-                                            </button>
-                                        </div>
-                                    )}
-
-                                {formState == "create" && (
-                                    <button
-                                        type="submit"
-                                        className="btn btn-primary gap-2"
-                                        disabled={
-                                            uiState.status === "processing"
-                                        }
-                                    >
-                                        <Ticket className="w-5 h-5" />
-                                        {uiState.status === "processing"
-                                            ? "Generating Ticket ..."
-                                            : "Generate"}
-                                    </button>
-                                )}
+                                {/* Action Buttons */}
+                                <TicketActionButtons
+                                    actions={actions}
+                                    uiState={uiState}
+                                    handleApprovalAction={handleApprovalAction}
+                                    handleAssignment={handleAssignment}
+                                    assignmentData={assignmentData}
+                                    assignmentOptions={assignmentOptions}
+                                    handleAssignmentChange={
+                                        handleAssignmentChange
+                                    }
+                                    customDarkStyles={customDarkStyles}
+                                />
                             </div>
                             {remarksState === "show" && (
                                 <div className="mt-4">
@@ -624,7 +358,6 @@ const Create = () => {
                                         />
                                         <span>Remarks</span>
                                     </label>
-
                                     <button
                                         type="button"
                                         className="btn btn-error mt-2"
@@ -640,7 +373,6 @@ const Create = () => {
                     </div>
                 </div>
             </div>
-
             <ChildTicketsModal
                 open={showChildTicketsModal}
                 onClose={() => setShowChildTicketsModal(false)}

@@ -526,7 +526,7 @@ const Table = () => {
                                 data={currentData}
                                 routeName="tickets.index"
                                 rowKey="ID"
-                                showExport={true}
+                                // showExport={true}
                                 onSelectionChange={(selectedRows) => {
                                     console.log("Selected Rows:", selectedRows);
                                 }}

@@ -151,7 +151,7 @@ const FileUploadSection = ({
                         )}
                     </div>
                     {(mode === "create" || mode === "assessing") && (
-                        <label className="btn btn-sm md:btn-md btn-primary cursor-pointer mt-2 md:mt-0">
+                        <label className="btn btn-sm md:btn-md btn-outline btn-primary cursor-pointer mt-2 md:mt-0">
                             <UploadIcon className="w-4 h-4" />
                             Add File
                             <input

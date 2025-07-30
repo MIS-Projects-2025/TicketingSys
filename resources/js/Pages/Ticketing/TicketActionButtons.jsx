@@ -87,7 +87,7 @@ const TicketActionButtons = ({
             {actions.canAssessTicket && (
                 <button
                     type="button"
-                    className="btn btn-success gap-2"
+                    className="btn btn-outline btn-success gap-2"
                     onClick={() => handleApprovalAction("assessed")}
                 >
                     <CheckCircle className="w-4 h-4" />
@@ -97,7 +97,7 @@ const TicketActionButtons = ({
             {actions.canReturnTicket && (
                 <button
                     type="button"
-                    className="btn btn-success gap-2"
+                    className="btn btn-outline btn-success gap-2"
                     onClick={() => handleApprovalAction("assess_return")}
                 >
                     <Undo2 className="w-4 h-4" />
@@ -107,7 +107,7 @@ const TicketActionButtons = ({
             {actions.canApproveDH && (
                 <button
                     type="button"
-                    className="btn btn-warning gap-2"
+                    className="btn btn-outline btn-warning gap-2"
                     onClick={() => handleApprovalAction("approve_dh")}
                 >
                     <ThumbsUp className="w-4 h-4" />
@@ -117,7 +117,7 @@ const TicketActionButtons = ({
             {actions.canDisapproveDH && (
                 <button
                     type="button"
-                    className="btn btn-error gap-2"
+                    className="btn btn-outline btn-error gap-2"
                     onClick={() => handleApprovalAction("disapprove")}
                 >
                     <ThumbsDown className="w-4 h-4" />
@@ -127,7 +127,7 @@ const TicketActionButtons = ({
             {actions.canApproveOD && (
                 <button
                     type="button"
-                    className="btn btn-warning gap-2"
+                    className="btn btn-outline btn-warning gap-2"
                     onClick={() => handleApprovalAction("approve_od")}
                 >
                     <ThumbsUp className="w-4 h-4" />
@@ -137,7 +137,7 @@ const TicketActionButtons = ({
             {actions.canDisapproveOD && (
                 <button
                     type="button"
-                    className="btn btn-error gap-2"
+                    className="btn btn-outline btn-error gap-2"
                     onClick={() => handleApprovalAction("disapprove")}
                 >
                     <ThumbsDown className="w-4 h-4" />
@@ -149,7 +149,7 @@ const TicketActionButtons = ({
         {actions.canGenerate && (
             <button
                 type="submit"
-                className="btn btn-primary gap-2"
+                className="btn btn-outline btn-primary gap-2 "
                 disabled={uiState.status === "processing"}
             >
                 {uiState.status === "processing" ? (

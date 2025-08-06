@@ -32,6 +32,7 @@ export function useTicketManagement() {
         remarksState: "",
         pendingApprovalAction: "",
         showChildTicketsModal: false,
+        showHistory: false,
     });
 
     // File state
@@ -286,11 +287,21 @@ export function useTicketManagement() {
                 approve_dh: "PENDING_OD_APPROVAL",
                 approve_od: "APPROVED",
                 disapprove: "DISAPPROVED",
+                resubmit: "OPEN",
+                cancel: "CANCELLED",
             };
+
+            // Actions that require remarks
+            const actionsRequiringRemarks = [
+                "disapprove",
+                "assess_return",
+                "cancel",
+                "resubmit",
+            ];
 
             // Handle remarks requirement
             if (
-                (action === "disapprove" || action === "assess_return") &&
+                actionsRequiringRemarks.includes(action) &&
                 uiState.remarksState !== "show"
             ) {
                 setUiState((prev) => ({
@@ -315,6 +326,27 @@ export function useTicketManagement() {
             submitData.append("remark", formData.remarks || "");
             submitData.append("role", uiState.userAccountType);
 
+            // For resubmitting, include the updated ticket details
+            if (
+                finalAction === "resubmit" &&
+                uiState.userAccountType === "REQUESTOR"
+            ) {
+                // Only append if fields have values (let backend handle the comparison)
+                if (formData.project_name) {
+                    submitData.append("project_name", formData.project_name);
+                }
+                if (formData.details) {
+                    submitData.append("details", formData.details);
+                }
+                if (formData.type_of_request) {
+                    submitData.append(
+                        "type_of_request",
+                        formData.type_of_request
+                    );
+                }
+            }
+
+            // Add selected files to form data
             fileState.selectedFiles.forEach((file) => {
                 submitData.append("attachments[]", file);
             });
@@ -324,11 +356,13 @@ export function useTicketManagement() {
                 submitData,
                 {
                     forceFormData: true,
-                    onSuccess: () => {
+                    onSuccess: (page) => {
                         setUiState((prev) => ({
                             ...prev,
                             status: "success",
-                            message: "Ticket updated successfully",
+                            message:
+                                page.props.flash?.success ||
+                                "Ticket updated successfully",
                             remarksState: "hide",
                             pendingApprovalAction: "",
                         }));
@@ -336,20 +370,38 @@ export function useTicketManagement() {
                             ...prev,
                             selectedFiles: [],
                         }));
+
+                        // If resubmitting was successful, you might want to refresh the page
+                        // or redirect to show the updated ticket
+                        if (finalAction === "resubmit") {
+                            window.location.reload(); // or router.visit to refresh data
+                        }
                     },
-                    onError: () => {
+                    onError: (errors) => {
+                        console.error("Update failed:", errors);
+                        let errorMessage = "Failed to update ticket";
+
+                        // Handle validation errors
+                        if (errors.project_name)
+                            errorMessage = "Invalid project name";
+                        else if (errors.details)
+                            errorMessage = "Invalid details";
+                        else if (errors.type_of_request)
+                            errorMessage = "Invalid request type";
+
                         setUiState((prev) => ({
                             ...prev,
                             status: "error",
-                            message: "Failed to update ticket",
+                            message: errorMessage,
+                            remarksState: "hide",
+                            pendingApprovalAction: "",
                         }));
                     },
                 }
             );
         },
-        [formData, fileState.selectedFiles, uiState, emp_data]
+        [formData, fileState.selectedFiles, uiState, emp_data, router]
     );
-
     const handleAssignment = useCallback(
         ({ assignedTo, remark = "" }) => {
             if (!emp_data?.emp_id) {
@@ -500,7 +552,7 @@ export function useTicketManagement() {
         userAccountType: uiState.userAccountType,
         remarksState: uiState.remarksState,
         showChildTicketsModal: uiState.showChildTicketsModal,
-
+        showHistory: uiState.showHistory,
         // Main Actions (simple, clear names)
         handleSubmit,
         handleFormChange,
@@ -532,6 +584,8 @@ export function useTicketManagement() {
         setShowChildTicketsModal: (show) =>
             setUiState((prev) => ({ ...prev, showChildTicketsModal: show })),
         setAssignmentData,
+        setShowHistory: (show) =>
+            setUiState((prev) => ({ ...prev, showHistory: show })), // <-- Add this line
 
         // Data from props
         emp_data,

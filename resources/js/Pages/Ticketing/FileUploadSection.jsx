@@ -7,7 +7,7 @@ import DataTable from "@/Components/DataTable";
  * FileUploadSection
  *
  * Props:
- * - mode: "create" | "assessing" | "viewing"
+ * - mode: "create" | "assessing" | "viewing" | "resubmitting"
  * - existingFiles: Array of files already uploaded (from backend)
  * - selectedFiles: Array of files selected for upload (File objects)
  * - handleFileChange: function to handle file input change
@@ -46,6 +46,15 @@ const FileUploadSection = ({
         }
     };
 
+    // Helper functions to determine mode capabilities
+    const canAddFiles = ["create", "assessing", "resubmitting"].includes(mode);
+    const canViewFiles = ["assessing", "resubmitting", "viewing"].includes(
+        mode
+    );
+    const showExistingFileActions = ["assessing", "resubmitting"].includes(
+        mode
+    );
+
     // Columns for DataTable
     const columns = [
         { key: "index", label: "#" },
@@ -64,8 +73,8 @@ const FileUploadSection = ({
     // Data for DataTable
     let tableData = [];
 
-    // For create/assessing mode, show selectedFiles (to be uploaded)
-    if (mode === "create" || mode === "assessing") {
+    // For modes that allow adding files, show selectedFiles (to be uploaded)
+    if (canAddFiles) {
         tableData = selectedFiles.map((file, idx) => ({
             index: idx + 1,
             fileName: file.name,
@@ -82,11 +91,14 @@ const FileUploadSection = ({
             ),
         }));
     }
+
+    // Filter existing files by current user if needed
     const filteredExistingFiles = currentUserId
         ? existingFiles.filter(
               (file) => (file.UPLOADED_BY || file.uploaded_by) === currentUserId
           )
         : existingFiles;
+
     // Always show existingFiles (already uploaded)
     const existingFilesData = filteredExistingFiles.map((file, idx) => ({
         index: idx + 1,
@@ -99,28 +111,27 @@ const FileUploadSection = ({
         fileType: file.FILE_TYPE || file.file_type,
         uploadedBy: file.UPLOADED_BY || file.uploaded_by || "-",
         uploadedAt: formatDate(file.UPLOADED_AT || file.uploaded_at),
-        actions:
-            mode !== "create" ? (
-                <button
-                    type="button"
-                    className="btn btn-sm btn-primary"
-                    onClick={() => handleViewFile(file)}
-                    title="View File"
-                >
-                    <Eye className="w-4 h-4" />
-                </button>
-            ) : null,
+        actions: canViewFiles ? (
+            <button
+                type="button"
+                className="btn btn-sm btn-primary"
+                onClick={() => handleViewFile(file)}
+                title="View File"
+            >
+                <Eye className="w-4 h-4" />
+            </button>
+        ) : null,
         _rawFile: file, // for rowKey
     }));
 
-    // Combine selectedFiles (for create/assessing) and existingFiles
+    // Combine selectedFiles and existingFiles based on mode
     let combinedData = [];
-    if (mode === "create" || mode === "assessing") {
+    if (canAddFiles) {
         combinedData = [
             ...tableData,
-            ...existingFilesData.map((row, i) => ({
+            ...existingFilesData.map((row) => ({
                 ...row,
-                actions: null, // No actions for already uploaded files in create mode
+                actions: showExistingFileActions ? row.actions : null,
             })),
         ];
     } else {
@@ -139,18 +150,16 @@ const FileUploadSection = ({
                 <div className="flex flex-wrap justify-between items-center">
                     <div>
                         <span className="label-text font-medium text-lg">
-                            {mode === "create" || mode === "assessing"
-                                ? "Attach Files"
-                                : "Uploaded Files"}
+                            {canAddFiles ? "Attach Files" : "Uploaded Files"}
                         </span>
-                        {(mode === "create" || mode === "assessing") && (
+                        {canAddFiles && (
                             <p className="text-sm text-base-content/60">
                                 You can upload multiple files. Max size: 2MB
                                 each.
                             </p>
                         )}
                     </div>
-                    {(mode === "create" || mode === "assessing") && (
+                    {canAddFiles && (
                         <label className="btn btn-sm md:btn-md btn-outline btn-primary cursor-pointer mt-2 md:mt-0">
                             <UploadIcon className="w-4 h-4" />
                             Add File

@@ -144,6 +144,26 @@ const TicketActionButtons = ({
                     Disapprove
                 </button>
             )}
+            {actions.canResubmit && (
+                <button
+                    type="button"
+                    className="btn btn-outline btn-warning gap-2"
+                    onClick={() => handleApprovalAction("resubmit")}
+                >
+                    <ThumbsUp className="w-4 h-4" />
+                    Re-Submit
+                </button>
+            )}
+            {actions.canCancel && (
+                <button
+                    type="button"
+                    className="btn btn-outline btn-error gap-2"
+                    onClick={() => handleApprovalAction("cancel")}
+                >
+                    <ThumbsDown className="w-4 h-4" />
+                    Cancel
+                </button>
+            )}{" "}
         </div>
 
         {actions.canGenerate && (

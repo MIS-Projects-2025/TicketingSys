@@ -182,6 +182,7 @@ class TicketingController extends Controller
     // Show specific ticket
     public function show($hash): Response
     {
+        $empData = session('emp_data');
         $decodedData = base64_decode($hash);
         $parts = explode(':', $decodedData);
 
@@ -202,9 +203,9 @@ class TicketingController extends Controller
         }
 
         $ticket = DB::selectOne('
-            SELECT * FROM tickets 
-            WHERE TICKET_ID = ? AND DELETED_AT IS NULL
-        ', [$ticketId]);
+        SELECT * FROM tickets 
+        WHERE TICKET_ID = ? AND DELETED_AT IS NULL
+    ', [$ticketId]);
 
         if (!$ticket) {
             abort(404, 'Ticket not found');
@@ -212,46 +213,87 @@ class TicketingController extends Controller
 
         // Get child tickets (sub-tickets)
         $childTickets = DB::select('
-            SELECT * FROM tickets 
-            WHERE PARENT_TICKET_ID = ? AND DELETED_AT IS NULL
-            ORDER BY CREATED_AT DESC
-        ', [$ticketId]);
+        SELECT * FROM tickets 
+        WHERE PARENT_TICKET_ID = ? AND DELETED_AT IS NULL
+        ORDER BY CREATED_AT DESC
+    ', [$ticketId]);
 
         // Get attachments
         $attachments = DB::select('
-            SELECT * FROM ticket_attachments 
-            WHERE TICKET_ID = (SELECT ID FROM tickets WHERE TICKET_ID = ?) AND DELETED_AT IS NULL
-            ORDER BY UPLOADED_AT DESC
-        ', [$ticketId]);
+        SELECT * FROM ticket_attachments 
+        WHERE TICKET_ID = (SELECT ID FROM tickets WHERE TICKET_ID = ?) AND DELETED_AT IS NULL
+        ORDER BY UPLOADED_AT DESC
+    ', [$ticketId]);
 
-        // Get remarks history
+        // Get remarks history (without JOIN since different connections)
         $remarks = DB::select('
-            SELECT * FROM remarks_history 
-            WHERE TICKET_ID = ? AND DELETED_AT IS NULL
-            ORDER BY CREATED_AT DESC
-        ', [$ticketId]);
+        SELECT * FROM remarks_history 
+        WHERE TICKET_ID = ? AND DELETED_AT IS NULL
+        ORDER BY CREATED_AT ASC
+    ', [$ticketId]);
 
-        // Get ticket history
+        // Get ticket history (without JOIN since different connections)
         $history = DB::select('
-            SELECT * FROM tickets_history 
-            WHERE TICKET_ID = ?
-            ORDER BY CHANGED_AT DESC
-        ', [$ticketId]);
+        SELECT * FROM tickets_history 
+        WHERE TICKET_ID = ?
+        ORDER BY CHANGED_AT ASC
+    ', [$ticketId]);
 
+        // Get all unique user IDs from remarks and history
+        $userIds = collect($remarks)->pluck('CREATED_BY')
+            ->merge(collect($history)->pluck('CHANGED_BY'))
+            ->unique()
+            ->filter()
+            ->values()
+            ->toArray();
+
+        // Get employee names from masterlist connection
+        $employees = [];
+        if (!empty($userIds)) {
+            $employeeData = DB::connection('masterlist')->select("
+            SELECT EMPLOYID, EMPNAME AS FULL_NAME
+            FROM employee_masterlist 
+            WHERE EMPLOYID IN (" . str_repeat('?,', count($userIds) - 1) . "?)
+        ", $userIds);
+
+            // Convert to associative array for easy lookup
+            foreach ($employeeData as $emp) {
+                $employees[$emp->EMPLOYID] = $emp->FULL_NAME;
+            }
+        }
+
+        // Add employee names to remarks
+        foreach ($remarks as $remark) {
+            $remark->CREATED_BY_NAME = $employees[$remark->CREATED_BY] ?? 'Unknown User';
+        }
+
+        // Add employee names to history
+        foreach ($history as $hist) {
+            $hist->CHANGED_BY_NAME = $employees[$hist->CHANGED_BY] ?? 'Unknown User';
+        }
+
+        // Get ticket options for dropdowns
         $ticketOptions = DB::select('
-            SELECT 
-                TICKET_ID as value, 
-                CONCAT(TICKET_ID, " - ", PROJECT_NAME) as label 
-            FROM tickets 
-            WHERE DELETED_AT IS NULL
-            ORDER BY CREATED_AT DESC
-        ');
-        $progList = DB::connection('masterlist')->select("
-    SELECT * FROM employee_masterlist
-    WHERE DEPARTMENT = 'MIS' AND LOWER(JOB_TITLE) LIKE '%programmer%' AND ACCSTATUS !=2
-");
+        SELECT 
+            TICKET_ID as value, 
+            CONCAT(TICKET_ID, " - ", PROJECT_NAME) as label 
+        FROM tickets 
+        WHERE DELETED_AT IS NULL
+        ORDER BY CREATED_AT DESC
+    ');
 
-        // dd($formState, $userAccountType, $ticket, $childTickets, $attachments, $remarks, $history, $ticketOptions);
+        // Get programmer list
+        $progList = DB::connection('masterlist')->select("
+        SELECT * FROM employee_masterlist
+        WHERE DEPARTMENT = 'MIS' AND LOWER(JOB_TITLE) LIKE '%programmer%' AND ACCSTATUS != 2
+    ");
+
+        // Get current user employee data for context
+        $emp_data = DB::connection('masterlist')->selectOne("
+        SELECT * FROM employee_masterlist 
+        WHERE EMPID = ?
+    ", [$empData['emp_id'] ?? '']);
+
         return Inertia::render('Ticketing/Create', [
             'formState' => $formState,
             'userAccountType' => $userAccountType,
@@ -259,9 +301,10 @@ class TicketingController extends Controller
             'childTickets' => $childTickets,
             'attachments' => $attachments,
             'remarks' => $remarks,
-            'progList' => $progList,
             'history' => $history,
+            'progList' => $progList,
             'ticketOptions' => $ticketOptions,
+            'emp_data' => $emp_data,
         ]);
     }
 
@@ -303,7 +346,7 @@ class TicketingController extends Controller
         // PROGRAMMER filter
         if ($this->isAssessedByProgrammer($empData)) {
             $filters[] = "(
-        STATUS IN ('OPEN','ASSESSED')
+        STATUS IN ('OPEN','ASSESSED','RETURNED')
     
     )";
         }
@@ -387,11 +430,16 @@ class TicketingController extends Controller
             'status' => 'required|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_OD_APPROVAL,APPROVED,ASSIGNED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED',
             'remark' => 'nullable|string',
             'updated_by' => 'required|string|max:100',
-            'role' => 'required|string|in:PROGRAMMER,DEPARTMENT_HEAD,OD',
-            'attachments.*' => 'file|max:10240', // 10MB limit per file (adjust as needed)
+            'role' => 'required|string|in:PROGRAMMER,DEPARTMENT_HEAD,OD,REQUESTOR',
+            'attachments.*' => 'file|max:10240', // 10MB limit per file
+
+            // Additional fields for resubmitting/updating ticket details
+            'project_name' => 'nullable|string|max:255',
+            'details' => 'nullable|string',
+            'type_of_request' => 'nullable|string|in:request_form,testing_form,adjustment_form,enhancement_form',
         ]);
 
-        $currentTicket = DB::selectOne('SELECT STATUS FROM tickets WHERE TICKET_ID = ?', [$ticketId]);
+        $currentTicket = DB::selectOne('SELECT STATUS, PROJECT_NAME, DETAILS, TYPE_OF_REQUEST FROM tickets WHERE TICKET_ID = ?', [$ticketId]);
         if (!$currentTicket) {
             abort(404, 'Ticket not found');
         }
@@ -425,10 +473,33 @@ class TicketingController extends Controller
                 break;
         }
 
+        // Base fields to update
         $fieldsToUpdate = array_merge([
             'STATUS' => $newStatus,
             'UPDATED_AT' => $now,
         ], $actionFields);
+
+        // For resubmitting or updating ticket details, add additional fields
+        $updatingDetails = false;
+        if ($newStatus === 'OPEN' && $role === 'REQUESTOR') { // Resubmitting
+            if (!empty($validated['project_name']) && $validated['project_name'] !== $currentTicket->PROJECT_NAME) {
+                $fieldsToUpdate['PROJECT_NAME'] = $validated['project_name'];
+                $this->logTicketHistory($ticketId, 'FIELD_CHANGE', 'PROJECT_NAME', $currentTicket->PROJECT_NAME, $validated['project_name'], $updatedBy);
+                $updatingDetails = true;
+            }
+
+            if (!empty($validated['details']) && $validated['details'] !== $currentTicket->DETAILS) {
+                $fieldsToUpdate['DETAILS'] = $validated['details'];
+                $this->logTicketHistory($ticketId, 'FIELD_CHANGE', 'DETAILS', $currentTicket->DETAILS, $validated['details'], $updatedBy);
+                $updatingDetails = true;
+            }
+
+            if (!empty($validated['type_of_request']) && $validated['type_of_request'] !== $currentTicket->TYPE_OF_REQUEST) {
+                $fieldsToUpdate['TYPE_OF_REQUEST'] = strtoupper($validated['type_of_request']);
+                $this->logTicketHistory($ticketId, 'FIELD_CHANGE', 'TYPE_OF_REQUEST', $currentTicket->TYPE_OF_REQUEST, strtoupper($validated['type_of_request']), $updatedBy);
+                $updatingDetails = true;
+            }
+        }
 
         // Build and execute the update query
         $setClause = implode(', ', array_map(fn($key) => "$key = ?", array_keys($fieldsToUpdate)));
@@ -440,26 +511,33 @@ class TicketingController extends Controller
         // Log status history
         $this->logTicketHistory($ticketId, 'STATUS_CHANGE', 'STATUS', $oldStatus, $newStatus, $updatedBy);
 
-        // Insert remarks
+        // Insert remarks with appropriate message
+        $remarkMessage = $validated['remark'] ?? "Status changed from {$oldStatus} to {$newStatus}";
+        if ($updatingDetails && $newStatus === 'OPEN') {
+            $remarkMessage = ($validated['remark'] ?? '') . ' (Ticket details updated during resubmission)';
+        }
+
         $this->insertRemark(
             $ticketId,
             $updatedBy,
             'STATUS_CHANGE',
-            $validated['remark'] ?? "Status changed from {$oldStatus} to {$newStatus}",
+            $remarkMessage,
             $oldStatus,
             $newStatus
         );
 
+        // Handle file attachments
         if ($request->hasFile('attachments')) {
             $this->handleAttachments($request->file('attachments'), $ticketId, $updatedBy);
         }
 
-        return redirect()->back()->with('success', 'Ticket status and files updated successfully!');
+        $successMessage = 'Ticket status updated successfully!';
+        if ($updatingDetails) {
+            $successMessage = 'Ticket details and status updated successfully!';
+        }
+
+        return redirect()->back()->with('success', $successMessage);
     }
-
-
-
-
     // Assign ticket
     public function assignTicket(Request $request, $hash)
     {

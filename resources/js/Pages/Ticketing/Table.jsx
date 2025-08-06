@@ -45,6 +45,7 @@ const ACTION_TYPES = {
     ASSESS: "assess",
     APPROVE: "approve",
     VIEW: "view",
+    RESUBMIT: "resubmit",
 };
 
 // Filter types for StatCards
@@ -177,6 +178,17 @@ const getActionConfig = (ticket, userAccountType, empData) => {
         };
     }
 
+    // Requestor resubmit logic for RETURNED tickets
+    if (isRequestor && ticket.STATUS === TICKET_STATUS.RETURNED) {
+        return {
+            label: "Resubmit",
+            className: "bg-yellow-500 hover:bg-yellow-600",
+            formState: "resubmitting",
+            actionType: ACTION_TYPES.RESUBMIT, // <-- Use RESUBMIT here
+            priority: PRIORITY_LEVELS.HIGH,
+            icon: ACTION_ICONS.assign,
+        };
+    }
     // Default view button
     return {
         label: "View",

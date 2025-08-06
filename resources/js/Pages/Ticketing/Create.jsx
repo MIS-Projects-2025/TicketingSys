@@ -1,7 +1,8 @@
 import { usePage } from "@inertiajs/react";
-import { Ticket, View, Eye, X } from "lucide-react";
+import { Ticket, View, Eye, X, History } from "lucide-react";
 import React, { useEffect } from "react";
 import FileUploadSection from "./FileUploadSection";
+import TicketHistoryTimeline from "./TicketHistoryTimeline";
 import { useTicketManagement } from "../../hooks/useTicketManagement";
 import Select from "react-select";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
@@ -18,6 +19,8 @@ const Create = () => {
         attachments,
         childTickets = [],
         ticketOptions = [],
+        remarks = [],
+        history = [],
         emp_data,
     } = usePage().props;
 
@@ -51,6 +54,8 @@ const Create = () => {
         setExistingFiles,
         setShowChildTicketsModal,
         setAssignmentData,
+        setShowHistory,
+        showHistory,
         setRequestType,
     } = useTicketManagement();
 
@@ -77,6 +82,12 @@ const Create = () => {
         }
     }, [initialFormState, initialUserAccountType, ticket, attachments]);
 
+    // Helper functions to determine form state capabilities
+    const isCreating = formState === "create";
+    const isResubmitting = formState === "resubmitting";
+    const isEditable = isCreating || isResubmitting;
+    const canEditDetails = isCreating || isResubmitting;
+
     const ticketTypeDisplay = getTicketTypeDisplay();
     const currentTicketId = getTicketIdFromUrl();
 
@@ -87,6 +98,7 @@ const Create = () => {
         typeOfRequest: formData?.type_of_request,
         remarksState,
     });
+    console.log(remarks, history);
 
     return (
         <AuthenticatedLayout>
@@ -98,7 +110,7 @@ const Create = () => {
                             <h1 className="text-2xl font-bold text-base-content mb-2">
                                 System Ticketing System
                             </h1>
-                            {formState === "create" ? (
+                            {isCreating ? (
                                 <p className="text-base-content/60">
                                     Generate a new ticket by filling out the
                                     form below.
@@ -109,6 +121,32 @@ const Create = () => {
                                 </p>
                             )}
                         </div>
+                        {/* Ticket History Timeline - Outside form to prevent accidental submissions */}
+                        {!isCreating &&
+                            (remarks.length > 0 || history.length > 0) && (
+                                <div className="mt-6">
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline mb-4"
+                                        onClick={() =>
+                                            setShowHistory(!showHistory)
+                                        }
+                                    >
+                                        <History className="w-4 h-4 mr-2" />
+                                        {showHistory
+                                            ? "Hide Ticket History"
+                                            : "Show Ticket History"}
+                                    </button>
+                                    {showHistory && (
+                                        <TicketHistoryTimeline
+                                            remarks={remarks}
+                                            history={history}
+                                            ticket={ticket}
+                                        />
+                                    )}
+                                </div>
+                            )}
+                        {/* Parent Ticket Section */}
                         {isChildTicket(formData) &&
                             formData.parent_ticket_id && (
                                 <div className="flex items-stretch gap-2 w-full mb-4">
@@ -136,7 +174,9 @@ const Create = () => {
                                     </a>
                                 </div>
                             )}
-                        {formState !== "create" &&
+
+                        {/* Child Tickets Section */}
+                        {!isCreating &&
                             childTickets &&
                             childTickets.length > 0 && (
                                 <div className="mb-4 flex">
@@ -154,6 +194,7 @@ const Create = () => {
                                 </div>
                             )}
 
+                        {/* Status Messages */}
                         {uiState.status === "success" && (
                             <div className="alert alert-success shadow-sm flex items-center justify-between">
                                 <span>{uiState.message}</span>
@@ -164,47 +205,53 @@ const Create = () => {
                                 <span>{uiState.message}</span>
                             </div>
                         )}
+
                         <form onSubmit={handleSubmit}>
                             <div className="space-y-6">
-                                {ticketTypeDisplay.show &&
-                                    formState === "create" && (
-                                        <div
-                                            className={`alert alert-${ticketTypeDisplay.type}`}
-                                        >
-                                            <span>
-                                                {ticketTypeDisplay.message}
-                                            </span>
-                                        </div>
-                                    )}
+                                {/* Ticket Type Display Alert */}
+                                {ticketTypeDisplay.show && isCreating && (
+                                    <div
+                                        className={`alert alert-${ticketTypeDisplay.type}`}
+                                    >
+                                        <span>{ticketTypeDisplay.message}</span>
+                                    </div>
+                                )}
+
+                                {/* Ticket ID Selection */}
                                 <div className="flex items-stretch gap-2 w-full">
-                                    <label className="floating-label w-full">
-                                        <Select
-                                            isDisabled={
-                                                !requestType ||
-                                                requestType === "request_form"
-                                            }
-                                            value={
-                                                ticketOptions.find(
-                                                    (opt) =>
-                                                        opt.value ===
-                                                        formData.ticket_id
-                                                ) || null
-                                            }
-                                            onChange={(option) =>
-                                                handleFormChange(
-                                                    "ticket_id",
-                                                    option ? option.value : ""
-                                                )
-                                            }
-                                            options={ticketOptions}
-                                            styles={customDarkStyles}
-                                            placeholder="Choose Ticket ID"
-                                            isClearable
-                                            menuPortalTarget={document.body}
-                                            menuPosition="fixed"
-                                        />
-                                        <span>Ticket ID</span>
-                                    </label>
+                                    {requestType !== "request_form" && (
+                                        <label className="floating-label w-full">
+                                            <Select
+                                                isDisabled={
+                                                    !requestType ||
+                                                    requestType ===
+                                                        "request_form"
+                                                }
+                                                value={
+                                                    ticketOptions.find(
+                                                        (opt) =>
+                                                            opt.value ===
+                                                            formData.ticket_id
+                                                    ) || null
+                                                }
+                                                onChange={(option) =>
+                                                    handleFormChange(
+                                                        "ticket_id",
+                                                        option
+                                                            ? option.value
+                                                            : ""
+                                                    )
+                                                }
+                                                options={ticketOptions}
+                                                styles={customDarkStyles}
+                                                placeholder="Choose Ticket ID"
+                                                isClearable
+                                                menuPortalTarget={document.body}
+                                                menuPosition="fixed"
+                                            />
+                                            <span>Ticket ID</span>
+                                        </label>
+                                    )}
 
                                     {formData.ticket_id &&
                                         formData.ticket_id !==
@@ -224,6 +271,8 @@ const Create = () => {
                                             </a>
                                         )}
                                 </div>
+
+                                {/* Employee Info Section */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <input
                                         type="hidden"
@@ -239,7 +288,6 @@ const Create = () => {
                                             readOnly
                                             value={formData.employee_id}
                                         />
-
                                         <span>Employee ID</span>
                                     </label>
 
@@ -254,13 +302,15 @@ const Create = () => {
                                         <span>Department</span>
                                     </label>
                                 </div>
+
+                                {/* Project and Request Type Section */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <label className="floating-label">
                                         <input
                                             type="text"
                                             placeholder="Project Name"
                                             className="input input-bordered w-full"
-                                            readOnly={formState != "create"}
+                                            readOnly={!isEditable}
                                             value={formData.project_name}
                                             onChange={(e) =>
                                                 handleFormChange(
@@ -275,7 +325,7 @@ const Create = () => {
                                     <label className="floating-label">
                                         <select
                                             className="select select-bordered w-full"
-                                            disabled={formState != "create"}
+                                            disabled={!isEditable}
                                             value={formData.type_of_request}
                                             onChange={(e) => {
                                                 handleFormChange(
@@ -304,12 +354,14 @@ const Create = () => {
                                         <span>Type of Request</span>
                                     </label>
                                 </div>
+
+                                {/* Details Section */}
                                 <div className="grid grid-cols-1 gap-6">
                                     <label className="floating-label">
                                         <textarea
                                             className="textarea textarea-bordered w-full h-24"
                                             placeholder="Details of the request"
-                                            readOnly={formState != "create"}
+                                            readOnly={!canEditDetails}
                                             value={formData.details}
                                             onChange={(e) =>
                                                 handleFormChange(
@@ -321,6 +373,8 @@ const Create = () => {
                                         <span>Details of the Request</span>
                                     </label>
                                 </div>
+
+                                {/* File Upload Section */}
                                 <FileUploadSection
                                     mode={formState}
                                     existingFiles={existingFiles}
@@ -328,6 +382,7 @@ const Create = () => {
                                     handleFileChange={handleFileChange}
                                     handleRemove={removeFile}
                                 />
+
                                 {/* Action Buttons */}
                                 <TicketActionButtons
                                     actions={actions}
@@ -342,6 +397,8 @@ const Create = () => {
                                     customDarkStyles={customDarkStyles}
                                 />
                             </div>
+
+                            {/* Remarks Section */}
                             {remarksState === "show" && (
                                 <div className="mt-4">
                                     <label className="floating-label">
@@ -373,6 +430,7 @@ const Create = () => {
                     </div>
                 </div>
             </div>
+
             <ChildTicketsModal
                 open={showChildTicketsModal}
                 onClose={() => setShowChildTicketsModal(false)}

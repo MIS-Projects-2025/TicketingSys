@@ -33,6 +33,17 @@ export function getAvailableActions({
             userAccountType === "OD" &&
             typeOfRequest === "request_form" &&
             remarksState !== "show",
+
         canGenerate: formState === "create",
+
+        canResubmit:
+            formState === "resubmitting" &&
+            userAccountType.includes("REQUESTOR") &&
+            remarksState !== "show",
+
+        canCancel:
+            formState === "resubmitting" &&
+            userAccountType.includes("REQUESTOR") &&
+            remarksState !== "show",
     };
 }

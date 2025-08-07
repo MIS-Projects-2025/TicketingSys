@@ -291,7 +291,7 @@ class TicketingController extends Controller
         // Get current user employee data for context
         $emp_data = DB::connection('masterlist')->selectOne("
         SELECT * FROM employee_masterlist 
-        WHERE EMPID = ?
+        WHERE EMPLOYID = ?
     ", [$empData['emp_id'] ?? '']);
 
         return Inertia::render('Ticketing/Create', [
@@ -373,9 +373,13 @@ class TicketingController extends Controller
                 }
             } else {
                 // Normal DH
-                $filters[] = "(
-            TYPE_OF_REQUEST NOT IN ('adjustment', 'enhancement') 
-        )";
+                if (!empty($odEmployeeIds)) {
+                    $idList = implode(",", array_map('intval', $odEmployeeIds));
+                    $filters[] = "(
+                TYPE_OF_REQUEST NOT IN ('adjustment', 'enhancement') 
+                AND EMPLOYEE_ID IN ({$idList})
+            )";
+                }
             }
         }
 
@@ -535,8 +539,7 @@ class TicketingController extends Controller
         if ($updatingDetails) {
             $successMessage = 'Ticket details and status updated successfully!';
         }
-
-        return redirect()->back()->with('success', $successMessage);
+        return redirect('/tickets')->with('success', $successMessage);
     }
     // Assign ticket
     public function assignTicket(Request $request, $hash)

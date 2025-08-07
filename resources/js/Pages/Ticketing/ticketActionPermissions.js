@@ -3,6 +3,8 @@ export function getAvailableActions({
     userAccountType,
     typeOfRequest,
     remarksState,
+    emp_data,
+    ticket,
 }) {
     return {
         canAssignProgrammer:
@@ -20,7 +22,8 @@ export function getAvailableActions({
             remarksState !== "show",
         canApproveOD:
             formState === "approving" &&
-            userAccountType === "OD" &&
+            (userAccountType.includes("OD") ||
+                userAccountType.includes("DEPARTMENT_HEAD")) &&
             typeOfRequest === "request_form" &&
             remarksState !== "show",
         canDisapproveDH:
@@ -28,9 +31,11 @@ export function getAvailableActions({
             userAccountType === "DEPARTMENT_HEAD" &&
             typeOfRequest === "request_form" &&
             remarksState !== "show",
+
         canDisapproveOD:
             formState === "approving" &&
-            userAccountType === "OD" &&
+            (userAccountType.includes("OD") ||
+                userAccountType.includes("DEPARTMENT_HEAD")) &&
             typeOfRequest === "request_form" &&
             remarksState !== "show",
 
@@ -38,12 +43,12 @@ export function getAvailableActions({
 
         canResubmit:
             formState === "resubmitting" &&
-            userAccountType.includes("REQUESTOR") &&
+            ticket.EMPLOYEE_ID === emp_data?.EMPLOYID &&
             remarksState !== "show",
 
         canCancel:
             formState === "resubmitting" &&
-            userAccountType.includes("REQUESTOR") &&
+            ticket.EMPLOYEE_ID === emp_data?.EMPLOYID &&
             remarksState !== "show",
     };
 }

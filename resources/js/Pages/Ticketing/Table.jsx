@@ -72,21 +72,6 @@ const roleDescriptions = {
     [ACCOUNT_TYPES.MIS_SUPERVISOR]: "MIS Supervisor",
 };
 
-const statusStyles = {
-    [TICKET_STATUS.OPEN]: "bg-blue-100 text-blue-800",
-    [TICKET_STATUS.ASSESSED]: "bg-yellow-100 text-yellow-800",
-    [TICKET_STATUS.APPROVED]: "bg-green-100 text-green-800",
-    [TICKET_STATUS.RETURNED]: "bg-red-100 text-red-800",
-    default: "bg-gray-100 text-gray-800",
-};
-
-const priorityBadgeStyles = {
-    [PRIORITY_LEVELS.URGENT]: "badge badge-error",
-    [PRIORITY_LEVELS.HIGH]: "badge badge-warning",
-    [PRIORITY_LEVELS.MEDIUM]: "badge badge-info",
-    [PRIORITY_LEVELS.LOW]: "badge badge-success",
-};
-
 // Utility functions
 const hasRole = (userAccountType, role) =>
     Array.isArray(userAccountType) && userAccountType.includes(role);
@@ -103,14 +88,13 @@ const getActionConfig = (ticket, userAccountType, empData) => {
     const isProgrammer = hasRole(userAccountType, ACCOUNT_TYPES.PROGRAMMER);
     const isDeptHead = hasRole(userAccountType, ACCOUNT_TYPES.DEPARTMENT_HEAD);
     const isOD = hasRole(userAccountType, ACCOUNT_TYPES.OD);
-    const isRequestor = hasRole(userAccountType, ACCOUNT_TYPES.REQUESTOR);
+    const isRequestor = ticket.EMPLOYEE_ID === empData?.emp_id;
 
-    // MIS Supervisor logic
     if (isMIS) {
         if (ticket.STATUS === TICKET_STATUS.APPROVED) {
             return {
                 label: "Assign Programmer",
-                className: "bg-purple-500 hover:bg-purple-600",
+                className: "btn btn-outline btn-secondary",
                 formState: "assigning_programmer",
                 actionType: ACTION_TYPES.ASSIGN,
                 priority: PRIORITY_LEVELS.HIGH,
@@ -126,8 +110,8 @@ const getActionConfig = (ticket, userAccountType, empData) => {
             return {
                 label: isReturned ? "Re-assess" : "Assess",
                 className: isReturned
-                    ? "bg-yellow-500 hover:bg-yellow-600"
-                    : "bg-green-500 hover:bg-green-600",
+                    ? "btn btn-outline btn-warning"
+                    : "btn btn-outline btn-success",
                 formState: "assessing",
                 actionType: ACTION_TYPES.ASSESS,
                 priority: isReturned
@@ -138,7 +122,6 @@ const getActionConfig = (ticket, userAccountType, empData) => {
         }
     }
 
-    // Programmer logic
     if (
         isProgrammer &&
         ticket.EMPLOYEE_ID !== empData?.emp_id &&
@@ -146,7 +129,7 @@ const getActionConfig = (ticket, userAccountType, empData) => {
     ) {
         return {
             label: "Assess",
-            className: "bg-green-500 hover:bg-green-600",
+            className: "btn btn-outline btn-success",
             formState: "assessing",
             actionType: ACTION_TYPES.ASSESS,
             priority: PRIORITY_LEVELS.HIGH,
@@ -154,11 +137,10 @@ const getActionConfig = (ticket, userAccountType, empData) => {
         };
     }
 
-    // Department Head logic
     if (isDeptHead && ticket.STATUS === TICKET_STATUS.ASSESSED) {
         return {
             label: "Approve",
-            className: "bg-green-500 hover:bg-green-600",
+            className: "btn btn-outline btn-success",
             formState: "approving",
             actionType: ACTION_TYPES.APPROVE,
             priority: PRIORITY_LEVELS.HIGH,
@@ -166,11 +148,10 @@ const getActionConfig = (ticket, userAccountType, empData) => {
         };
     }
 
-    // OD logic
     if (isOD && ticket.STATUS === TICKET_STATUS.PENDING_OD_APPROVAL) {
         return {
             label: "Approve",
-            className: "bg-green-500 hover:bg-green-600",
+            className: "btn btn-outline btn-success",
             formState: "approving",
             actionType: ACTION_TYPES.APPROVE,
             priority: PRIORITY_LEVELS.HIGH,
@@ -178,23 +159,22 @@ const getActionConfig = (ticket, userAccountType, empData) => {
         };
     }
 
-    // Requestor resubmit logic for RETURNED tickets
     if (isRequestor && ticket.STATUS === TICKET_STATUS.RETURNED) {
         return {
             label: "Resubmit",
-            className: "bg-yellow-500 hover:bg-yellow-600",
+            className: "btn btn-outline btn-warning",
             formState: "resubmitting",
-            actionType: ACTION_TYPES.RESUBMIT, // <-- Use RESUBMIT here
+            actionType: ACTION_TYPES.RESUBMIT,
             priority: PRIORITY_LEVELS.HIGH,
             icon: ACTION_ICONS.assign,
         };
     }
-    // Default view button
+
     return {
         label: "View",
         className: isRequestor
-            ? "bg-blue-500 hover:bg-blue-600"
-            : "bg-gray-500 hover:bg-gray-600",
+            ? "btn btn-outline btn-info"
+            : "btn btn-outline btn-neutral",
         formState: "viewing",
         actionType: ACTION_TYPES.VIEW,
         priority: PRIORITY_LEVELS.LOW,
@@ -210,7 +190,7 @@ const ActionButton = ({ config, ticket, userAccountType }) => {
             onClick={() =>
                 handleAction(ticket, config.formState, userAccountType)
             }
-            className={`px-3 py-1 text-white rounded text-sm flex items-center gap-2 ${config.className}`}
+            className={`${config.className} text-sm flex items-center gap-2`}
         >
             <Icon size={16} />
             <span>{config.label}</span>
@@ -229,20 +209,51 @@ const PriorityBadge = ({ priority }) => (
     </span>
 );
 
-const StatusCell = ({ value, row }) => (
-    <div className="flex items-center gap-2">
-        <span
-            className={`px-2 py-1 rounded-full text-xs font-medium ${
-                statusStyles[value] || statusStyles.default
-            }`}
-        >
-            {value}
-        </span>
-        {row.priority !== PRIORITY_LEVELS.LOW && (
-            <PriorityBadge priority={row.priority} />
-        )}
-    </div>
-);
+const StatusCell = ({ value, row }) => {
+    const normalizedStatus = value?.toString().trim().toUpperCase();
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case TICKET_STATUS.OPEN:
+                return "info";
+            case TICKET_STATUS.ASSESSED:
+                return "warning";
+            case TICKET_STATUS.APPROVED:
+                return "success";
+            case TICKET_STATUS.RETURNED:
+                return "error";
+            case TICKET_STATUS.PENDING_OD_APPROVAL:
+                return "secondary";
+            default:
+                return "base-content";
+        }
+    };
+
+    const statusDisplayMap = {
+        [TICKET_STATUS.OPEN]: "Open",
+        [TICKET_STATUS.ASSESSED]: "Assessed",
+        [TICKET_STATUS.APPROVED]: "Approved",
+        [TICKET_STATUS.RETURNED]: "Returned",
+        [TICKET_STATUS.PENDING_OD_APPROVAL]: "Pending OD",
+    };
+
+    const color = getStatusColor(normalizedStatus);
+    const displayText = statusDisplayMap[normalizedStatus] || value;
+
+    return (
+        <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full bg-${color}`}></div>
+                <span
+                    className={`text-sm font-semibold text-${color}`}
+                    title={value}
+                >
+                    {displayText}
+                </span>
+            </div>
+        </div>
+    );
+};
 
 // Updated StatCard with click handler and active state
 // DaisyUI color mapping for border colors
@@ -349,7 +360,7 @@ const EmptyState = ({ activeFilter, filterType }) => {
 // Main component
 const Table = () => {
     const { tickets = [], emp_data, userAccountType } = usePage().props;
-    const [activeFilter, setActiveFilter] = useState(FILTER_TYPES.ALL); // State for StatCard filtering
+    const [activeFilter, setActiveFilter] = useState(FILTER_TYPES.ACTIVE); // State for StatCard filtering
 
     // Process tickets with action information
     const processedTickets = useMemo(() => {
@@ -361,18 +372,31 @@ const Table = () => {
                 userAccountType,
                 emp_data
             );
-            return {
+
+            // Create the processed ticket with priority first
+            const processedTicket = {
                 ...ticket,
-                action: (
-                    <ActionButton
-                        config={actionConfig}
-                        ticket={ticket}
-                        userAccountType={userAccountType}
-                    />
-                ),
                 actionType: actionConfig.actionType,
                 priority: actionConfig.priority,
             };
+
+            // Then create STATUS_CELL with the complete processed ticket
+            processedTicket.STATUS_CELL = (
+                <StatusCell
+                    value={ticket.STATUS}
+                    row={processedTicket} // This now has the priority
+                />
+            );
+
+            processedTicket.action = (
+                <ActionButton
+                    config={actionConfig}
+                    ticket={ticket}
+                    userAccountType={userAccountType}
+                />
+            );
+
+            return processedTicket;
         });
     }, [tickets, userAccountType, emp_data]);
 
@@ -426,8 +450,7 @@ const Table = () => {
             { label: "Date Requested", key: "CREATED_AT" },
             {
                 label: "Status",
-                key: "STATUS",
-                render: (value, row) => <StatusCell value={value} row={row} />,
+                key: "STATUS_CELL", // Use the pre-processed status cell
             },
             { label: "Requestor", key: "EMPNAME" },
             { label: "Action", key: "action" },

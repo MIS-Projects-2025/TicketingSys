@@ -48,12 +48,17 @@ const FileUploadSection = ({
 
     // Helper functions to determine mode capabilities
     const canAddFiles = ["create", "assessing", "resubmitting"].includes(mode);
-    const canViewFiles = ["assessing", "resubmitting", "viewing"].includes(
-        mode
-    );
-    const showExistingFileActions = ["assessing", "resubmitting"].includes(
-        mode
-    );
+    const canViewFiles = [
+        "assessing",
+        "resubmitting",
+        "viewing",
+        "approving",
+    ].includes(mode);
+    const showExistingFileActions = [
+        "assessing",
+        "resubmitting",
+        "approving",
+    ].includes(mode);
 
     // Columns for DataTable
     const columns = [

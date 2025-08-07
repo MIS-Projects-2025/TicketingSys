@@ -23,6 +23,7 @@ const Create = () => {
         history = [],
         emp_data,
     } = usePage().props;
+    console.log(usePage().props);
 
     const {
         formData,
@@ -97,6 +98,8 @@ const Create = () => {
         userAccountType,
         typeOfRequest: formData?.type_of_request,
         remarksState,
+        emp_data,
+        ticket,
     });
     console.log(remarks, history);
 
@@ -105,47 +108,73 @@ const Create = () => {
             <div className="flex min-h-screen justify-center items-center bg-base-200">
                 <div className="card bg-base-200 w-full max-w-5xl shadow-xl">
                     <div className="card-body p-8">
-                        {/* Header */}
-                        <div className="text-center mb-8">
-                            <h1 className="text-2xl font-bold text-base-content mb-2">
-                                System Ticketing System
-                            </h1>
-                            {isCreating ? (
+                        <div className="relative mb-8 min-h-[4rem]">
+                            {/* Right-side buttons absolutely positioned */}
+                            {!isCreating &&
+                                (remarks.length > 0 ||
+                                    history.length > 0 ||
+                                    (childTickets &&
+                                        childTickets.length > 0)) && (
+                                    <div className="absolute right-0 top-0 flex items-center gap-2">
+                                        {/* Timeline Icon Button with Tooltip */}
+                                        {(remarks.length > 0 ||
+                                            history.length > 0) && (
+                                            <div
+                                                className="tooltip tooltip-top"
+                                                data-tip="View History & Remarks"
+                                            >
+                                                <div>
+                                                    <TicketHistoryTimeline
+                                                        remarks={remarks}
+                                                        history={history}
+                                                        ticket={ticket}
+                                                        isCreating={isCreating}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Child Tickets Button with Tooltip */}
+                                        {childTickets &&
+                                            childTickets.length > 0 && (
+                                                <div
+                                                    className="tooltip tooltip-top"
+                                                    data-tip="View Child Tickets"
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-outline gap-2 group hover:btn-primary"
+                                                        onClick={() =>
+                                                            setShowChildTicketsModal(
+                                                                true
+                                                            )
+                                                        }
+                                                    >
+                                                        <Ticket className="w-4 h-4 group-hover:rotate-12 transition-transform duration-200" />
+                                                        <div className="badge badge-primary badge-sm ml-1 group-hover:badge-primary-content">
+                                                            {
+                                                                childTickets.length
+                                                            }
+                                                        </div>
+                                                    </button>
+                                                </div>
+                                            )}
+                                    </div>
+                                )}
+
+                            {/* Centered title block */}
+                            <div className="text-center px-8">
+                                <h1 className="text-3xl font-bold text-base-content mb-2">
+                                    System Ticketing System
+                                </h1>
                                 <p className="text-base-content/60">
-                                    Generate a new ticket by filling out the
-                                    form below.
+                                    {isCreating
+                                        ? "Generate a new ticket by filling out the form below."
+                                        : "View or update the details of your ticket."}
                                 </p>
-                            ) : (
-                                <p className="text-base-content/60">
-                                    View or update the details of your ticket.
-                                </p>
-                            )}
+                            </div>
                         </div>
-                        {/* Ticket History Timeline - Outside form to prevent accidental submissions */}
-                        {!isCreating &&
-                            (remarks.length > 0 || history.length > 0) && (
-                                <div className="mt-6">
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline mb-4"
-                                        onClick={() =>
-                                            setShowHistory(!showHistory)
-                                        }
-                                    >
-                                        <History className="w-4 h-4 mr-2" />
-                                        {showHistory
-                                            ? "Hide Ticket History"
-                                            : "Show Ticket History"}
-                                    </button>
-                                    {showHistory && (
-                                        <TicketHistoryTimeline
-                                            remarks={remarks}
-                                            history={history}
-                                            ticket={ticket}
-                                        />
-                                    )}
-                                </div>
-                            )}
+
                         {/* Parent Ticket Section */}
                         {isChildTicket(formData) &&
                             formData.parent_ticket_id && (
@@ -172,25 +201,6 @@ const Create = () => {
                                         <View className="w-5 h-5 mr-1" />
                                         View
                                     </a>
-                                </div>
-                            )}
-
-                        {/* Child Tickets Section */}
-                        {!isCreating &&
-                            childTickets &&
-                            childTickets.length > 0 && (
-                                <div className="mb-4 flex">
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline btn-info gap-2 ml-auto"
-                                        onClick={() =>
-                                            setShowChildTicketsModal(true)
-                                        }
-                                    >
-                                        <Ticket className="w-4 h-4" />
-                                        View Child Tickets (
-                                        {childTickets.length})
-                                    </button>
                                 </div>
                             )}
 

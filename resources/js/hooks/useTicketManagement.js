@@ -322,9 +322,12 @@ export function useTicketManagement() {
 
             const submitData = new FormData();
             submitData.append("status", newStatus);
-            submitData.append("updated_by", emp_data.emp_id);
+            submitData.append("updated_by", emp_data.EMPLOYID);
             submitData.append("remark", formData.remarks || "");
-            submitData.append("role", uiState.userAccountType);
+            // Always extract "OD" if it's in the list
+            const roles = uiState.userAccountType.split(",");
+            const roleToUse = roles.includes("OD") ? "OD" : roles[0];
+            submitData.append("role", roleToUse);
 
             // For resubmitting, include the updated ticket details
             if (

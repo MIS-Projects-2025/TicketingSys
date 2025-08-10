@@ -239,13 +239,17 @@ class TicketingController extends Controller
         ORDER BY CHANGED_AT ASC
     ', [$ticketId]);
 
-        // Get all unique user IDs from remarks and history
+        // Get all unique user IDs from remarks, history, AND ticket approval fields
         $userIds = collect($remarks)->pluck('CREATED_BY')
             ->merge(collect($history)->pluck('CHANGED_BY'))
             ->unique()
             ->filter()
             ->values()
             ->toArray();
+
+        // ADD: Extract employee IDs from ticket approval fields
+        $approvalEmployeeIds = $this->extractApprovalEmployeeIds($ticket);
+        $userIds = array_unique(array_merge($userIds, $approvalEmployeeIds));
 
         // Get employee names from masterlist connection
         $employees = [];
@@ -272,6 +276,9 @@ class TicketingController extends Controller
             $hist->CHANGED_BY_NAME = $employees[$hist->CHANGED_BY] ?? 'Unknown User';
         }
 
+        // ADD: Process ticket approval fields with employee names
+        $ticket = $this->processTicketApprovals($ticket, $employees);
+
         // Get ticket options for dropdowns
         $ticketOptions = DB::select('
         SELECT 
@@ -297,7 +304,7 @@ class TicketingController extends Controller
         return Inertia::render('Ticketing/Create', [
             'formState' => $formState,
             'userAccountType' => $userAccountType,
-            'ticket' => $ticket,
+            'ticket' => $ticket, // Now contains processed approval names
             'childTickets' => $childTickets,
             'attachments' => $attachments,
             'remarks' => $remarks,
@@ -305,9 +312,9 @@ class TicketingController extends Controller
             'progList' => $progList,
             'ticketOptions' => $ticketOptions,
             'emp_data' => $emp_data,
+            // No need to send masterlist anymore!
         ]);
     }
-
     // Show tickets table
 
     public function showTable()
@@ -343,13 +350,13 @@ class TicketingController extends Controller
     )";
         }
 
-        // PROGRAMMER filter
-        if ($this->isAssessedByProgrammer($empData)) {
-            $filters[] = "(
-        STATUS IN ('OPEN','ASSESSED','RETURNED')
-    
-    )";
-        }
+        //     // PROGRAMMER filter
+        //     if ($this->isAssessedByProgrammer($empData)) {
+        //         $filters[] = "(
+        //     STATUS IN ('OPEN','ASSESSED','RETURNED')
+
+        // )";
+        //     }
 
 
         // OD filter — ❌ EXCLUDE adjustment/enhancement
@@ -388,15 +395,11 @@ class TicketingController extends Controller
         if ($this->isMISSupervisor($empData)) {
             $filters[] = "(
         (
-            TYPE_OF_REQUEST = 'request_form' AND 
-            STATUS = 'APPROVED' AND 
-            EMPLOYEE_ID != '{$userId}'
+            TYPE_OF_REQUEST = 'request_form' 
         )
         OR
         (
-            TYPE_OF_REQUEST != 'request_form' AND 
-            STATUS = 'ASSESSED' AND 
-            EMPLOYEE_ID != '{$userId}'
+            TYPE_OF_REQUEST != 'request_form' 
         )
     )";
         }
@@ -629,6 +632,65 @@ class TicketingController extends Controller
     }
 
     // Private helper methods
+    // ADD: Helper method to extract employee IDs from approval fields
+    private function extractApprovalEmployeeIds($ticket)
+    {
+        $employeeIds = [];
+        $approvalFields = [
+            'PROG_ACTION_BY',
+            'MIS_SUP_ACTION_BY',
+            'DM_ACTION_BY',
+            'OD_ACTION_BY',
+            'APPROVED_BY'
+        ];
+
+        foreach ($approvalFields as $field) {
+            if (!empty($ticket->$field)) {
+                $employeeId = $this->extractEmployeeId($ticket->$field);
+                if ($employeeId) {
+                    $employeeIds[] = $employeeId;
+                }
+            }
+        }
+
+        return $employeeIds;
+    }
+    // ADD: Helper method to extract employee ID from approval string
+    private function extractEmployeeId($approvalField)
+    {
+        if (!$approvalField) return null;
+
+        // Extract employee ID from strings like "1705(APPROVED)"
+        preg_match('/(\d+)/', $approvalField, $matches);
+        return $matches[1] ?? null;
+    }
+
+    // ADD: Helper method to process ticket approvals with employee names
+    private function processTicketApprovals($ticket, $employees)
+    {
+        $approvalFields = [
+            'PROG_ACTION_BY',
+            'MIS_SUP_ACTION_BY',
+            'DM_ACTION_BY',
+            'OD_ACTION_BY',
+            'APPROVED_BY',
+            'ASSIGNED_TO',
+        ];
+
+        foreach ($approvalFields as $field) {
+            if (!empty($ticket->$field)) {
+                $employeeId = $this->extractEmployeeId($ticket->$field);
+
+                if ($employeeId && isset($employees[$employeeId])) {
+                    // Add new properties with employee info
+                    $ticket->{$field . '_EMPLOYEE_NAME'} = $employees[$employeeId];
+                    $ticket->{$field . '_EMPLOYEE_ID'} = $employeeId;
+                }
+            }
+        }
+
+        return $ticket;
+    }
     private function generateTicketNumber()
     {
         $year = date('Y');

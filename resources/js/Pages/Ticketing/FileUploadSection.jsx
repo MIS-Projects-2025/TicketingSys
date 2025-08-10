@@ -53,11 +53,13 @@ const FileUploadSection = ({
         "resubmitting",
         "viewing",
         "approving",
+        "assigning_programmer",
     ].includes(mode);
     const showExistingFileActions = [
         "assessing",
         "resubmitting",
         "approving",
+        "assigning_programmer",
     ].includes(mode);
 
     // Columns for DataTable

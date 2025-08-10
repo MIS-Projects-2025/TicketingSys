@@ -405,6 +405,7 @@ const Create = () => {
                                         handleAssignmentChange
                                     }
                                     customDarkStyles={customDarkStyles}
+                                    ticketData={ticket}
                                 />
                             </div>
 

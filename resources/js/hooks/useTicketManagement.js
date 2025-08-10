@@ -407,7 +407,7 @@ export function useTicketManagement() {
     );
     const handleAssignment = useCallback(
         ({ assignedTo, remark = "" }) => {
-            if (!emp_data?.emp_id) {
+            if (!emp_data?.EMPLOYID) {
                 setUiState((prev) => ({
                     ...prev,
                     status: "error",
@@ -426,7 +426,7 @@ export function useTicketManagement() {
                 `/assign-ticket/${btoa(formData.ticket_id)}`,
                 {
                     assigned_to: assignedTo,
-                    mis_action_by: emp_data.emp_id,
+                    mis_action_by: emp_data.EMPLOYID,
                     remark: remark,
                 },
                 {

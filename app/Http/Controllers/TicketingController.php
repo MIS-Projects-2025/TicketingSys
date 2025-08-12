@@ -242,6 +242,7 @@ class TicketingController extends Controller
         // Get all unique user IDs from remarks, history, AND ticket approval fields
         $userIds = collect($remarks)->pluck('CREATED_BY')
             ->merge(collect($history)->pluck('CHANGED_BY'))
+            ->push($ticket->ASSIGNED_TO ?? null)
             ->unique()
             ->filter()
             ->values()
@@ -250,7 +251,7 @@ class TicketingController extends Controller
         // ADD: Extract employee IDs from ticket approval fields
         $approvalEmployeeIds = $this->extractApprovalEmployeeIds($ticket);
         $userIds = array_unique(array_merge($userIds, $approvalEmployeeIds));
-
+        // dd($userIds);
         // Get employee names from masterlist connection
         $employees = [];
         if (!empty($userIds)) {
@@ -433,7 +434,7 @@ class TicketingController extends Controller
         $ticketId = base64_decode($hash);
 
         $validated = $request->validate([
-            'status' => 'required|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_OD_APPROVAL,APPROVED,ASSIGNED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED',
+            'status' => 'required|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_OD_APPROVAL,APPROVED,ASSIGNED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED,ACKNOWLEDGED,REJECT',
             'remark' => 'nullable|string',
             'updated_by' => 'required|string|max:100',
             'role' => 'required|string|in:PROGRAMMER,DEPARTMENT_HEAD,OD,REQUESTOR',
@@ -563,7 +564,7 @@ class TicketingController extends Controller
         $oldAssignedTo = $currentTicket->ASSIGNED_TO;
         $newAssignedTo = $validated['assigned_to'];
         $supervisorEmpId = $validated['mis_action_by'];
-
+        // dd($oldAssignedTo, $newAssignedTo, $supervisorEmpId, $ticketId);
         // Update assignment and supervisor action
         DB::update('
         UPDATE tickets 
@@ -817,7 +818,7 @@ class TicketingController extends Controller
             'type_of_request' => 'required|string|max:100',
             'project_name' => 'required|string|max:255',
             'details' => 'required|string',
-            'status' => 'nullable|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_OD_APPROVAL,APPROVED,ASSIGNED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED',
+            'status' => 'nullable|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_OD_APPROVAL,APPROVED,ASSIGNED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED,ACKNOWLEDGED,REJECT',
             'ticket_level' => 'nullable|string|max:50',
             'parent_ticket_id' => 'nullable|string|max:20',
             'prog_action_by' => 'nullable|string|max:100',

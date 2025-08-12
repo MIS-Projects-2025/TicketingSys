@@ -45,12 +45,19 @@ export function getAvailableActions({
 
         canResubmit:
             formState === "resubmitting" &&
-            ticket.EMPLOYEE_ID === emp_data?.EMPLOYID &&
+            ticket.EMPLOYEE_ID === emp_data?.emp_id &&
             remarksState !== "show",
 
         canCancel:
             formState === "resubmitting" &&
-            ticket.EMPLOYEE_ID === emp_data?.EMPLOYID &&
+            ticket.EMPLOYEE_ID === emp_data?.emp_id &&
+            remarksState !== "show",
+        canAcknowledge:
+            formState === "acknowledging" &&
+            ticket.ASSIGNED_TO == emp_data?.emp_id,
+        canReject:
+            formState === "acknowledging" &&
+            ticket.ASSIGNED_TO == emp_data?.emp_id &&
             remarksState !== "show",
     };
 }

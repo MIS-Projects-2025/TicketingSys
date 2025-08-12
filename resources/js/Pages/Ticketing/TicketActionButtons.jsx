@@ -8,6 +8,7 @@ import {
     Loader2,
     User,
     Calendar,
+    X,
 } from "lucide-react";
 import Select from "react-select";
 
@@ -223,7 +224,20 @@ const TicketActionButtons = ({
                     </div>
                 </div>
             )}
-
+            {ticketData.ACKNOWLEDGED_BY && (
+                <div className="flex flex-col">
+                    <span className="text-sm font-medium text-primary">
+                        Acknowledged by:
+                    </span>
+                    <span className="text-sm">
+                        {getDisplayName("ACKNOWLEDGED_BY")}
+                    </span>
+                    <span className="text-xs text-base-content/60 flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        {new Date(ticketData.ACKNOWLEDGED_AT).toLocaleString()}
+                    </span>
+                </div>
+            )}
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-2 mt-4">
                 {actions.canAssessTicket && (
@@ -304,6 +318,26 @@ const TicketActionButtons = ({
                     >
                         <ThumbsDown className="w-4 h-4" />
                         Cancel
+                    </button>
+                )}
+                {actions.canAcknowledge && (
+                    <button
+                        type="button"
+                        className="btn btn-outline btn-info gap-2"
+                        onClick={() => handleApprovalAction("acknowledge")}
+                    >
+                        <CheckCircle className="w-4 h-4" />
+                        Acknowledge
+                    </button>
+                )}
+                {actions.canReject && (
+                    <button
+                        type="button"
+                        className="btn btn-outline btn-error gap-2"
+                        onClick={() => handleApprovalAction("reject")}
+                    >
+                        <X className="w-4 h-4" />
+                        Reject
                     </button>
                 )}
             </div>

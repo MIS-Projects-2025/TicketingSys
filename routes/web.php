@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DemoController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -15,6 +16,7 @@ require __DIR__ . '/general.php';
 // Ticketing routes
 require __DIR__ . '/ticketing.php';
 Route::get("/demo", [DemoController::class, 'index'])->name('demo');
+// In routes/api.php
 
 Route::fallback(function () {
     return Inertia::render('404');

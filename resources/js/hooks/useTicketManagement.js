@@ -297,6 +297,8 @@ export function useTicketManagement() {
                 disapprove: "DISAPPROVED",
                 resubmit: "OPEN",
                 cancel: "CANCELLED",
+                acknowledge: "ACKNOWLEDGED",
+                reject: "REJECTED",
             };
 
             // Actions that require remarks
@@ -305,6 +307,7 @@ export function useTicketManagement() {
                 "assess_return",
                 "cancel",
                 "resubmit",
+                "reject",
             ];
 
             // Handle remarks requirement
@@ -412,7 +415,7 @@ export function useTicketManagement() {
     );
     const handleAssignment = useCallback(
         ({ assignedTo, remark = "" }) => {
-            if (!emp_data?.EMPLOYID) {
+            if (!emp_data?.emp_id) {
                 setUiState((prev) => ({
                     ...prev,
                     status: "error",

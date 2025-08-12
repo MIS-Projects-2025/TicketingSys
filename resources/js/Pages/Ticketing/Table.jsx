@@ -31,6 +31,7 @@ const TICKET_STATUS = {
     APPROVED: "APPROVED",
     RETURNED: "RETURNED",
     PENDING_OD_APPROVAL: "PENDING_OD_APPROVAL",
+    ASSIGNED: "ASSIGNED",
 };
 
 const PRIORITY_LEVELS = {
@@ -89,6 +90,13 @@ const getActionConfig = (ticket, userAccountType, empData) => {
     const isDeptHead = hasRole(userAccountType, ACCOUNT_TYPES.DEPARTMENT_HEAD);
     const isOD = hasRole(userAccountType, ACCOUNT_TYPES.OD);
     const isRequestor = ticket.EMPLOYEE_ID === empData?.emp_id;
+    console.log(
+        isProgrammer,
+        empData,
+        ticket.STATUS,
+        TICKET_STATUS.ASSIGNED,
+        ticket.ASSIGNED_TO
+    );
 
     if (isMIS) {
         if (ticket.STATUS === TICKET_STATUS.APPROVED) {
@@ -136,7 +144,20 @@ const getActionConfig = (ticket, userAccountType, empData) => {
             icon: ACTION_ICONS.assess,
         };
     }
-
+    if (
+        isProgrammer &&
+        ticket.STATUS === TICKET_STATUS.ASSIGNED &&
+        ticket.ASSIGNED_TO == empData?.emp_id
+    ) {
+        return {
+            label: "Acknowledge",
+            className: "btn btn-outline btn-info",
+            formState: "acknowledging",
+            actionType: ACTION_TYPES.ACKNOWLEDGE,
+            priority: PRIORITY_LEVELS.HIGH,
+            icon: ACTION_ICONS.acknowledge,
+        };
+    }
     if (
         isDeptHead &&
         !isOD &&

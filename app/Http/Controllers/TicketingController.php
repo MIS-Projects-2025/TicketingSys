@@ -182,7 +182,7 @@ class TicketingController extends Controller
     // Show specific ticket
     public function show($hash): Response
     {
-        $empData = session('emp_data');
+
         $decodedData = base64_decode($hash);
         $parts = explode(':', $decodedData);
 
@@ -300,14 +300,17 @@ class TicketingController extends Controller
         return Inertia::render('Ticketing/Create', [
             'formState' => $formState,
             'userAccountType' => $userAccountType,
-            'ticket' => $ticket, // Now contains processed approval names
+            'ticket' => $ticket,
             'childTickets' => $childTickets,
             'attachments' => $attachments,
             'remarks' => $remarks,
             'history' => $history,
             'progList' => $progList,
             'ticketOptions' => $ticketOptions,
-
+            'updateStatusUrl' => route('tickets.updateStatus', ':hash'),
+            'addTicketUrl'     => route('tickets.add'),
+            'assignTicketUrl' => route('ticket-assign', ':hash'),
+            'ticketShowUrl' => route('tickets.show', ':hash'),
             // No need to send masterlist anymore!
         ]);
     }
@@ -452,7 +455,7 @@ class TicketingController extends Controller
         $updatedBy = $validated['updated_by'];
         $role = strtoupper($validated['role']);
         $now = now();
-        dd("updated by" . $updatedBy, $newStatus, $role, $now, $ticketId, $oldStatus, $currentTicket->PROJECT_NAME, $currentTicket->DETAILS, $currentTicket->TYPE_OF_REQUEST);
+        // dd("updated by" . $updatedBy, $newStatus, $role, $now, $ticketId, $oldStatus, $currentTicket->PROJECT_NAME, $currentTicket->DETAILS, $currentTicket->TYPE_OF_REQUEST);
         $actionFields = [];
 
         switch ($role) {
@@ -538,7 +541,7 @@ class TicketingController extends Controller
         if ($updatingDetails) {
             $successMessage = 'Ticket details and status updated successfully!';
         }
-        return redirect('/tickets')->with('success', $successMessage);
+        return redirect()->route('tickets-table')->with('success', $successMessage);
     }
     // Assign ticket
     public function assignTicket(Request $request, $hash)

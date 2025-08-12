@@ -18,24 +18,26 @@ export function getAvailableActions({
         canApproveDH:
             formState === "approving" &&
             userAccountType === "DEPARTMENT_HEAD" &&
+            !userAccountType.includes("OD") &&
             typeOfRequest === "request_form" &&
             remarksState !== "show",
+
         canApproveOD:
             formState === "approving" &&
-            (userAccountType.includes("OD") ||
-                userAccountType.includes("DEPARTMENT_HEAD")) &&
+            userAccountType.includes("OD") &&
             typeOfRequest === "request_form" &&
             remarksState !== "show",
+
         canDisapproveDH:
             formState === "approving" &&
             userAccountType === "DEPARTMENT_HEAD" &&
+            !userAccountType.includes("OD") &&
             typeOfRequest === "request_form" &&
             remarksState !== "show",
 
         canDisapproveOD:
             formState === "approving" &&
-            (userAccountType.includes("OD") ||
-                userAccountType.includes("DEPARTMENT_HEAD")) &&
+            userAccountType.includes("OD") &&
             typeOfRequest === "request_form" &&
             remarksState !== "show",
 

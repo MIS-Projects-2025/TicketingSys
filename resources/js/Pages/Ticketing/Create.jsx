@@ -21,6 +21,7 @@ const Create = () => {
         ticketOptions = [],
         remarks = [],
         history = [],
+        ticketShowUrl,
         emp_data,
     } = usePage().props;
     console.log(usePage().props);
@@ -91,6 +92,7 @@ const Create = () => {
 
     const ticketTypeDisplay = getTicketTypeDisplay();
     const currentTicketId = getTicketIdFromUrl();
+    console.log(currentTicketId);
 
     // Centralized action permissions
     const actions = getAvailableActions({
@@ -262,14 +264,14 @@ const Create = () => {
                                             <span>Ticket ID</span>
                                         </label>
                                     )}
-
                                     {formData.ticket_id &&
                                         formData.ticket_id !==
                                             currentTicketId && (
                                             <a
-                                                href={`/tickets/${btoa(
-                                                    formData.ticket_id
-                                                )}`}
+                                                href={ticketShowUrl.replace(
+                                                    ":hash",
+                                                    btoa(formData.ticket_id)
+                                                )}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="btn btn-outline btn-primary px-4"
@@ -448,6 +450,7 @@ const Create = () => {
                 childTickets={childTickets}
                 getStatusBadgeClass={getStatusBadgeClass}
                 formatDate={formatDate}
+                ticketShowUrl={ticketShowUrl}
             />
         </AuthenticatedLayout>
     );

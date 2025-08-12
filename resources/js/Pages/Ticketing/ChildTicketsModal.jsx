@@ -8,6 +8,7 @@ const ChildTicketsModal = ({
     childTickets = [],
     getStatusBadgeClass,
     formatDate,
+    ticketShowUrl,
 }) => {
     if (!open) return null;
 
@@ -41,7 +42,7 @@ const ChildTicketsModal = ({
         ),
         actions: (
             <a
-                href={`/tickets/${btoa(row.TICKET_ID)}`}
+                href={ticketShowUrl.replace(":hash", btoa(row.TICKET_ID))}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-xs btn-outline btn-primary"

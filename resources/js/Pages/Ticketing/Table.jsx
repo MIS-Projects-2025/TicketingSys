@@ -137,7 +137,12 @@ const getActionConfig = (ticket, userAccountType, empData) => {
         };
     }
 
-    if (isDeptHead && ticket.STATUS === TICKET_STATUS.ASSESSED) {
+    if (
+        isDeptHead &&
+        !isOD &&
+        ticket.STATUS === TICKET_STATUS.ASSESSED &&
+        ticket.TYPE_OF_REQUEST === "request_form"
+    ) {
         return {
             label: "Approve",
             className: "btn btn-outline btn-success",
@@ -174,7 +179,7 @@ const getActionConfig = (ticket, userAccountType, empData) => {
         label: "View",
         className: isRequestor
             ? "btn btn-outline btn-info"
-            : "btn btn-outline btn-neutral",
+            : "btn btn-outline btn-neutral-content",
         formState: "viewing",
         actionType: ACTION_TYPES.VIEW,
         priority: PRIORITY_LEVELS.LOW,

@@ -2,7 +2,15 @@ import { useState, useCallback } from "react";
 import { router, usePage } from "@inertiajs/react";
 
 export function useTicketManagement() {
-    const { emp_data, progList = [], ticketProjects = {} } = usePage().props;
+    const {
+        emp_data,
+        progList = [],
+        ticketProjects = {},
+        updateStatusUrl,
+        addTicketUrl,
+        assignTicketUrl,
+        ticketShowUrl,
+    } = usePage().props;
 
     // ========================================
     // STATE MANAGEMENT (Grouped by purpose)
@@ -225,7 +233,7 @@ export function useTicketManagement() {
                 submitData.append("attachments[]", file);
             });
 
-            router.post("/add-ticket", submitData, {
+            router.post(addTicketUrl, submitData, {
                 onSuccess: () => {
                     setUiState((prev) => ({
                         ...prev,
@@ -353,9 +361,8 @@ export function useTicketManagement() {
             fileState.selectedFiles.forEach((file) => {
                 submitData.append("attachments[]", file);
             });
-
             router.post(
-                `/tickets/update-status/${btoa(formData.ticket_id)}`,
+                updateStatusUrl.replace(":hash", btoa(formData.ticket_id)),
                 submitData,
                 {
                     forceFormData: true,
@@ -421,7 +428,7 @@ export function useTicketManagement() {
             }));
 
             router.put(
-                `/assign-ticket/${btoa(formData.ticket_id)}`,
+                assignTicketUrl.replace(":hash", btoa(formData.ticket_id)),
                 {
                     assigned_to: assignedTo,
                     mis_action_by: emp_data.emp_id,
@@ -511,16 +518,29 @@ export function useTicketManagement() {
 
     const getTicketIdFromUrl = useCallback(() => {
         const path = window.location.pathname;
-        const match = path.match(/^\/tickets\/([^/]+)/);
-        if (!match) return null;
+        console.log("Current path:", path);
+
+        // Extract just the pathname part from ticketShowUrl (strip protocol+host)
+        const url = new URL(ticketShowUrl.replace(":hash", "dummyhash")); // replace :hash just to make valid URL
+        const prefix = url.pathname.replace("dummyhash", "");
+
+        console.log("Prefix:", prefix);
+
+        if (!path.startsWith(prefix)) return null;
+
+        const encodedHash = path.slice(prefix.length).split("/")[0];
+        console.log("Encoded hash:", encodedHash);
+        if (!encodedHash) return null;
+
         try {
-            const decoded = atob(match[1]);
+            const decoded = atob(encodedHash);
             const parts = decoded.split(":");
             return parts[0];
         } catch (e) {
+            console.error("Error decoding base64:", e);
             return null;
         }
-    }, []);
+    }, [ticketShowUrl]);
 
     // ========================================
     // COMPUTED VALUES

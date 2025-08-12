@@ -322,7 +322,7 @@ export function useTicketManagement() {
 
             const submitData = new FormData();
             submitData.append("status", newStatus);
-            submitData.append("updated_by", emp_data.EMPLOYID);
+            submitData.append("updated_by", emp_data.emp_id);
             submitData.append("remark", formData.remarks || "");
             // Always extract "OD" if it's in the list
             const roles = uiState.userAccountType.split(",");
@@ -374,10 +374,8 @@ export function useTicketManagement() {
                             selectedFiles: [],
                         }));
 
-                        // If resubmitting was successful, you might want to refresh the page
-                        // or redirect to show the updated ticket
                         if (finalAction === "resubmit") {
-                            window.location.reload(); // or router.visit to refresh data
+                            window.location.reload();
                         }
                     },
                     onError: (errors) => {
@@ -426,7 +424,7 @@ export function useTicketManagement() {
                 `/assign-ticket/${btoa(formData.ticket_id)}`,
                 {
                     assigned_to: assignedTo,
-                    mis_action_by: emp_data.EMPLOYID,
+                    mis_action_by: emp_data.emp_id,
                     remark: remark,
                 },
                 {

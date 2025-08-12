@@ -295,11 +295,7 @@ class TicketingController extends Controller
         WHERE DEPARTMENT = 'MIS' AND LOWER(JOB_TITLE) LIKE '%programmer%' AND ACCSTATUS != 2
     ");
 
-        // Get current user employee data for context
-        $emp_data = DB::connection('masterlist')->selectOne("
-        SELECT * FROM employee_masterlist 
-        WHERE EMPLOYID = ?
-    ", [$empData['emp_id'] ?? '']);
+
 
         return Inertia::render('Ticketing/Create', [
             'formState' => $formState,
@@ -311,7 +307,7 @@ class TicketingController extends Controller
             'history' => $history,
             'progList' => $progList,
             'ticketOptions' => $ticketOptions,
-            'emp_data' => $emp_data,
+
             // No need to send masterlist anymore!
         ]);
     }
@@ -456,7 +452,7 @@ class TicketingController extends Controller
         $updatedBy = $validated['updated_by'];
         $role = strtoupper($validated['role']);
         $now = now();
-
+        dd("updated by" . $updatedBy, $newStatus, $role, $now, $ticketId, $oldStatus, $currentTicket->PROJECT_NAME, $currentTicket->DETAILS, $currentTicket->TYPE_OF_REQUEST);
         $actionFields = [];
 
         switch ($role) {

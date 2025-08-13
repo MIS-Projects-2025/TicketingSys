@@ -1,7 +1,7 @@
 import Dropdown from "@/Components/sidebar/Dropdown";
 import SidebarLink from "@/Components/sidebar/SidebarLink";
 import { usePage } from "@inertiajs/react";
-
+import { LayoutDashboard, TicketPlus, Ticket } from "lucide-react";
 export default function NavLinks() {
     const { emp_data } = usePage().props;
     return (
@@ -9,68 +9,22 @@ export default function NavLinks() {
             className="flex flex-col flex-grow space-y-1 overflow-y-auto"
             style={{ scrollbarWidth: "none" }}
         >
-            {/* <SidebarLink
+            <SidebarLink
                 href={route("dashboard")}
                 label="Dashboard"
-                icon={
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth="1.5"
-                        stroke="currentColor"
-                        className="w-5 h-5"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"
-                        />
-                    </svg>
-                }
-                notifications={5}
-            /> */}
+                icon={<LayoutDashboard className="w-5 h-5" />}
+            />
+
             <SidebarLink
                 href={route("tickets-table")}
                 label="Ticket List"
-                icon={
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth="1.5"
-                        stroke="currentColor"
-                        className="w-5 h-5"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"
-                        />
-                    </svg>
-                }
+                icon={<Ticket className="w-5 h-5" />}
             />
+
             <SidebarLink
                 href={route("tickets")}
                 label="Generate Ticket"
-                icon={
-                    // Ticket icon (FontAwesome style)
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth="1.5"
-                        stroke="currentColor"
-                        className="w-5 h-5"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M4.5 4.5h15v2.25a1.5 1.5 0 010 3V16.5a1.5 1.5 0 010 3V19.5h-15v-2.25a1.5 1.5 0 010-3V7.5a1.5 1.5 0 010-3V4.5z"
-                        />
-                        <circle cx="12" cy="12" r="1.5" />
-                    </svg>
-                }
+                icon={<TicketPlus className="w-5 h-5" />}
             />
 
             {/* <Dropdown

@@ -55,6 +55,7 @@ class TicketingController extends Controller
         return Inertia::render('Ticketing/Create', [
             'ticketOptions' => $ticketOptions,
             'ticketProjects' => $ticketProjectMap,
+            'addTicketUrl'    => route('tickets.add'),
             'userAccountType' => $this->getUserAccountType($empData)
         ]);
     }
@@ -119,8 +120,7 @@ class TicketingController extends Controller
         if ($request->hasFile('attachments') && $ticketId) {
             $this->handleAttachments($request->file('attachments'), $ticketId, $validated['employee_id']);
         }
-
-        return redirect('/tickets')->with('success', 'Ticket created successfully! Ticket ID: ' . $ticketId);
+        return redirect()->route('tickets-table')->with('success', 'Ticket created successfully! Ticket ID: ' . $ticketId);
     }
     public function createChildTicket(Request $request, $parentTicketId)
     {
@@ -328,12 +328,19 @@ class TicketingController extends Controller
     WHERE (APPROVER2 = ? OR APPROVER3 = ?) AND ACCSTATUS = 1
 ", [$empData['emp_id'], $empData['emp_id']]);
 
+        $supApproverIds = DB::connection('masterlist')->select("
+    SELECT EMPLOYID FROM employee_masterlist 
+    WHERE APPROVER1 = ? AND ACCSTATUS = 1
+", [$empData['emp_id']]);
 
         // Convert to flat array
         $odEmployeeIds = array_map(function ($row) {
             return $row->EMPLOYID;
         }, $odApproverIds);
 
+        $supEmployeeIds = array_map(function ($row) {
+            return $row->EMPLOYID;
+        }, $supApproverIds);
         // Base query for tickets
         $ticketsQuery = "
         SELECT * FROM tickets 
@@ -357,17 +364,26 @@ class TicketingController extends Controller
 
         // )";
         //     }
-
-
+        if ($this->isSupervisor($empData)) {
+            if (!empty($supEmployeeIds)) {
+                $idList = implode(",", array_map('intval', $supEmployeeIds));
+                $filters[] = "(
+            TYPE_OF_REQUEST != 'request_form' 
+      AND EMPLOYEE_ID IN ({$idList})
+           
+        )";
+            }
+        }
         // OD filter — ❌ EXCLUDE adjustment/enhancement
         if ($this->isODAccount($empData)) {
+
             $filters[] = "(
             TYPE_OF_REQUEST NOT IN ('adjustment', 'enhancement') 
       
            
         )";
         }
-        // dd($odEmployeeIds);
+        // dd($supEmployeeIds);
         if ($this->isDepartmentHead($empData)) {
             if ($this->isODAccount($empData)) {
                 // OD + DH — only show records for employees where OD is both Approver1 and Approver2
@@ -434,10 +450,10 @@ class TicketingController extends Controller
         $ticketId = base64_decode($hash);
 
         $validated = $request->validate([
-            'status' => 'required|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_OD_APPROVAL,APPROVED,ASSIGNED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED,ACKNOWLEDGED,REJECT',
+            'status' => 'required|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_DH_APPROVAL,PENDING_OD_APPROVAL,APPROVED,ASSIGNED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED,ACKNOWLEDGED,REJECT',
             'remark' => 'nullable|string',
             'updated_by' => 'required|string|max:100',
-            'role' => 'required|string|in:PROGRAMMER,DEPARTMENT_HEAD,OD,REQUESTOR',
+            'role' => 'required|string|in:PROGRAMMER,DEPARTMENT_HEAD,OD,REQUESTOR,SUPERVISOR',
             'attachments.*' => 'file|max:10240', // 10MB limit per file
 
             // Additional fields for resubmitting/updating ticket details
@@ -446,7 +462,7 @@ class TicketingController extends Controller
             'type_of_request' => 'nullable|string|in:request_form,testing_form,adjustment_form,enhancement_form',
         ]);
 
-        $currentTicket = DB::selectOne('SELECT STATUS, PROJECT_NAME, DETAILS, TYPE_OF_REQUEST FROM tickets WHERE TICKET_ID = ?', [$ticketId]);
+        $currentTicket = DB::selectOne('SELECT STATUS, PROJECT_NAME, DETAILS, TYPE_OF_REQUEST, ASSIGNED_TO FROM tickets WHERE TICKET_ID = ?', [$ticketId]);
         if (!$currentTicket) {
             abort(404, 'Ticket not found');
         }
@@ -456,16 +472,32 @@ class TicketingController extends Controller
         $updatedBy = $validated['updated_by'];
         $role = strtoupper($validated['role']);
         $now = now();
-        // dd("updated by" . $updatedBy, $newStatus, $role, $now, $ticketId, $oldStatus, $currentTicket->PROJECT_NAME, $currentTicket->DETAILS, $currentTicket->TYPE_OF_REQUEST);
-        $actionFields = [];
 
+        $actionFields = [];
+        // dd($role, $oldStatus, $newStatus, $updatedBy, $now);
         switch ($role) {
             case 'PROGRAMMER':
-                $actionFields = [
-                    'prog_action_by' => "{$updatedBy} ({$newStatus})",
-                    'prog_action_at' => $now,
-                ];
+                // Handle acknowledgment specifically for ASSIGNED -> ACKNOWLEDGED status change
+                if ($oldStatus === 'ASSIGNED' && $newStatus === 'ACKNOWLEDGED') {
+                    $actionFields = [
+                        'prog_action_by' => "{$updatedBy} ({$newStatus})",
+                        'prog_action_at' => $now,
+                        'acknowledged_by' => $updatedBy,
+                        'acknowledged_at' => $now,
+                    ];
+                } else {
+                    // Regular programmer action
+                    $actionFields = [
+                        'prog_action_by' => "{$updatedBy} ({$newStatus})",
+                        'prog_action_at' => $now,
+                    ];
+                }
                 break;
+            case 'SUPERVISOR':
+                $actionFields = [
+                    'sup_action_by' => "{$updatedBy} ({$newStatus})",
+                    'sup_action_at' => $now,
+                ];
             case 'DEPARTMENT_HEAD':
                 $actionFields = [
                     'dm_action_by' => "{$updatedBy} ({$newStatus})",
@@ -524,6 +556,11 @@ class TicketingController extends Controller
             $remarkMessage = ($validated['remark'] ?? '') . ' (Ticket details updated during resubmission)';
         }
 
+        // Special message for acknowledgment
+        if ($oldStatus === 'ASSIGNED' && $newStatus === 'ACKNOWLEDGED' && $role === 'PROGRAMMER') {
+            $remarkMessage = $validated['remark'] ?? "Ticket acknowledged by programmer";
+        }
+
         $this->insertRemark(
             $ticketId,
             $updatedBy,
@@ -541,7 +578,10 @@ class TicketingController extends Controller
         $successMessage = 'Ticket status updated successfully!';
         if ($updatingDetails) {
             $successMessage = 'Ticket details and status updated successfully!';
+        } elseif ($oldStatus === 'ASSIGNED' && $newStatus === 'ACKNOWLEDGED') {
+            $successMessage = 'Ticket acknowledged successfully!';
         }
+
         return redirect()->route('tickets-table')->with('success', $successMessage);
     }
     // Assign ticket
@@ -843,7 +883,8 @@ class TicketingController extends Controller
         return !$this->isAssessedByProgrammer($empData) &&
             !$this->isDepartmentHead($empData) &&
             !$this->isODAccount($empData) &&
-            !$this->isMISSupervisor($empData);
+            !$this->isMISSupervisor($empData) &&
+            !$this->isSupervisor($empData);
     }
 
     private function isAssessedByProgrammer($empData)
@@ -870,7 +911,17 @@ class TicketingController extends Controller
 
         return $hasApprovalRights[0]->count > 0;
     }
+    private function isSupervisor($empData)
+    {
+        // Check if this user is set as approver1 for any employee
+        $userId = $empData['emp_id'];
+        $hasApprovalRights = DB::connection('masterlist')->select("
+        SELECT COUNT(*) as count FROM employee_masterlist 
+        WHERE (APPROVER1 = '{$userId}')
+    ");
 
+        return $hasApprovalRights[0]->count > 0;
+    }
     private function isODAccount($empData)
     {
         // Organizational Development account
@@ -895,7 +946,9 @@ class TicketingController extends Controller
         } elseif ($this->isAssessedByProgrammer($empData)) {
             $roles[] = 'PROGRAMMER';
         }
-
+        if ($this->isSupervisor($empData)) {
+            $roles[] = 'SUPERVISOR';
+        }
         if ($this->isODAccount($empData)) {
             $roles[] = 'OD';
         }

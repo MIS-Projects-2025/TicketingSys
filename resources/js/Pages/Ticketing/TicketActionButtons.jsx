@@ -263,6 +263,26 @@ const TicketActionButtons = ({
                         Return Ticket
                     </button>
                 )}
+                {actions.canApproveSup && (
+                    <button
+                        type="button"
+                        className="btn btn-outline btn-warning gap-2"
+                        onClick={() => handleApprovalAction("approve_sup")}
+                    >
+                        <ThumbsUp className="w-4 h-4" />
+                        Approve
+                    </button>
+                )}
+                {actions.canDisapproveSup && (
+                    <button
+                        type="button"
+                        className="btn btn-outline btn-error gap-2"
+                        onClick={() => handleApprovalAction("disapprove")}
+                    >
+                        <ThumbsDown className="w-4 h-4" />
+                        Disapprove
+                    </button>
+                )}
                 {actions.canApproveDH && (
                     <button
                         type="button"

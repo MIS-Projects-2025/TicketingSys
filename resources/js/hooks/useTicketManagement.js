@@ -289,16 +289,29 @@ export function useTicketManagement() {
 
     const handleApprovalAction = useCallback(
         (action) => {
-            const statusMap = {
-                assessed: "ASSESSED",
-                assess_return: "RETURNED",
-                approve_dh: "PENDING_OD_APPROVAL",
-                approve_od: "APPROVED",
-                disapprove: "DISAPPROVED",
-                resubmit: "OPEN",
-                cancel: "CANCELLED",
-                acknowledge: "ACKNOWLEDGED",
-                reject: "REJECTED",
+            // Check if this is a request form or not
+            const isRequestForm = formData.type_of_request == "request_form";
+
+            // Dynamic status mapping based on ticket type
+            const getStatusForAction = (actionType) => {
+                const baseStatusMap = {
+                    assessed: "ASSESSED",
+                    assess_return: "RETURNED",
+                    approve_sup: "PENDING_DH_APPROVAL",
+                    approve_od: "APPROVED",
+                    disapprove: "DISAPPROVED",
+                    resubmit: "OPEN",
+                    cancel: "CANCELLED",
+                    acknowledge: "ACKNOWLEDGED",
+                    reject: "REJECTED",
+                };
+
+                // Handle DH approval differently based on ticket type
+                if (actionType === "approve_dh") {
+                    return isRequestForm ? "PENDING_OD_APPROVAL" : "APPROVED";
+                }
+
+                return baseStatusMap[actionType];
             };
 
             // Actions that require remarks
@@ -324,7 +337,7 @@ export function useTicketManagement() {
             }
 
             const finalAction = action || uiState.pendingApprovalAction;
-            const newStatus = statusMap[finalAction];
+            const newStatus = getStatusForAction(finalAction);
 
             if (!newStatus) {
                 console.warn("Invalid action:", finalAction);
@@ -335,9 +348,20 @@ export function useTicketManagement() {
             submitData.append("status", newStatus);
             submitData.append("updated_by", emp_data.emp_id);
             submitData.append("remark", formData.remarks || "");
-            // Always extract "OD" if it's in the list
+
+            // Role logic - for non-request forms, don't prioritize OD
             const roles = uiState.userAccountType.split(",");
-            const roleToUse = roles.includes("OD") ? "OD" : roles[0];
+            let roleToUse;
+
+            if (isRequestForm) {
+                // For request forms, prioritize OD if available
+                roleToUse = roles.includes("OD") ? "OD" : roles[0];
+            } else {
+                // For non-request forms, use appropriate role based on approval flow
+                // Supervisor → DH → MIS Supervisor flow
+                roleToUse = roles[0]; // Use first available role
+            }
+
             submitData.append("role", roleToUse);
 
             // For resubmitting, include the updated ticket details
@@ -364,18 +388,32 @@ export function useTicketManagement() {
             fileState.selectedFiles.forEach((file) => {
                 submitData.append("attachments[]", file);
             });
+
             router.post(
                 updateStatusUrl.replace(":hash", btoa(formData.ticket_id)),
                 submitData,
                 {
                     forceFormData: true,
                     onSuccess: (page) => {
+                        let successMessage =
+                            page.props.flash?.success ||
+                            "Ticket updated successfully";
+
+                        // Customize success message based on action and ticket type
+                        if (finalAction === "approve_dh") {
+                            if (isRequestForm) {
+                                successMessage =
+                                    "Ticket approved by DH. Pending OD approval.";
+                            } else {
+                                successMessage =
+                                    "Ticket approved and completed.";
+                            }
+                        }
+
                         setUiState((prev) => ({
                             ...prev,
                             status: "success",
-                            message:
-                                page.props.flash?.success ||
-                                "Ticket updated successfully",
+                            message: successMessage,
                             remarksState: "hide",
                             pendingApprovalAction: "",
                         }));

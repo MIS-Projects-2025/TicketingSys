@@ -20,6 +20,7 @@ import {
 const ACCOUNT_TYPES = {
     MIS_SUPERVISOR: "MIS_SUPERVISOR",
     PROGRAMMER: "PROGRAMMER",
+    SUPERVISOR: "SUPERVISOR",
     DEPARTMENT_HEAD: "DEPARTMENT_HEAD",
     OD: "OD",
     REQUESTOR: "REQUESTOR",
@@ -31,7 +32,9 @@ const TICKET_STATUS = {
     APPROVED: "APPROVED",
     RETURNED: "RETURNED",
     PENDING_OD_APPROVAL: "PENDING_OD_APPROVAL",
+    PENDING_DH_APPROVAL: "PENDING_DH_APPROVAL",
     ASSIGNED: "ASSIGNED",
+    ACKNOWLEDGED: "ACKNOWLEDGED",
 };
 
 const PRIORITY_LEVELS = {
@@ -87,6 +90,7 @@ const handleAction = (ticket, formState, userAccountType) => {
 const getActionConfig = (ticket, userAccountType, empData) => {
     const isMIS = hasRole(userAccountType, ACCOUNT_TYPES.MIS_SUPERVISOR);
     const isProgrammer = hasRole(userAccountType, ACCOUNT_TYPES.PROGRAMMER);
+    const isSup = hasRole(userAccountType, ACCOUNT_TYPES.SUPERVISOR);
     const isDeptHead = hasRole(userAccountType, ACCOUNT_TYPES.DEPARTMENT_HEAD);
     const isOD = hasRole(userAccountType, ACCOUNT_TYPES.OD);
     const isRequestor = ticket.EMPLOYEE_ID === empData?.emp_id;
@@ -159,6 +163,20 @@ const getActionConfig = (ticket, userAccountType, empData) => {
         };
     }
     if (
+        isSup &&
+        ticket.TYPE_OF_REQUEST != "request_form" &&
+        ticket.STATUS === TICKET_STATUS.ASSESSED
+    ) {
+        return {
+            label: "Approve",
+            className: "btn btn-outline btn-success",
+            formState: "approving",
+            actionType: ACTION_TYPES.APPROVE,
+            priority: PRIORITY_LEVELS.HIGH,
+            icon: ACTION_ICONS.approve,
+        };
+    }
+    if (
         isDeptHead &&
         !isOD &&
         ticket.STATUS === TICKET_STATUS.ASSESSED &&
@@ -173,7 +191,21 @@ const getActionConfig = (ticket, userAccountType, empData) => {
             icon: ACTION_ICONS.approve,
         };
     }
-
+    if (
+        isDeptHead &&
+        !isOD &&
+        ticket.STATUS === TICKET_STATUS.PENDING_DH_APPROVAL &&
+        ticket.TYPE_OF_REQUEST != "request_form"
+    ) {
+        return {
+            label: "Approve",
+            className: "btn btn-outline btn-success",
+            formState: "approving",
+            actionType: ACTION_TYPES.APPROVE,
+            priority: PRIORITY_LEVELS.HIGH,
+            icon: ACTION_ICONS.approve,
+        };
+    }
     if (isOD && ticket.STATUS === TICKET_STATUS.PENDING_OD_APPROVAL) {
         return {
             label: "Approve",

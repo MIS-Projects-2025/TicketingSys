@@ -14,6 +14,7 @@ import {
     Line,
 } from "recharts";
 import { Head } from "@inertiajs/react";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 
 export default function DashboardIndex({ dashboardData }) {
     // Destructure the data passed from Laravel
@@ -41,7 +42,7 @@ export default function DashboardIndex({ dashboardData }) {
     };
 
     return (
-        <>
+        <AuthenticatedLayout>
             <Head title="Dashboard" />
 
             <div className="p-6 bg-base-100 min-h-screen">
@@ -415,6 +416,6 @@ export default function DashboardIndex({ dashboardData }) {
                     </div>
                 </div>
             </div>
-        </>
+        </AuthenticatedLayout>
     );
 }

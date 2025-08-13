@@ -675,6 +675,7 @@ class TicketingController extends Controller
             'OD_ACTION_BY',
             'APPROVED_BY',
             'ASSIGNED_TO',
+            'ACKNOWLEDGED_BY',
         ];
 
         foreach ($approvalFields as $field) {

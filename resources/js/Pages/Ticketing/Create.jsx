@@ -190,19 +190,23 @@ const Create = () => {
                                         />
                                         <span>Parent Ticket ID</span>
                                     </label>
-                                    <a
-                                        href={`/tickets/${btoa(
-                                            formData.parent_ticket_id
-                                        )}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="btn btn-outline btn-primary px-4"
-                                        style={{ height: "38px" }}
-                                        title="View Parent Ticket"
-                                    >
-                                        <View className="w-5 h-5 mr-1" />
-                                        View
-                                    </a>
+
+                                    {ticketShowUrl && (
+                                        <a
+                                            href={ticketShowUrl.replace(
+                                                ":hash",
+                                                btoa(formData.parent_ticket_id)
+                                            )}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="btn btn-outline btn-primary px-4 flex items-center"
+                                            style={{ height: "38px" }}
+                                            title="View Parent Ticket"
+                                        >
+                                            <View className="w-5 h-5 mr-1" />
+                                            View
+                                        </a>
+                                    )}
                                 </div>
                             )}
 
@@ -265,8 +269,9 @@ const Create = () => {
                                         </label>
                                     )}
                                     {formData.ticket_id &&
-                                        formData.ticket_id !==
-                                            currentTicketId && (
+                                        formState !== "create" &&
+                                        String(formData.ticket_id) !==
+                                            String(currentTicketId) && (
                                             <a
                                                 href={ticketShowUrl.replace(
                                                     ":hash",

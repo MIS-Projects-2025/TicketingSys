@@ -520,22 +520,28 @@ export function useTicketManagement() {
     }, []);
 
     const getTicketIdFromUrl = useCallback(() => {
+        // Early return if we don't have ticketShowUrl (like on create page)
+        if (!ticketShowUrl) {
+            console.log("No ticketShowUrl available (likely on create page)");
+            return null;
+        }
+
         const path = window.location.pathname;
         console.log("Current path:", path);
 
-        // Extract just the pathname part from ticketShowUrl (strip protocol+host)
-        const url = new URL(ticketShowUrl.replace(":hash", "dummyhash")); // replace :hash just to make valid URL
-        const prefix = url.pathname.replace("dummyhash", "");
-
-        console.log("Prefix:", prefix);
-
-        if (!path.startsWith(prefix)) return null;
-
-        const encodedHash = path.slice(prefix.length).split("/")[0];
-        console.log("Encoded hash:", encodedHash);
-        if (!encodedHash) return null;
-
         try {
+            // Extract just the pathname part from ticketShowUrl (strip protocol+host)
+            const url = new URL(ticketShowUrl.replace(":hash", "dummyhash")); // replace :hash just to make valid URL
+            const prefix = url.pathname.replace("dummyhash", "");
+
+            console.log("Prefix:", prefix);
+
+            if (!path.startsWith(prefix)) return null;
+
+            const encodedHash = path.slice(prefix.length).split("/")[0];
+            console.log("Encoded hash:", encodedHash);
+            if (!encodedHash) return null;
+
             const decoded = atob(encodedHash);
             const parts = decoded.split(":");
             return parts[0];
@@ -544,7 +550,6 @@ export function useTicketManagement() {
             return null;
         }
     }, [ticketShowUrl]);
-
     // ========================================
     // COMPUTED VALUES
     // ========================================

@@ -158,6 +158,22 @@ const TicketActionButtons = ({
                                 </span>
                             </div>
                         )}
+                        {ticketData.ACKNOWLEDGED_BY && (
+                            <div className="flex flex-col">
+                                <span className="text-sm font-medium text-primary">
+                                    Acknowledged by:
+                                </span>
+                                <span className="text-sm">
+                                    {getDisplayName("ACKNOWLEDGED_BY")}
+                                </span>
+                                <span className="text-xs text-base-content/60 flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    {new Date(
+                                        ticketData.ACKNOWLEDGED_AT
+                                    ).toLocaleString()}
+                                </span>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -224,20 +240,7 @@ const TicketActionButtons = ({
                     </div>
                 </div>
             )}
-            {ticketData.ACKNOWLEDGED_BY && (
-                <div className="flex flex-col">
-                    <span className="text-sm font-medium text-primary">
-                        Acknowledged by:
-                    </span>
-                    <span className="text-sm">
-                        {getDisplayName("ACKNOWLEDGED_BY")}
-                    </span>
-                    <span className="text-xs text-base-content/60 flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {new Date(ticketData.ACKNOWLEDGED_AT).toLocaleString()}
-                    </span>
-                </div>
-            )}
+
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-2 mt-4">
                 {actions.canAssessTicket && (

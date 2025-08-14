@@ -62,7 +62,9 @@ const TicketActionButtons = ({
                                     Assessed By:
                                 </span>
                                 <span className="text-sm">
-                                    {getDisplayName("PROG_ACTION_BY")}
+                                    {getDisplayName(
+                                        "PROG_ACTION_BY_EMPLOYEE_NAME"
+                                    )}
                                 </span>
                                 <span className="text-xs text-base-content/60 flex items-center gap-1">
                                     <Calendar className="w-3 h-3" />
@@ -134,7 +136,7 @@ const TicketActionButtons = ({
                                     Assigned To:
                                 </span>
                                 <span className="text-sm">
-                                    {getDisplayName("ASSIGNED_TO")}
+                                    {ticketData.ASSIGNED_TO_EMPLOYEE_NAME}
                                 </span>
                                 {ticketData.DATE_ASSIGNED && (
                                     <span className="text-xs text-base-content/60 flex items-center gap-1">
@@ -184,21 +186,25 @@ const TicketActionButtons = ({
                     <div className="flex flex-col md:flex-row gap-2 items-center w-full">
                         <div className="w-full md:w-5/12">
                             <Select
-                                value={
-                                    assignmentOptions.find(
-                                        (opt) =>
-                                            String(opt.value) ===
-                                            String(assignmentData.assignedTo)
-                                    ) || null
-                                }
-                                onChange={(option) =>
+                                value={assignmentOptions.filter((opt) =>
+                                    Array.isArray(assignmentData.assignedTo)
+                                        ? assignmentData.assignedTo.includes(
+                                              opt.value
+                                          )
+                                        : String(opt.value) ===
+                                          String(assignmentData.assignedTo)
+                                )}
+                                onChange={(options) =>
                                     handleAssignmentChange(
                                         "assignedTo",
-                                        option ? option.value : ""
+                                        options
+                                            ? options.map((o) => o.value)
+                                            : []
                                     )
                                 }
                                 options={assignmentOptions}
-                                placeholder="Select Assignee"
+                                placeholder="Select Assignee(s)"
+                                isMulti // 🔹 Enables multiple selection
                                 isClearable
                                 styles={customDarkStyles}
                                 menuPortalTarget={document.body}

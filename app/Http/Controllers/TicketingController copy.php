@@ -696,21 +696,19 @@ class TicketingController extends Controller
             'DM_ACTION_BY',
             'OD_ACTION_BY',
             'APPROVED_BY',
-            'ASSIGNED_TO', // handle specially
+            'ASSIGNED_TO', // include special handling
         ];
 
         foreach ($approvalFields as $field) {
             if (!empty($ticket->$field)) {
 
                 if ($field === 'ASSIGNED_TO') {
-                    // Multiple IDs possible, comma or space separated
+                    // This can be multiple IDs separated by commas
                     $ids = $this->extractMultipleEmployeeIds($ticket->$field);
                     $employeeIds = array_merge($employeeIds, $ids);
-                    // dd($employeeIds);
                 } else {
-                    // Only get number before any parentheses
+                    // Only get number before parentheses
                     $employeeId = $this->extractEmployeeId($ticket->$field);
-                    // dd($employeeId);
                     if ($employeeId) {
                         $employeeIds[] = $employeeId;
                     }
@@ -722,32 +720,26 @@ class TicketingController extends Controller
         return array_values(array_unique($employeeIds));
     }
 
+    // For single approval fields: get only number before parentheses
+
     private function extractEmployeeId($approvalField)
     {
         if (!$approvalField) return null;
 
-        // Match digits that appear BEFORE an optional space and parentheses
-        if (preg_match('/^(\d+)\s*(?=\()/', $approvalField, $matches)) {
-            return $matches[1]; // number before parentheses
-        }
-
-        // Fallback: if no parentheses found, return first number
-        if (preg_match('/\d+/', $approvalField, $matches)) {
-            return $matches[0];
-        }
-
-        return null;
+        // Extract employee ID from strings like "1705(APPROVED)"
+        preg_match('/(\d+)/', $approvalField, $matches);
+        return $matches[1] ?? null;
     }
 
+    // For ASSIGNED_TO: get all numbers, possibly comma-separated
     private function extractMultipleEmployeeIds($assignedField)
     {
         if (!$assignedField) return [];
 
-        // Get all digit sequences from the string
+        // Find all numbers in the string
         preg_match_all('/\d+/', $assignedField, $matches);
         return $matches[0] ?? [];
     }
-
 
     // ADD: Helper method to process ticket approvals with employee names
     private function processTicketApprovals($ticket, $employees)
@@ -761,18 +753,13 @@ class TicketingController extends Controller
             'ASSIGNED_TO',
             'ACKNOWLEDGED_BY',
         ];
+        // dd($ticket->ASSIGNED_TO, $employees);
+
 
         foreach ($approvalFields as $field) {
             if (!empty($ticket->$field)) {
-
-                // Handle special case: ASSIGNED_TO can have multiple IDs
-                if ($field === 'ASSIGNED_TO') {
-                    $ids = $this->extractMultipleEmployeeIds($ticket->$field);
-                } else {
-                    // For other fields: only take ID before parentheses
-                    $id = $this->extractEmployeeId($ticket->$field);
-                    $ids = $id ? [$id] : [];
-                }
+                // Handle multiple IDs (comma separated)
+                $ids = array_map('trim', explode(',', $ticket->$field));
 
                 $names = [];
                 foreach ($ids as $id) {
@@ -790,6 +777,7 @@ class TicketingController extends Controller
 
         return $ticket;
     }
+
 
 
 

@@ -76,6 +76,7 @@ export function useTicketManagement() {
         ticket_level: "parent",
         assessed_by_prog: "",
         ticket_id: "",
+        testing_by: "",
     });
 
     // UI state
@@ -111,11 +112,7 @@ export function useTicketManagement() {
         (data = formData) => {
             if (!data.ticket_id) return "parent";
 
-            if (
-                data.ticket_id &&
-                (data.type_of_request === "adjustment_form" ||
-                    data.type_of_request === "enhancement_form")
-            ) {
+            if (data.ticket_id && data.type_of_request != "1") {
                 return "child";
             }
 
@@ -157,19 +154,19 @@ export function useTicketManagement() {
                 return {
                     isValid: false,
                     message:
-                        "Please select a parent ticket for adjustment/enhancement forms.",
+                        "Please select a parent ticket for Testing/Adjustment/Enhancement forms.",
                 };
             }
 
-            if (
-                !["adjustment_form", "enhancement_form"].includes(
-                    formData.type_of_request
-                )
-            ) {
+            // Check if request type is one of the child ticket types (2, 3, 4)
+            // HTML select returns string values, so check both string and numeric versions
+            const childTicketTypes = ["2", "3", "4", 2, 3, 4];
+
+            if (!childTicketTypes.includes(formData.type_of_request)) {
                 return {
                     isValid: false,
                     message:
-                        "Adjustment and Enhancement forms require a parent ticket.",
+                        "Testing, Adjustment and Enhancement forms require a parent ticket.",
                 };
             }
         }
@@ -302,6 +299,7 @@ export function useTicketManagement() {
                             ticket_level: "parent",
                             assessed_by_prog: "",
                             ticket_id: "",
+                            testing_by: "",
                         });
                         setFileState((prev) => ({
                             ...prev,
@@ -557,10 +555,25 @@ export function useTicketManagement() {
         if (ticketType === "child") {
             const parentTicketId = formData.ticket_id;
             const parentProjectName = ticketProjects[parentTicketId];
-            const requestTypeLabel =
-                formData.type_of_request === "adjustment_form"
-                    ? "Adjustment"
-                    : "Enhancement";
+
+            // Map request type codes to display labels (only for child ticket types: 2, 3, 4)
+            const getRequestTypeLabel = (typeCode) => {
+                const typeMap = {
+                    2: "Testing",
+                    3: "Adjustment",
+                    4: "Enhancement",
+                    // Handle numeric versions as fallback
+                    2: "Testing",
+                    3: "Adjustment",
+                    4: "Enhancement",
+                };
+
+                return typeMap[typeCode] || "Enhancement"; // Default fallback
+            };
+
+            const requestTypeLabel = getRequestTypeLabel(
+                formData.type_of_request
+            );
 
             return {
                 show: true,

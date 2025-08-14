@@ -23,6 +23,7 @@ const Create = () => {
         history = [],
         ticketShowUrl,
         emp_data,
+        employeeOptions = [],
     } = usePage().props;
     console.log(usePage().props);
 
@@ -79,6 +80,7 @@ const Create = () => {
                 prog_action_by: ticket.PROG_ACTION_BY,
                 dm_action_by: ticket.DM_ACTION_BY,
                 od_action_by: ticket.OD_ACTION_BY,
+                testing_by: ticket.TESTING_BY,
             });
             setExistingFiles(attachments || []);
         }
@@ -370,7 +372,80 @@ const Create = () => {
                                         <span>Type of Request</span>
                                     </label>
                                 </div>
-
+                                {requestType === "2" && (
+                                    <div className="w-full">
+                                        <label className="floating-label">
+                                            <Select
+                                                value={employeeOptions.filter(
+                                                    (opt) => {
+                                                        if (
+                                                            Array.isArray(
+                                                                formData.testing_by
+                                                            )
+                                                        ) {
+                                                            return formData.testing_by.includes(
+                                                                String(
+                                                                    opt.value
+                                                                )
+                                                            );
+                                                        } else if (
+                                                            formData.testing_by
+                                                        ) {
+                                                            const testedByIds =
+                                                                formData.testing_by
+                                                                    .split(",")
+                                                                    .map((id) =>
+                                                                        id.trim()
+                                                                    );
+                                                            return testedByIds.includes(
+                                                                String(
+                                                                    opt.value
+                                                                )
+                                                            );
+                                                        }
+                                                        return false;
+                                                    }
+                                                )}
+                                                onChange={(selectedOptions) => {
+                                                    if (selectedOptions) {
+                                                        if (
+                                                            Array.isArray(
+                                                                selectedOptions
+                                                            )
+                                                        ) {
+                                                            const values =
+                                                                selectedOptions.map(
+                                                                    (option) =>
+                                                                        option.value
+                                                                );
+                                                            handleFormChange(
+                                                                "testing_by",
+                                                                values.join(",")
+                                                            );
+                                                        } else {
+                                                            handleFormChange(
+                                                                "testing_by",
+                                                                selectedOptions.value
+                                                            );
+                                                        }
+                                                    } else {
+                                                        handleFormChange(
+                                                            "testing_by",
+                                                            ""
+                                                        );
+                                                    }
+                                                }}
+                                                options={employeeOptions}
+                                                placeholder="Select Tester"
+                                                isClearable
+                                                styles={customDarkStyles}
+                                                menuPortalTarget={document.body}
+                                                menuPosition="fixed"
+                                            />
+                                            <span>Assign Tester</span>
+                                        </label>
+                                    </div>
+                                )}
                                 {/* Details Section */}
                                 <div className="grid grid-cols-1 gap-6">
                                     <label className="floating-label">

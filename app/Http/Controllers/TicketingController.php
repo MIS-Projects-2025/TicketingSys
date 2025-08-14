@@ -25,9 +25,11 @@ class TicketingController extends Controller
     }
 
     // Show Ticket Form
+    // PHP Controller Code
     public function showTicketForm(): Response
     {
         $empData = session('emp_data');
+
         $ticketOptions = DB::select('
         SELECT 
             TICKET_ID as value,
@@ -53,14 +55,25 @@ class TicketingController extends Controller
             $ticketProjectMap[$ticket->TICKET_ID] = $ticket->PROJECT_NAME;
         }
 
+        // Get employee data for the Select options
+        $employeeOptions = DB::connection('masterlist')->select("
+        SELECT 
+            EMPLOYID as value,
+            CONCAT(EMPLOYID, ' - ', EMPNAME) as label
+        FROM employee_masterlist 
+        WHERE ACCSTATUS = 1 
+        AND EMPLOYID != 0
+        ORDER BY EMPNAME ASC
+    ");
+        // dd($employeeOptions);
         return Inertia::render('Ticketing/Create', [
             'ticketOptions' => $ticketOptions,
             'ticketProjects' => $ticketProjectMap,
-            'addTicketUrl'    => route('tickets.add'),
+            'employeeOptions' => $employeeOptions, // Add this line
+            'addTicketUrl' => route('tickets.add'),
             'userAccountType' => $this->getUserAccountType($empData)
         ]);
     }
-
     // Save Ticket
     public function saveTicket(Request $request)
     {
@@ -78,14 +91,22 @@ class TicketingController extends Controller
             $ticketId = $this->generateTicketNumber();
             $ticketLevel = 'parent';
         }
+        // Determine status based on testing_by field
+        $status = '1'; // Default status
+        if (!empty($validated['testing_by'])) {
+            $status = '13';
+        } elseif (isset($validated['status'])) {
+            $status = strtoupper($validated['status']);
+        }
+        // dd($ticketId, $validated['testing_by'], $validated['employee_id'], $validated['employee_name'], $validated['department'], $validated['type_of_request'], $validated['project_name'], $validated['details'], strtoupper($validated['status'] ?? 'OPEN'), $ticketLevel, $validated['parent_ticket_id'] ?? null, $now, $now);
 
         // Insert ticket
         DB::insert('
         INSERT INTO tickets (
             TICKET_ID, EMPLOYEE_ID, EMPNAME, DEPARTMENT, TYPE_OF_REQUEST, 
-            PROJECT_NAME, DETAILS, STATUS, TICKET_LEVEL, PARENT_TICKET_ID, 
+            PROJECT_NAME, DETAILS, STATUS, TICKET_LEVEL, PARENT_TICKET_ID,TESTING_BY, 
             CREATED_AT, UPDATED_AT
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ', [
             $ticketId,
             $validated['employee_id'],
@@ -94,13 +115,13 @@ class TicketingController extends Controller
             $validated['type_of_request'],
             $validated['project_name'],
             $validated['details'],
-            strtoupper($validated['status'] ?? 'OPEN'),
+            $status,
             $ticketLevel,
             $validated['parent_ticket_id'] ?? null,
+            $validated['testing_by'],
             $now,
             $now
         ]);
-
         // Log ticket creation in history
         $this->logTicketHistory($ticketId, 'CREATED', null, null, null, $validated['employee_id']);
 
@@ -358,7 +379,7 @@ class TicketingController extends Controller
         if ($this->isRequestorAccount($empData)) {
             $filters[] = "(
         EMPLOYEE_ID = '{$userId}' 
-        AND STATUS IN ('1', '7','8')
+    OR TESTING_BY = '{$userId}'
     )";
         }
 
@@ -933,6 +954,7 @@ class TicketingController extends Controller
             'od_action_at' => 'nullable|date',
             'assigned_to' => 'nullable|string|max:100',
             'date_assigned' => 'nullable|date',
+            'testing_by' => 'required|string|max:100',
         ];
     }
     /**

@@ -14,6 +14,7 @@ import {
     ClipboardCheck,
     ThumbsUp,
     User2,
+    Airplay,
 } from "lucide-react";
 
 // Constants
@@ -40,6 +41,7 @@ const TICKET_STATUS = {
     CANCELLED: 10,
     IN_PROGRESS: 11,
     ON_HOLD: 12,
+    FOR_TESTING: 13,
 };
 
 // Status display mapping
@@ -56,6 +58,7 @@ const STATUS_DISPLAY = {
     [TICKET_STATUS.CANCELLED]: "Cancelled",
     [TICKET_STATUS.IN_PROGRESS]: "In Progress",
     [TICKET_STATUS.ON_HOLD]: "On Hold",
+    [TICKET_STATUS.FOR_TESTING]: "For Testing",
 };
 
 // Status color mapping
@@ -72,6 +75,7 @@ const STATUS_COLORS = {
     [TICKET_STATUS.CANCELLED]: "neutral",
     [TICKET_STATUS.IN_PROGRESS]: "info",
     [TICKET_STATUS.ON_HOLD]: "warning",
+    [TICKET_STATUS.FOR_TESTING]: "info",
 };
 
 const PRIORITY_LEVELS = {
@@ -88,6 +92,7 @@ const ACTION_TYPES = {
     VIEW: "view",
     RESUBMIT: "resubmit",
     ACKNOWLEDGE: "acknowledge",
+    TEST: "test",
 };
 
 // Filter types for StatCards
@@ -104,6 +109,7 @@ const ACTION_ICONS = {
     approve: ThumbsUp,
     view: Eye,
     acknowledge: UserCheck,
+    for_testing: Airplay, // New icon for "For Testing"
 };
 
 // Priority badge styles
@@ -145,7 +151,7 @@ const getActionConfig = (ticket, userAccountType, empData) => {
     const isDeptHead = hasRole(userAccountType, ACCOUNT_TYPES.DEPARTMENT_HEAD);
     const isOD = hasRole(userAccountType, ACCOUNT_TYPES.OD);
     const isRequestor = ticket.EMPLOYEE_ID === empData?.emp_id;
-
+    const isUser = empData?.emp_id;
     // Database stores numeric status values, so ensure we're comparing numbers
     const ticketStatus = parseInt(ticket.STATUS);
 
@@ -268,7 +274,20 @@ const getActionConfig = (ticket, userAccountType, empData) => {
             icon: ACTION_ICONS.assign,
         };
     }
-
+    // Requestor resubmit
+    if (
+        isUser == ticket.TESTING_BY &&
+        ticketStatus === TICKET_STATUS.FOR_TESTING
+    ) {
+        return {
+            label: "For Testing",
+            className: "btn btn-outline btn-success",
+            formState: "for_testing",
+            actionType: ACTION_TYPES.TEST,
+            priority: PRIORITY_LEVELS.HIGH,
+            icon: ACTION_ICONS.for_testing,
+        };
+    }
     // Default view action
     return {
         label: "View",

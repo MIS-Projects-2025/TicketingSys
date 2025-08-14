@@ -58,7 +58,7 @@ const TicketActionButtons = ({
                         {/* Assessed By */}
                         {ticketData.PROG_ACTION_BY && (
                             <div className="flex flex-col">
-                                <span className="text-sm font-medium text-warning">
+                                <span className="text-sm font-medium text-success">
                                     Assessed By:
                                 </span>
                                 <span className="text-sm">

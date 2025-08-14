@@ -235,13 +235,12 @@ const Create = () => {
 
                                 {/* Ticket ID Selection */}
                                 <div className="flex items-stretch gap-2 w-full">
-                                    {requestType !== "request_form" && (
+                                    {requestType !== "1" && (
                                         <label className="floating-label w-full">
                                             <Select
                                                 isDisabled={
                                                     !requestType ||
-                                                    requestType ===
-                                                        "request_form"
+                                                    requestType === "1"
                                                 }
                                                 value={
                                                     ticketOptions.find(
@@ -355,16 +354,16 @@ const Create = () => {
                                             <option value="">
                                                 Choose request type
                                             </option>
-                                            <option value="request_form">
+                                            <option value="1">
                                                 Request Form
                                             </option>
-                                            <option value="testing_form">
+                                            <option value="2">
                                                 Testing Form
                                             </option>
-                                            <option value="adjustment_form">
+                                            <option value="3">
                                                 Adjustment Form
                                             </option>
-                                            <option value="enhancement_form">
+                                            <option value="4">
                                                 Enhancement Form
                                             </option>
                                         </select>

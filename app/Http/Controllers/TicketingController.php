@@ -375,14 +375,14 @@ class TicketingController extends Controller
         //         }
         //     }
         // OD filter — ❌ EXCLUDE adjustment/enhancement
-        if ($this->isODAccount($empData)) {
+        // if ($this->isODAccount($empData)) {
 
-            $filters[] = "(
-            TYPE_OF_REQUEST NOT IN ('adjustment', 'enhancement') 
-      
-           
-        )";
-        }
+        //     $filters[] = "(
+        //     TYPE_OF_REQUEST NOT IN ('adjustment', 'enhancement') 
+
+
+        // )";
+        // }
         // dd($supEmployeeIds);
         if ($this->isDepartmentHead($empData)) {
             if ($this->isODAccount($empData)) {
@@ -390,8 +390,8 @@ class TicketingController extends Controller
                 if (!empty($odEmployeeIds)) {
                     $idList = implode(",", array_map('intval', $odEmployeeIds));
                     $filters[] = "(
-                TYPE_OF_REQUEST NOT IN ('adjustment', 'enhancement') 
-                AND EMPLOYEE_ID IN ({$idList})
+                TYPE_OF_REQUEST NOT IN ('3', '4') 
+                OR EMPLOYEE_ID IN ({$idList})
             )";
                 }
             } else {
@@ -399,8 +399,7 @@ class TicketingController extends Controller
                 if (!empty($odEmployeeIds)) {
                     $idList = implode(",", array_map('intval', $odEmployeeIds));
                     $filters[] = "(
-                TYPE_OF_REQUEST NOT IN ('adjustment', 'enhancement') 
-                AND EMPLOYEE_ID IN ({$idList})
+                 EMPLOYEE_ID IN ({$idList})
             )";
                 }
             }
@@ -460,7 +459,7 @@ class TicketingController extends Controller
             // Additional fields for resubmitting/updating ticket details
             'project_name' => 'nullable|string|max:255',
             'details' => 'nullable|string',
-            'type_of_request' => 'nullable|string|in:request_form,testing_form,adjustment_form,enhancement_form',
+            'type_of_request' => 'required|integer|in:1,2,3,4',
         ]);
 
         $currentTicket = DB::selectOne('SELECT STATUS, PROJECT_NAME, DETAILS, TYPE_OF_REQUEST, ASSIGNED_TO FROM tickets WHERE TICKET_ID = ?', [$ticketId]);
@@ -857,7 +856,7 @@ class TicketingController extends Controller
             'employee_id' => 'required|string|max:20',
             'employee_name' => 'required|string|max:250',
             'department' => 'required|string|max:100',
-            'type_of_request' => 'required|string|max:100',
+            'type_of_request' => 'required|integer|in:1,2,3,4',
             'project_name' => 'required|string|max:255',
             'details' => 'required|string',
             'status' => 'required|integer|in:1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16',

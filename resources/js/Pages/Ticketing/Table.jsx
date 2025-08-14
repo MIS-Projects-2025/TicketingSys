@@ -61,7 +61,7 @@ const STATUS_DISPLAY = {
 // Status color mapping
 const STATUS_COLORS = {
     [TICKET_STATUS.OPEN]: "info",
-    [TICKET_STATUS.ASSESSED]: "warning",
+    [TICKET_STATUS.ASSESSED]: "success",
     [TICKET_STATUS.PENDING_OD_APPROVAL]: "secondary",
     [TICKET_STATUS.APPROVED]: "success",
     [TICKET_STATUS.ASSIGNED]: "primary",

@@ -15,6 +15,9 @@ require __DIR__ . '/general.php';
 
 // Ticketing routes
 require __DIR__ . '/ticketing.php';
+
+// Project management routes
+require __DIR__ . '/project.php';
 Route::get("/demo", [DemoController::class, 'index'])->name('demo');
 // In routes/api.php
 

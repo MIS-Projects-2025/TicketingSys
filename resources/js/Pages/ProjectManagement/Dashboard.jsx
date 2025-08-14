@@ -16,7 +16,7 @@ import {
 import { Head } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 
-export default function DashboardIndex({ dashboardData }) {
+export default function Dashboard({ dashboardData }) {
     // Destructure the data passed from Laravel
     const {
         assignedTickets = [],
@@ -48,7 +48,7 @@ export default function DashboardIndex({ dashboardData }) {
             <div className="p-6 bg-base-100 min-h-screen">
                 <div className="flex justify-between items-center mb-8">
                     <h1 className="text-3xl font-bold text-base-content">
-                        Ticket Management Dashboard
+                        Project Management Dashboard
                     </h1>
                     <button
                         onClick={() => window.location.reload()}

@@ -58,7 +58,7 @@ const TicketActionButtons = ({
                         {/* Assessed By */}
                         {ticketData.PROG_ACTION_BY && (
                             <div className="flex flex-col">
-                                <span className="text-sm font-medium text-success">
+                                <span className="text-sm font-medium text-warning">
                                     Assessed By:
                                 </span>
                                 <span className="text-sm">
@@ -263,7 +263,7 @@ const TicketActionButtons = ({
                         Return Ticket
                     </button>
                 )}
-                {actions.canApproveSup && (
+                {/* {actions.canApproveSup && (
                     <button
                         type="button"
                         className="btn btn-outline btn-warning gap-2"
@@ -282,7 +282,7 @@ const TicketActionButtons = ({
                         <ThumbsDown className="w-4 h-4" />
                         Disapprove
                     </button>
-                )}
+                )} */}
                 {actions.canApproveDH && (
                     <button
                         type="button"

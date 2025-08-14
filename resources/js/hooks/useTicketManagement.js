@@ -1,6 +1,54 @@
 import { useState, useCallback } from "react";
 import { router, usePage } from "@inertiajs/react";
 
+// Status constants - numeric values matching database
+const TICKET_STATUS = {
+    OPEN: 1,
+    ASSESSED: 2,
+    PENDING_OD_APPROVAL: 3,
+    APPROVED: 4,
+    ASSIGNED: 5,
+    ACKNOWLEDGED: 6,
+    RETURNED: 7,
+    DISAPPROVED: 8,
+    REJECTED: 9,
+    CANCELLED: 10,
+    IN_PROGRESS: 11,
+    ON_HOLD: 12,
+};
+
+// Status display mapping for UI
+const STATUS_DISPLAY = {
+    [TICKET_STATUS.OPEN]: "Open",
+    [TICKET_STATUS.ASSESSED]: "Assessed",
+    [TICKET_STATUS.PENDING_OD_APPROVAL]: "Pending OD Approval",
+    [TICKET_STATUS.APPROVED]: "Approved",
+    [TICKET_STATUS.ASSIGNED]: "Assigned",
+    [TICKET_STATUS.ACKNOWLEDGED]: "Acknowledged",
+    [TICKET_STATUS.RETURNED]: "Returned",
+    [TICKET_STATUS.DISAPPROVED]: "Disapproved",
+    [TICKET_STATUS.REJECTED]: "Rejected",
+    [TICKET_STATUS.CANCELLED]: "Cancelled",
+    [TICKET_STATUS.IN_PROGRESS]: "In Progress",
+    [TICKET_STATUS.ON_HOLD]: "On Hold",
+};
+
+// Badge classes for status display
+const STATUS_BADGE_CLASSES = {
+    [TICKET_STATUS.OPEN]: "badge-info",
+    [TICKET_STATUS.ASSESSED]: "badge-warning",
+    [TICKET_STATUS.PENDING_OD_APPROVAL]: "badge-secondary",
+    [TICKET_STATUS.APPROVED]: "badge-success",
+    [TICKET_STATUS.ASSIGNED]: "badge-primary",
+    [TICKET_STATUS.ACKNOWLEDGED]: "badge-accent",
+    [TICKET_STATUS.RETURNED]: "badge-error",
+    [TICKET_STATUS.DISAPPROVED]: "badge-error",
+    [TICKET_STATUS.REJECTED]: "badge-error",
+    [TICKET_STATUS.CANCELLED]: "badge-neutral",
+    [TICKET_STATUS.IN_PROGRESS]: "badge-info",
+    [TICKET_STATUS.ON_HOLD]: "badge-warning",
+};
+
 export function useTicketManagement() {
     const {
         emp_data,
@@ -24,7 +72,7 @@ export function useTicketManagement() {
         type_of_request: "",
         project_name: "",
         details: "",
-        status: "OPEN",
+        status: TICKET_STATUS.OPEN, // Use numeric value
         ticket_level: "parent",
         assessed_by_prog: "",
         ticket_id: "",
@@ -250,7 +298,7 @@ export function useTicketManagement() {
                             type_of_request: "",
                             project_name: "",
                             details: "",
-                            status: "OPEN",
+                            status: TICKET_STATUS.OPEN, // Use numeric value
                             ticket_level: "parent",
                             assessed_by_prog: "",
                             ticket_id: "",
@@ -292,23 +340,24 @@ export function useTicketManagement() {
             // Check if this is a request form or not
             const isRequestForm = formData.type_of_request == "request_form";
 
-            // Dynamic status mapping based on ticket type
+            // Dynamic status mapping based on ticket type - returns numeric values
             const getStatusForAction = (actionType) => {
                 const baseStatusMap = {
-                    assessed: "ASSESSED",
-                    assess_return: "RETURNED",
-                    approve_sup: "PENDING_DH_APPROVAL",
-                    approve_od: "APPROVED",
-                    disapprove: "DISAPPROVED",
-                    resubmit: "OPEN",
-                    cancel: "CANCELLED",
-                    acknowledge: "ACKNOWLEDGED",
-                    reject: "REJECTED",
+                    assessed: TICKET_STATUS.ASSESSED,
+                    assess_return: TICKET_STATUS.RETURNED,
+                    approve_od: TICKET_STATUS.APPROVED,
+                    disapprove: TICKET_STATUS.DISAPPROVED,
+                    resubmit: TICKET_STATUS.OPEN,
+                    cancel: TICKET_STATUS.CANCELLED,
+                    acknowledge: TICKET_STATUS.ACKNOWLEDGED,
+                    reject: TICKET_STATUS.REJECTED,
                 };
 
                 // Handle DH approval differently based on ticket type
                 if (actionType === "approve_dh") {
-                    return isRequestForm ? "PENDING_OD_APPROVAL" : "APPROVED";
+                    return isRequestForm
+                        ? TICKET_STATUS.PENDING_OD_APPROVAL
+                        : TICKET_STATUS.APPROVED;
                 }
 
                 return baseStatusMap[actionType];
@@ -345,7 +394,7 @@ export function useTicketManagement() {
             }
 
             const submitData = new FormData();
-            submitData.append("status", newStatus);
+            submitData.append("status", newStatus); // Send numeric status to backend
             submitData.append("updated_by", emp_data.emp_id);
             submitData.append("remark", formData.remarks || "");
 
@@ -451,6 +500,7 @@ export function useTicketManagement() {
         },
         [formData, fileState.selectedFiles, uiState, emp_data, router]
     );
+
     const handleAssignment = useCallback(
         ({ assignedTo, remark = "" }) => {
             if (!emp_data?.emp_id) {
@@ -523,27 +573,21 @@ export function useTicketManagement() {
     }, [formData, ticketProjects, determineTicketType]);
 
     // ========================================
-    // UTILITY FUNCTIONS (Keep as pure functions)
+    // UTILITY FUNCTIONS (Updated for numeric status)
     // ========================================
 
     const getStatusBadgeClass = useCallback((status) => {
-        switch (status?.toLowerCase()) {
-            case "pending":
-                return "badge-warning";
-            case "approved":
-                return "badge-success";
-            case "disapproved":
-            case "rejected":
-                return "badge-error";
-            case "in_progress":
-                return "badge-info";
-            case "completed":
-                return "badge-success";
-            case "assessed":
-                return "badge-primary";
-            default:
-                return "badge-neutral";
-        }
+        // Convert to numeric if needed
+        const numericStatus = parseInt(status) || status;
+
+        // Return badge class based on numeric status
+        return STATUS_BADGE_CLASSES[numericStatus] || "badge-neutral";
+    }, []);
+
+    // Helper function to get status display name
+    const getStatusDisplayName = useCallback((status) => {
+        const numericStatus = parseInt(status) || status;
+        return STATUS_DISPLAY[numericStatus] || `Status ${numericStatus}`;
     }, []);
 
     const formatDate = useCallback((dateString) => {
@@ -588,6 +632,7 @@ export function useTicketManagement() {
             return null;
         }
     }, [ticketShowUrl]);
+
     // ========================================
     // COMPUTED VALUES
     // ========================================
@@ -602,6 +647,11 @@ export function useTicketManagement() {
     // ========================================
 
     return {
+        // Constants for use in components
+        TICKET_STATUS,
+        STATUS_DISPLAY,
+        STATUS_BADGE_CLASSES,
+
         // State (grouped and renamed for clarity)
         formData,
         selectedFiles: fileState.selectedFiles,
@@ -620,6 +670,7 @@ export function useTicketManagement() {
         remarksState: uiState.remarksState,
         showChildTicketsModal: uiState.showChildTicketsModal,
         showHistory: uiState.showHistory,
+
         // Main Actions (simple, clear names)
         handleSubmit,
         handleFormChange,
@@ -632,6 +683,7 @@ export function useTicketManagement() {
         // UI Helpers
         getTicketTypeDisplay,
         getStatusBadgeClass,
+        getStatusDisplayName, // New helper for status display names
         formatDate,
         getTicketIdFromUrl,
 
@@ -652,7 +704,7 @@ export function useTicketManagement() {
             setUiState((prev) => ({ ...prev, showChildTicketsModal: show })),
         setAssignmentData,
         setShowHistory: (show) =>
-            setUiState((prev) => ({ ...prev, showHistory: show })), // <-- Add this line
+            setUiState((prev) => ({ ...prev, showHistory: show })),
 
         // Data from props
         emp_data,

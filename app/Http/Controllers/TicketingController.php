@@ -353,7 +353,7 @@ class TicketingController extends Controller
         if ($this->isRequestorAccount($empData)) {
             $filters[] = "(
         EMPLOYEE_ID = '{$userId}' 
-        AND STATUS IN ('DISAPPROVED', 'PENDING','OPEN','RETURNED')
+        AND STATUS IN ('1', '7','8')
     )";
         }
 
@@ -364,16 +364,16 @@ class TicketingController extends Controller
 
         // )";
         //     }
-        if ($this->isSupervisor($empData)) {
-            if (!empty($supEmployeeIds)) {
-                $idList = implode(",", array_map('intval', $supEmployeeIds));
-                $filters[] = "(
-            TYPE_OF_REQUEST != 'request_form' 
-      AND EMPLOYEE_ID IN ({$idList})
-           
-        )";
-            }
-        }
+        //     if ($this->isSupervisor($empData)) {
+        //         if (!empty($supEmployeeIds)) {
+        //             $idList = implode(",", array_map('intval', $supEmployeeIds));
+        //             $filters[] = "(
+        //         TYPE_OF_REQUEST != 'request_form' 
+        //   AND EMPLOYEE_ID IN ({$idList})
+
+        //     )";
+        //         }
+        //     }
         // OD filter — ❌ EXCLUDE adjustment/enhancement
         if ($this->isODAccount($empData)) {
 
@@ -407,18 +407,18 @@ class TicketingController extends Controller
         }
 
 
-        // MIS SUPERVISOR filter
-        if ($this->isMISSupervisor($empData)) {
-            $filters[] = "(
-        (
-            TYPE_OF_REQUEST = 'request_form' 
-        )
-        OR
-        (
-            TYPE_OF_REQUEST != 'request_form' 
-        )
-    )";
-        }
+        //     // MIS SUPERVISOR filter
+        //     if ($this->isMISSupervisor($empData)) {
+        //         $filters[] = "(
+        //     (
+        //         TYPE_OF_REQUEST = 'request_form' 
+        //     )
+        //     OR
+        //     (
+        //         TYPE_OF_REQUEST != 'request_form' 
+        //     )
+        // )";
+        //     }
 
 
 
@@ -450,7 +450,8 @@ class TicketingController extends Controller
         $ticketId = base64_decode($hash);
 
         $validated = $request->validate([
-            'status' => 'required|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_DH_APPROVAL,PENDING_OD_APPROVAL,APPROVED,ASSIGNED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED,ACKNOWLEDGED,REJECT',
+            'status' => 'required|integer|in:1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16',
+            // 'status' => 'required|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_DH_APPROVAL,PENDING_OD_APPROVAL,APPROVED,ASSIGNED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED,ACKNOWLEDGED,REJECT',
             'remark' => 'nullable|string',
             'updated_by' => 'required|string|max:100',
             'role' => 'required|string|in:PROGRAMMER,DEPARTMENT_HEAD,OD,REQUESTOR,SUPERVISOR',
@@ -859,7 +860,7 @@ class TicketingController extends Controller
             'type_of_request' => 'required|string|max:100',
             'project_name' => 'required|string|max:255',
             'details' => 'required|string',
-            'status' => 'nullable|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_OD_APPROVAL,APPROVED,ASSIGNED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED,ACKNOWLEDGED,REJECT',
+            'status' => 'required|integer|in:1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16',
             'ticket_level' => 'nullable|string|max:50',
             'parent_ticket_id' => 'nullable|string|max:20',
             'prog_action_by' => 'nullable|string|max:100',
@@ -883,8 +884,8 @@ class TicketingController extends Controller
         return !$this->isAssessedByProgrammer($empData) &&
             !$this->isDepartmentHead($empData) &&
             !$this->isODAccount($empData) &&
-            !$this->isMISSupervisor($empData) &&
-            !$this->isSupervisor($empData);
+            !$this->isMISSupervisor($empData);
+        // !$this->isSupervisor($empData);
     }
 
     private function isAssessedByProgrammer($empData)
@@ -911,17 +912,17 @@ class TicketingController extends Controller
 
         return $hasApprovalRights[0]->count > 0;
     }
-    private function isSupervisor($empData)
-    {
-        // Check if this user is set as approver1 for any employee
-        $userId = $empData['emp_id'];
-        $hasApprovalRights = DB::connection('masterlist')->select("
-        SELECT COUNT(*) as count FROM employee_masterlist 
-        WHERE (APPROVER1 = '{$userId}')
-    ");
+    // private function isSupervisor($empData)
+    // {
+    //     // Check if this user is set as approver1 for any employee
+    //     $userId = $empData['emp_id'];
+    //     $hasApprovalRights = DB::connection('masterlist')->select("
+    //     SELECT COUNT(*) as count FROM employee_masterlist 
+    //     WHERE (APPROVER1 = '{$userId}')
+    // ");
 
-        return $hasApprovalRights[0]->count > 0;
-    }
+    //     return $hasApprovalRights[0]->count > 0;
+    // }
     private function isODAccount($empData)
     {
         // Organizational Development account
@@ -946,9 +947,9 @@ class TicketingController extends Controller
         } elseif ($this->isAssessedByProgrammer($empData)) {
             $roles[] = 'PROGRAMMER';
         }
-        if ($this->isSupervisor($empData)) {
-            $roles[] = 'SUPERVISOR';
-        }
+        // if ($this->isSupervisor($empData)) {
+        //     $roles[] = 'SUPERVISOR';
+        // }
         if ($this->isODAccount($empData)) {
             $roles[] = 'OD';
         }

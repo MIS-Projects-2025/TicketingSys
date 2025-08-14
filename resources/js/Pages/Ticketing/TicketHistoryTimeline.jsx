@@ -28,6 +28,22 @@ const TicketHistoryTimeline = ({
     const [showModal, setShowModal] = useState(false);
     const [filter, setFilter] = useState("all");
 
+    // Status mapping from code to name and style
+    const statusMapping = {
+        1: { name: "Open", style: "badge-info" },
+        2: { name: "Assessed", style: "badge-warning" },
+        3: { name: "Pending OD Approval", style: "badge-secondary" },
+        4: { name: "Approved", style: "badge-success" },
+        5: { name: "Assigned", style: "badge-primary" },
+        6: { name: "Acknowledged", style: "badge-accent" },
+        7: { name: "Returned", style: "badge-warning" },
+        8: { name: "Disapproved", style: "badge-error" },
+        9: { name: "Rejected", style: "badge-error" },
+        10: { name: "Cancelled", style: "badge-neutral" },
+        11: { name: "In Progress", style: "badge-info" },
+        12: { name: "On Hold", style: "badge-warning" },
+    };
+
     // Combine and sort history data
     const combinedHistory = useMemo(() => {
         const combined = [];
@@ -90,47 +106,59 @@ const TicketHistoryTimeline = ({
     // Get appropriate icon for timeline item
     const getTimelineIcon = (item) => {
         if (item.source === "remarks" && item.type === "STATUS_CHANGE") {
-            if (item.newStatus === "APPROVED")
-                return <CheckCircle className="w-5 h-5 text-success" />;
-            if (item.newStatus === "RETURNED")
-                return <RotateCcw className="w-5 h-5 text-warning" />;
-            if (item.newStatus === "DISAPPROVED")
-                return <XCircle className="w-5 h-5 text-error" />;
-            if (item.newStatus === "CANCELLED")
-                return <XCircle className="w-5 h-5 text-base-content/50" />;
-            if (item.newStatus === "OPEN")
-                return <AlertCircle className="w-5 h-5 text-info" />;
-            return <ArrowRight className="w-5 h-5 text-primary" />;
+            switch (item.newStatus) {
+                case 1: // Open
+                    return <AlertCircle className="w-5 h-5 text-info" />;
+                case 2: // Assessed
+                    return <FileText className="w-5 h-5 text-primary" />;
+                case 3: // Pending OD Approval
+                    return <Clock className="w-5 h-5 text-warning" />;
+                case 4: // Approved
+                    return <CheckCircle className="w-5 h-5 text-success" />;
+                case 5: // Assigned
+                    return <User className="w-5 h-5 text-accent" />;
+                case 6: // Acknowledged
+                    return <MessageCircle className="w-5 h-5 text-secondary" />;
+                case 7: // Returned
+                    return <RotateCcw className="w-5 h-5 text-warning" />;
+                case 8: // Disapproved
+                case 9: // Rejected
+                    return <XCircle className="w-5 h-5 text-error" />;
+                case 10: // Cancelled
+                    return <XCircle className="w-5 h-5 text-base-content/50" />;
+                case 11: // In Progress
+                    return <Activity className="w-5 h-5 text-warning" />;
+                case 12: // On Hold
+                    return <Clock className="w-5 h-5 text-neutral" />;
+                default:
+                    return <ArrowRight className="w-5 h-5 text-primary" />;
+            }
         }
+
         if (item.type === "COMMENT")
             return <MessageSquare className="w-5 h-5 text-secondary" />;
         if (item.type === "FIELD_CHANGE")
             return <Settings className="w-5 h-5 text-accent" />;
         if (item.type === "CREATED")
             return <Sparkles className="w-5 h-5 text-success" />;
+
         return <Activity className="w-5 h-5 text-base-content/60" />;
     };
 
-    // Get status badge styling with modern colors
-    const getStatusBadge = (status) => {
-        const statusStyles = {
-            OPEN: "badge-info",
-            IN_PROGRESS: "badge-warning",
-            ASSESSED: "badge-primary",
-            APPROVED: "badge-success",
-            DISAPPROVED: "badge-error",
-            RETURNED: "badge-warning",
-            CANCELLED: "badge-neutral",
-            CLOSED: "badge-success",
-        };
+    // Get status badge styling with status names
+    const getStatusBadge = (statusCode) => {
+        const status = statusMapping[statusCode];
+        if (!status) {
+            return (
+                <div className="badge badge-sm font-medium badge-ghost">
+                    Unknown Status
+                </div>
+            );
+        }
 
         return (
-            <div
-                className={`badge badge-sm font-medium ${
-                    statusStyles[status] || "badge-ghost"
-                }`}
-            >
-                {status?.replace("_", " ")}
+            <div className={`badge badge-sm font-medium ${status.style}`}>
+                {status.name}
             </div>
         );
     };

@@ -20,21 +20,58 @@ import {
 const ACCOUNT_TYPES = {
     MIS_SUPERVISOR: "MIS_SUPERVISOR",
     PROGRAMMER: "PROGRAMMER",
-    SUPERVISOR: "SUPERVISOR",
+    // SUPERVISOR: "SUPERVISOR",
     DEPARTMENT_HEAD: "DEPARTMENT_HEAD",
     OD: "OD",
     REQUESTOR: "REQUESTOR",
 };
 
+// Updated to use numeric status codes matching database
 const TICKET_STATUS = {
-    OPEN: "OPEN",
-    ASSESSED: "ASSESSED",
-    APPROVED: "APPROVED",
-    RETURNED: "RETURNED",
-    PENDING_OD_APPROVAL: "PENDING_OD_APPROVAL",
-    PENDING_DH_APPROVAL: "PENDING_DH_APPROVAL",
-    ASSIGNED: "ASSIGNED",
-    ACKNOWLEDGED: "ACKNOWLEDGED",
+    OPEN: 1,
+    ASSESSED: 2,
+    PENDING_OD_APPROVAL: 3,
+    APPROVED: 4,
+    ASSIGNED: 5,
+    ACKNOWLEDGED: 6,
+    RETURNED: 7,
+    DISAPPROVED: 8,
+    REJECTED: 9,
+    CANCELLED: 10,
+    IN_PROGRESS: 11,
+    ON_HOLD: 12,
+};
+
+// Status display mapping
+const STATUS_DISPLAY = {
+    [TICKET_STATUS.OPEN]: "Open",
+    [TICKET_STATUS.ASSESSED]: "Assessed",
+    [TICKET_STATUS.PENDING_OD_APPROVAL]: "Pending OD Approval",
+    [TICKET_STATUS.APPROVED]: "Approved",
+    [TICKET_STATUS.ASSIGNED]: "Assigned",
+    [TICKET_STATUS.ACKNOWLEDGED]: "Acknowledged",
+    [TICKET_STATUS.RETURNED]: "Returned",
+    [TICKET_STATUS.DISAPPROVED]: "Disapproved",
+    [TICKET_STATUS.REJECTED]: "Rejected",
+    [TICKET_STATUS.CANCELLED]: "Cancelled",
+    [TICKET_STATUS.IN_PROGRESS]: "In Progress",
+    [TICKET_STATUS.ON_HOLD]: "On Hold",
+};
+
+// Status color mapping
+const STATUS_COLORS = {
+    [TICKET_STATUS.OPEN]: "info",
+    [TICKET_STATUS.ASSESSED]: "warning",
+    [TICKET_STATUS.PENDING_OD_APPROVAL]: "secondary",
+    [TICKET_STATUS.APPROVED]: "success",
+    [TICKET_STATUS.ASSIGNED]: "primary",
+    [TICKET_STATUS.ACKNOWLEDGED]: "accent",
+    [TICKET_STATUS.RETURNED]: "warning",
+    [TICKET_STATUS.DISAPPROVED]: "error",
+    [TICKET_STATUS.REJECTED]: "error",
+    [TICKET_STATUS.CANCELLED]: "neutral",
+    [TICKET_STATUS.IN_PROGRESS]: "info",
+    [TICKET_STATUS.ON_HOLD]: "warning",
 };
 
 const PRIORITY_LEVELS = {
@@ -50,6 +87,7 @@ const ACTION_TYPES = {
     APPROVE: "approve",
     VIEW: "view",
     RESUBMIT: "resubmit",
+    ACKNOWLEDGE: "acknowledge",
 };
 
 // Filter types for StatCards
@@ -65,6 +103,15 @@ const ACTION_ICONS = {
     assess: ClipboardCheck,
     approve: ThumbsUp,
     view: Eye,
+    acknowledge: UserCheck,
+};
+
+// Priority badge styles
+const priorityBadgeStyles = {
+    [PRIORITY_LEVELS.URGENT]: "badge-error",
+    [PRIORITY_LEVELS.HIGH]: "badge-warning",
+    [PRIORITY_LEVELS.MEDIUM]: "badge-info",
+    [PRIORITY_LEVELS.LOW]: "badge-neutral",
 };
 
 // Configuration objects
@@ -86,24 +133,32 @@ const handleAction = (ticket, formState, userAccountType) => {
     router.visit(route("tickets.show", hash), { method: "get" });
 };
 
+// Helper function to ensure status is numeric (since database stores numeric values)
+const normalizeStatus = (status) => {
+    return parseInt(status) || 0;
+};
+
 // Get action configuration for a ticket
 const getActionConfig = (ticket, userAccountType, empData) => {
     const isMIS = hasRole(userAccountType, ACCOUNT_TYPES.MIS_SUPERVISOR);
     const isProgrammer = hasRole(userAccountType, ACCOUNT_TYPES.PROGRAMMER);
-    const isSup = hasRole(userAccountType, ACCOUNT_TYPES.SUPERVISOR);
     const isDeptHead = hasRole(userAccountType, ACCOUNT_TYPES.DEPARTMENT_HEAD);
     const isOD = hasRole(userAccountType, ACCOUNT_TYPES.OD);
     const isRequestor = ticket.EMPLOYEE_ID === empData?.emp_id;
+
+    // Database stores numeric status values, so ensure we're comparing numbers
+    const ticketStatus = parseInt(ticket.STATUS);
+
     console.log(
         isProgrammer,
         empData,
-        ticket.STATUS,
+        ticketStatus,
         TICKET_STATUS.ASSIGNED,
         ticket.ASSIGNED_TO
     );
 
     if (isMIS) {
-        if (ticket.STATUS === TICKET_STATUS.APPROVED) {
+        if (ticketStatus === TICKET_STATUS.APPROVED) {
             return {
                 label: "Assign Programmer",
                 className: "btn btn-outline btn-secondary",
@@ -114,11 +169,8 @@ const getActionConfig = (ticket, userAccountType, empData) => {
             };
         }
 
-        if (
-            !ticket.PROG_ACTION_BY ||
-            ticket.STATUS === TICKET_STATUS.RETURNED
-        ) {
-            const isReturned = ticket.STATUS === TICKET_STATUS.RETURNED;
+        if (!ticket.PROG_ACTION_BY || ticketStatus === TICKET_STATUS.RETURNED) {
+            const isReturned = ticketStatus === TICKET_STATUS.RETURNED;
             return {
                 label: isReturned ? "Re-assess" : "Assess",
                 className: isReturned
@@ -137,7 +189,7 @@ const getActionConfig = (ticket, userAccountType, empData) => {
     if (
         isProgrammer &&
         ticket.EMPLOYEE_ID !== empData?.emp_id &&
-        ticket.STATUS === TICKET_STATUS.OPEN
+        ticketStatus === TICKET_STATUS.OPEN
     ) {
         return {
             label: "Assess",
@@ -148,9 +200,10 @@ const getActionConfig = (ticket, userAccountType, empData) => {
             icon: ACTION_ICONS.assess,
         };
     }
+
     if (
         isProgrammer &&
-        ticket.STATUS === TICKET_STATUS.ASSIGNED &&
+        ticketStatus === TICKET_STATUS.ASSIGNED &&
         ticket.ASSIGNED_TO == empData?.emp_id
     ) {
         return {
@@ -162,51 +215,9 @@ const getActionConfig = (ticket, userAccountType, empData) => {
             icon: ACTION_ICONS.acknowledge,
         };
     }
-    if (
-        isSup &&
-        ticket.TYPE_OF_REQUEST != "request_form" &&
-        ticket.STATUS === TICKET_STATUS.ASSESSED
-    ) {
-        return {
-            label: "Approve",
-            className: "btn btn-outline btn-success",
-            formState: "approving",
-            actionType: ACTION_TYPES.APPROVE,
-            priority: PRIORITY_LEVELS.HIGH,
-            icon: ACTION_ICONS.approve,
-        };
-    }
-    if (
-        isDeptHead &&
-        !isOD &&
-        ticket.STATUS === TICKET_STATUS.ASSESSED &&
-        ticket.TYPE_OF_REQUEST === "request_form"
-    ) {
-        return {
-            label: "Approve",
-            className: "btn btn-outline btn-success",
-            formState: "approving",
-            actionType: ACTION_TYPES.APPROVE,
-            priority: PRIORITY_LEVELS.HIGH,
-            icon: ACTION_ICONS.approve,
-        };
-    }
-    if (
-        isDeptHead &&
-        !isOD &&
-        ticket.STATUS === TICKET_STATUS.PENDING_DH_APPROVAL &&
-        ticket.TYPE_OF_REQUEST != "request_form"
-    ) {
-        return {
-            label: "Approve",
-            className: "btn btn-outline btn-success",
-            formState: "approving",
-            actionType: ACTION_TYPES.APPROVE,
-            priority: PRIORITY_LEVELS.HIGH,
-            icon: ACTION_ICONS.approve,
-        };
-    }
-    if (isOD && ticket.STATUS === TICKET_STATUS.PENDING_OD_APPROVAL) {
+
+    // Department Head approval for request forms
+    if (isDeptHead && !isOD && ticketStatus === TICKET_STATUS.ASSESSED) {
         return {
             label: "Approve",
             className: "btn btn-outline btn-success",
@@ -217,7 +228,37 @@ const getActionConfig = (ticket, userAccountType, empData) => {
         };
     }
 
-    if (isRequestor && ticket.STATUS === TICKET_STATUS.RETURNED) {
+    // Department Head approval for non-request forms (custom status)
+    // if (
+    //     isDeptHead &&
+    //     !isOD &&
+    //     ticketStatus === TICKET_STATUS.PENDING_DH_APPROVAL &&
+    //     ticket.TYPE_OF_REQUEST != "request_form"
+    // ) {
+    //     return {
+    //         label: "Approve",
+    //         className: "btn btn-outline btn-success",
+    //         formState: "approving",
+    //         actionType: ACTION_TYPES.APPROVE,
+    //         priority: PRIORITY_LEVELS.HIGH,
+    //         icon: ACTION_ICONS.approve,
+    //     };
+    // }
+
+    // OD approval
+    if (isOD && ticketStatus === TICKET_STATUS.PENDING_OD_APPROVAL) {
+        return {
+            label: "Approve",
+            className: "btn btn-outline btn-success",
+            formState: "approving",
+            actionType: ACTION_TYPES.APPROVE,
+            priority: PRIORITY_LEVELS.HIGH,
+            icon: ACTION_ICONS.approve,
+        };
+    }
+
+    // Requestor resubmit
+    if (isRequestor && ticketStatus === TICKET_STATUS.RETURNED) {
         return {
             label: "Resubmit",
             className: "btn btn-outline btn-warning",
@@ -228,6 +269,7 @@ const getActionConfig = (ticket, userAccountType, empData) => {
         };
     }
 
+    // Default view action
     return {
         label: "View",
         className: isRequestor
@@ -268,35 +310,13 @@ const PriorityBadge = ({ priority }) => (
 );
 
 const StatusCell = ({ value, row }) => {
-    const normalizedStatus = value?.toString().trim().toUpperCase();
+    // Convert to number since database stores numeric values
+    const numericStatus = parseInt(value);
 
-    const getStatusColor = (status) => {
-        switch (status) {
-            case TICKET_STATUS.OPEN:
-                return "info";
-            case TICKET_STATUS.ASSESSED:
-                return "warning";
-            case TICKET_STATUS.APPROVED:
-                return "success";
-            case TICKET_STATUS.RETURNED:
-                return "error";
-            case TICKET_STATUS.PENDING_OD_APPROVAL:
-                return "secondary";
-            default:
-                return "base-content";
-        }
-    };
-
-    const statusDisplayMap = {
-        [TICKET_STATUS.OPEN]: "Open",
-        [TICKET_STATUS.ASSESSED]: "Assessed",
-        [TICKET_STATUS.APPROVED]: "Approved",
-        [TICKET_STATUS.RETURNED]: "Returned",
-        [TICKET_STATUS.PENDING_OD_APPROVAL]: "Pending OD",
-    };
-
-    const color = getStatusColor(normalizedStatus);
-    const displayText = statusDisplayMap[normalizedStatus] || value;
+    // Get display text and color
+    const displayText =
+        STATUS_DISPLAY[numericStatus] || `Status ${numericStatus}`;
+    const color = STATUS_COLORS[numericStatus] || "base-content";
 
     return (
         <div className="flex items-center gap-2">
@@ -304,7 +324,7 @@ const StatusCell = ({ value, row }) => {
                 <div className={`w-2 h-2 rounded-full bg-${color}`}></div>
                 <span
                     className={`text-sm font-semibold text-${color}`}
-                    title={value}
+                    title={`Status Code: ${value}`}
                 >
                     {displayText}
                 </span>
@@ -576,23 +596,6 @@ const Table = () => {
                         filterType={FILTER_TYPES.ALL}
                     />
                 </div>
-
-                {/* Filter indicator */}
-                {/* {activeFilter !== FILTER_TYPES.ALL && (
-                    <div className="alert alert-info">
-                        <div className="flex items-center justify-between w-full">
-                            <span>{getFilterDescription()}</span>
-                            <button
-                                className="btn btn-sm btn-ghost"
-                                onClick={() =>
-                                    setActiveFilter(FILTER_TYPES.ALL)
-                                }
-                            >
-                                Clear Filter
-                            </button>
-                        </div>
-                    </div>
-                )} */}
 
                 {/* Main Table */}
                 <div className="bg-base-200 rounded-lg shadow-md ">

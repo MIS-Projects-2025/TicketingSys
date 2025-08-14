@@ -15,17 +15,17 @@ export function getAvailableActions({
             formState === "assessing" && userAccountType === "PROGRAMMER",
         canReturnTicket:
             formState === "assessing" && userAccountType === "PROGRAMMER",
-        canApproveSup:
-            formState === "approving" &&
-            userAccountType === "SUPERVISOR" &&
-            typeOfRequest != "request_form" &&
-            remarksState !== "show",
+        // canApproveSup:
+        //     formState === "approving" &&
+        //     userAccountType === "SUPERVISOR" &&
+        //     typeOfRequest != "request_form" &&
+        //     remarksState !== "show",
 
-        canDisapproveSup:
-            formState === "approving" &&
-            userAccountType === "SUPERVISOR" &&
-            typeOfRequest != "request_form" &&
-            remarksState !== "show",
+        // canDisapproveSup:
+        //     formState === "approving" &&
+        //     userAccountType === "SUPERVISOR" &&
+        //     typeOfRequest != "request_form" &&
+        //     remarksState !== "show",
         canApproveDH:
             formState === "approving" &&
             userAccountType === "DEPARTMENT_HEAD" &&

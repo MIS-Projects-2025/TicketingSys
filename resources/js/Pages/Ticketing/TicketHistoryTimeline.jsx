@@ -31,7 +31,7 @@ const TicketHistoryTimeline = ({
     // Status mapping from code to name and style
     const statusMapping = {
         1: { name: "Open", style: "badge-info" },
-        2: { name: "Assessed", style: "badge-warning" },
+        2: { name: "Assessed", style: "badge-success" },
         3: { name: "Pending OD Approval", style: "badge-secondary" },
         4: { name: "Approved", style: "badge-success" },
         5: { name: "Assigned", style: "badge-primary" },
@@ -42,6 +42,8 @@ const TicketHistoryTimeline = ({
         10: { name: "Cancelled", style: "badge-neutral" },
         11: { name: "In Progress", style: "badge-info" },
         12: { name: "On Hold", style: "badge-warning" },
+        13: { name: "For Testing", style: "badge-warning" },
+        14: { name: "Tested", style: "badge-success" },
     };
 
     // Combine and sort history data

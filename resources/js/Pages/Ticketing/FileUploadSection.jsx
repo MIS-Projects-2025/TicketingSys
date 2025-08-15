@@ -54,6 +54,7 @@ const FileUploadSection = ({
         "viewing",
         "approving",
         "assigning_programmer",
+        "for_testing",
     ].includes(mode);
     const showExistingFileActions = [
         "assessing",

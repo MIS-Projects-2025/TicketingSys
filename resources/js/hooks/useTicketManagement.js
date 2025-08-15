@@ -15,6 +15,8 @@ const TICKET_STATUS = {
     CANCELLED: 10,
     IN_PROGRESS: 11,
     ON_HOLD: 12,
+    FOR_TESTING: 13,
+    TESTED: 14,
 };
 
 // Status display mapping for UI
@@ -31,6 +33,8 @@ const STATUS_DISPLAY = {
     [TICKET_STATUS.CANCELLED]: "Cancelled",
     [TICKET_STATUS.IN_PROGRESS]: "In Progress",
     [TICKET_STATUS.ON_HOLD]: "On Hold",
+    [TICKET_STATUS.FOR_TESTING]: "For Testing",
+    [TICKET_STATUS.TESTED]: "Tested",
 };
 
 // Badge classes for status display
@@ -47,6 +51,8 @@ const STATUS_BADGE_CLASSES = {
     [TICKET_STATUS.CANCELLED]: "badge-neutral",
     [TICKET_STATUS.IN_PROGRESS]: "badge-info",
     [TICKET_STATUS.ON_HOLD]: "badge-warning",
+    [TICKET_STATUS.FOR_TESTING]: "badge-warning",
+    [TICKET_STATUS.TESTED]: "badge-success",
 };
 
 export function useTicketManagement() {
@@ -343,6 +349,8 @@ export function useTicketManagement() {
                 const baseStatusMap = {
                     assessed: TICKET_STATUS.ASSESSED,
                     assess_return: TICKET_STATUS.RETURNED,
+                    test_ticket: TICKET_STATUS.TESTED,
+                    return_test_ticket: TICKET_STATUS.RETURNED,
                     approve_od: TICKET_STATUS.APPROVED,
                     disapprove: TICKET_STATUS.DISAPPROVED,
                     resubmit: TICKET_STATUS.OPEN,
@@ -368,6 +376,7 @@ export function useTicketManagement() {
                 "cancel",
                 "resubmit",
                 "reject",
+                "return_test_ticket",
             ];
 
             // Handle remarks requirement

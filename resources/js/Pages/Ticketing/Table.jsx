@@ -42,6 +42,7 @@ const TICKET_STATUS = {
     IN_PROGRESS: 11,
     ON_HOLD: 12,
     FOR_TESTING: 13,
+    TESTED: 14,
 };
 
 // Status display mapping
@@ -59,6 +60,7 @@ const STATUS_DISPLAY = {
     [TICKET_STATUS.IN_PROGRESS]: "In Progress",
     [TICKET_STATUS.ON_HOLD]: "On Hold",
     [TICKET_STATUS.FOR_TESTING]: "For Testing",
+    [TICKET_STATUS.TESTED]: "Tested",
 };
 
 // Status color mapping
@@ -76,6 +78,7 @@ const STATUS_COLORS = {
     [TICKET_STATUS.IN_PROGRESS]: "info",
     [TICKET_STATUS.ON_HOLD]: "warning",
     [TICKET_STATUS.FOR_TESTING]: "info",
+    [TICKET_STATUS.TESTED]: "success",
 };
 
 const PRIORITY_LEVELS = {

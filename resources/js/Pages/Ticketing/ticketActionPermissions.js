@@ -15,6 +15,12 @@ export function getAvailableActions({
             formState === "assessing" && userAccountType === "PROGRAMMER",
         canReturnTicket:
             formState === "assessing" && userAccountType === "PROGRAMMER",
+        canTest:
+            formState === "for_testing" &&
+            ticket.TESTING_BY == emp_data?.emp_id,
+        canReturnTest:
+            formState === "for_testing" &&
+            ticket.TESTING_BY == emp_data?.emp_id,
         // canApproveSup:
         //     formState === "approving" &&
         //     userAccountType === "SUPERVISOR" &&

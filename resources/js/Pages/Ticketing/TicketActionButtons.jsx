@@ -92,7 +92,22 @@ const TicketActionButtons = ({
                                 </span>
                             </div>
                         )}
-
+                        {ticketData.TESTING_BY && (
+                            <div className="flex flex-col">
+                                <span className="text-sm font-medium text-info">
+                                    Tested By:
+                                </span>
+                                <span className="text-sm">
+                                    {getDisplayName("TESTING_BY")}
+                                </span>
+                                <span className="text-xs text-base-content/60 flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    {new Date(
+                                        ticketData.TESTING_AT
+                                    ).toLocaleString()}
+                                </span>
+                            </div>
+                        )}
                         {/* Department Head Approval */}
                         {ticketData.DM_ACTION_BY && (
                             <div className="flex flex-col">
@@ -267,6 +282,28 @@ const TicketActionButtons = ({
                     >
                         <Undo2 className="w-4 h-4" />
                         Return Ticket
+                    </button>
+                )}
+                {actions.canTest && (
+                    <button
+                        type="button"
+                        className="btn btn-outline btn-success gap-2"
+                        onClick={() => handleApprovalAction("test_ticket")}
+                    >
+                        <CheckCircle className="w-4 h-4" />
+                        Done
+                    </button>
+                )}
+                {actions.canReturnTest && (
+                    <button
+                        type="button"
+                        className="btn btn-outline btn-success gap-2"
+                        onClick={() =>
+                            handleApprovalAction("return_test_ticket")
+                        }
+                    >
+                        <Undo2 className="w-4 h-4" />
+                        Return
                     </button>
                 )}
                 {/* {actions.canApproveSup && (

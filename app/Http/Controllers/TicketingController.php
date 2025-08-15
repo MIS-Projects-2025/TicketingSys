@@ -379,7 +379,8 @@ class TicketingController extends Controller
         if ($this->isRequestorAccount($empData)) {
             $filters[] = "(
         EMPLOYEE_ID = '{$userId}' 
-    OR TESTING_BY = '{$userId}'
+      OR TESTING_BY = '{$userId}'
+            OR SUBSTRING_INDEX(TESTING_BY, '(', 1) = '{$userId}'
     )";
         }
 
@@ -455,7 +456,7 @@ class TicketingController extends Controller
 
 
         $ticketsQuery .= " ORDER BY CREATED_AT DESC";
-
+        // dd($ticketsQuery);
         $tickets = DB::select($ticketsQuery);
 
         // From masterlist database connection
@@ -485,10 +486,10 @@ class TicketingController extends Controller
             // Additional fields for resubmitting/updating ticket details
             'project_name' => 'nullable|string|max:255',
             'details' => 'nullable|string',
-            'type_of_request' => 'required|integer|in:1,2,3,4',
+            'type_of_request' => 'nullable|integer|in:1,2,3,4',
         ]);
-
-        $currentTicket = DB::selectOne('SELECT STATUS, PROJECT_NAME, DETAILS, TYPE_OF_REQUEST, ASSIGNED_TO FROM tickets WHERE TICKET_ID = ?', [$ticketId]);
+        // dd($ticketId, $validated['status'], $validated['updated_by'], $validated['role'], $validated['project_name'], $validated['details'], $validated['type_of_request']);
+        $currentTicket = DB::selectOne('SELECT STATUS, PROJECT_NAME, DETAILS, TYPE_OF_REQUEST, ASSIGNED_TO, TESTING_BY FROM tickets WHERE TICKET_ID = ?', [$ticketId]);
         if (!$currentTicket) {
             abort(404, 'Ticket not found');
         }
@@ -543,6 +544,12 @@ class TicketingController extends Controller
             'STATUS' => $newStatus,
             'UPDATED_AT' => $now,
         ], $actionFields);
+
+        // Check if testing_by matches updated_by and update accordingly
+        if (!empty($currentTicket->TESTING_BY) && $currentTicket->TESTING_BY === $updatedBy) {
+            $fieldsToUpdate['TESTING_BY'] = "{$updatedBy}({$newStatus})";
+            $fieldsToUpdate['TESTING_AT'] = $now;
+        }
 
         // For resubmitting or updating ticket details, add additional fields
         $updatingDetails = false;
@@ -781,6 +788,7 @@ class TicketingController extends Controller
             'APPROVED_BY',
             'ASSIGNED_TO',
             'ACKNOWLEDGED_BY',
+            'TESTING_BY',
         ];
 
         foreach ($approvalFields as $field) {

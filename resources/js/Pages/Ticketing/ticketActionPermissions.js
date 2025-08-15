@@ -41,7 +41,7 @@ export function getAvailableActions({
         canApproveOD:
             formState === "approving" &&
             userAccountType.includes("OD") &&
-            typeOfRequest === "request_form" &&
+            typeOfRequest == "1" &&
             remarksState !== "show",
 
         canDisapproveDH:
@@ -53,7 +53,7 @@ export function getAvailableActions({
         canDisapproveOD:
             formState === "approving" &&
             userAccountType.includes("OD") &&
-            typeOfRequest === "request_form" &&
+            typeOfRequest == "1" &&
             remarksState !== "show",
 
         canGenerate: formState === "create",

@@ -6,7 +6,7 @@ import ProjectDrawer from "./ProjectDrawer";
 import DeleteModal from "./DeleteModal";
 import useProjectActions from "@/hooks/useProjectActions";
 import ImportModal from "./ImportModal";
-import { Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
+import { Ellipsis, Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
 const ProjectList = () => {
     const { projects } = usePage().props;
     const {
@@ -32,6 +32,8 @@ const ProjectList = () => {
         closeDeleteModal,
         showImportModal,
         setShowImportModal,
+        setOpenDropdown,
+        openDropdown,
         // Utility functions
         getStatusConfig,
         formatDate,
@@ -43,26 +45,54 @@ const ProjectList = () => {
         return <span className={config.class}>{config.text}</span>;
     };
 
+    // 👇 helper function
+    const closeDropdown = (e) => {
+        const dropdown = e.currentTarget.closest(".dropdown");
+        if (dropdown) {
+            document.activeElement.blur(); // remove focus so dropdown closes
+        }
+    };
+
     const getActionButtons = (project) => (
-        <div className="flex space-x-1">
-            <button
-                className="btn btn-primary btn-sm"
-                onClick={() => openViewDrawer(project)}
+        <div className="dropdown dropdown-left">
+            <div tabIndex={0} role="button" className="btn btn-sm btn-ghost">
+                <Ellipsis />
+            </div>
+            <ul
+                tabIndex={0}
+                className="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52 z-[9999]"
             >
-                <Eye size={16} />
-            </button>
-            <button
-                className="btn btn-success btn-sm"
-                onClick={() => openEditDrawer(project)}
-            >
-                <Pencil size={16} />
-            </button>
-            <button
-                className="btn btn-error btn-sm"
-                onClick={() => openDeleteModal(project)}
-            >
-                <Trash2 size={16} />
-            </button>
+                <li>
+                    <button
+                        onClick={(e) => {
+                            openViewDrawer(project);
+                            closeDropdown(e);
+                        }}
+                    >
+                        <Eye size={16} /> View
+                    </button>
+                </li>
+                <li>
+                    <button
+                        onClick={(e) => {
+                            openEditDrawer(project);
+                            closeDropdown(e);
+                        }}
+                    >
+                        <Pencil size={16} /> Edit
+                    </button>
+                </li>
+                <li>
+                    <button
+                        onClick={(e) => {
+                            openDeleteModal(project);
+                            closeDropdown(e);
+                        }}
+                    >
+                        <Trash2 size={16} /> Delete
+                    </button>
+                </li>
+            </ul>
         </div>
     );
 
@@ -88,7 +118,7 @@ const ProjectList = () => {
         { label: "Created By", key: "CREATED_BY_NAME" },
         { label: "Created", key: "formatted_created_at" },
         { label: "Updated", key: "formatted_updated_at" },
-        { label: "Action", key: "action" },
+        { label: "Action", key: "action", cellClass: "overflow-visible" },
     ];
 
     return (

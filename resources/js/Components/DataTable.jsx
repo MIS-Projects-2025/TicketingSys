@@ -378,7 +378,10 @@ export default function DataTable({
                                         {columns.map((col, i) => (
                                             <td
                                                 key={`${key}-${col.key}-${i}`}
-                                                className="whitespace-nowrap max-w-[200px] truncate"
+                                                className={
+                                                    col.cellClass ||
+                                                    "whitespace-nowrap max-w-[200px] truncate"
+                                                }
                                             >
                                                 {row[col.key] ?? "-"}
                                             </td>

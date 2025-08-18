@@ -5,7 +5,7 @@ const useProjectActions = () => {
     const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
     const [isViewDrawerOpen, setIsViewDrawerOpen] = useState(false);
     const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
-
+    const [openDropdown, setOpenDropdown] = useState(false);
     // State for delete modal
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
@@ -103,7 +103,8 @@ const useProjectActions = () => {
         closeCreateDrawer,
         closeViewDrawer,
         closeEditDrawer,
-
+        openDropdown,
+        setOpenDropdown,
         // Modal actions
         openDeleteModal,
         closeDeleteModal,

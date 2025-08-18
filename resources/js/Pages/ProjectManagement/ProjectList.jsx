@@ -96,9 +96,9 @@ const ProjectList = () => {
         </div>
     );
 
-    // Process data for the table
-    const processedData = Array.isArray(projects)
-        ? projects.map((project) => ({
+    // projects.data is now an array of project objects
+    const processedData = Array.isArray(projects.data)
+        ? projects.data.map((project) => ({
               ...project,
               status_badge: getStatusBadge(project.PROJ_STATUS),
               formatted_created_at: formatDate(project.CREATED_AT),
@@ -158,17 +158,19 @@ const ProjectList = () => {
                         </div>
                     </div>
                 </div>
-
-                {/* Data Table */}
-                <div className="card bg-base-100 shadow-xl">
-                    <div className="card-body">
-                        <DataTable
-                            columns={columns}
-                            data={processedData}
-                            rowKey="PROJ_ID"
-                        />
-                    </div>
-                </div>
+                <DataTable
+                    columns={columns}
+                    data={processedData}
+                    rowKey="PROJ_ID"
+                    meta={{
+                        from: projects.from,
+                        to: projects.to,
+                        total: projects.total,
+                        links: projects.links,
+                        currentPage: projects.current_page,
+                        lastPage: projects.last_page,
+                    }}
+                />
 
                 {/* Create Project Drawer */}
                 <ProjectDrawer

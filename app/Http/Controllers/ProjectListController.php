@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Carbon\Carbon;
+use App\Services\DataTableService;
+use Illuminate\Support\Facades\Log;
 
 class ProjectListController extends Controller
 {
@@ -23,56 +25,132 @@ class ProjectListController extends Controller
         'cancelled' => 6,
         // Add more status mappings as needed
     ];
+    protected DataTableService $tableService;
 
-    public function projectList()
+    //  Inject the service into the controller
+    public function __construct(DataTableService $tableService)
     {
-        // Get projects from projects connection
-        $projects = DB::connection('projects')->select('
-            SELECT * FROM project_list 
-            ORDER BY CREATED_AT DESC
-        ');
+        $this->tableService = $tableService;
+    }
 
-        // Get all employee data from masterlist connection
+    public function projectList(Request $request)
+    {
+        // Raw projects for fallback/debug
+        $rawProjects = DB::connection('projects')
+            ->select('SELECT * FROM project_list ORDER BY CREATED_AT DESC');
+
+        // Get all employee names
         $employees = collect(DB::connection('masterlist')->select('
-            SELECT EMPLOYID, EMPNAME 
-            FROM employee_masterlist
-        '))->pluck('EMPNAME', 'EMPLOYID')->toArray();
+        SELECT EMPLOYID, EMPNAME 
+        FROM employee_masterlist
+    '))->pluck('EMPNAME', 'EMPLOYID')->toArray();
 
-        // Add employee names to projects
-        foreach ($projects as $project) {
-            $project->REQUESTOR_NAME = $employees[$project->PROJ_REQUESTOR] ?? 'Unknown';
-            $project->CREATED_BY_NAME = $employees[$project->CREATED_BY] ?? 'Unknown';
-            $project->UPDATED_BY_NAME = $employees[$project->UPDATED_BY] ?? null;
+        try {
+            // DataTableService already returns array with keys: data, total, current_page, etc.
+            $result = $this->tableService->handle(
+                $request,
+                'projects',
+                'project_list',
+                [
+                    'defaultSortBy' => 'CREATED_AT',
+                    'defaultSortDirection' => 'desc',
+                    'dateColumn' => 'CREATED_AT',
+                    'searchColumns' => [],
+                    'conditions' => function ($query) use ($request) {
+                        return $query;
+                    },
+                    'filename' => 'project_list_export',
+                    'exportColumns' => [
+                        'PROJ_ID',
+                        'PROJ_NAME',
+                        'PROJ_DESCRIPTION',
+                        'PROJ_REQUESTOR',
+                        'STATUS',
+                        'CREATED_AT',
+                    ],
+                ]
+            );
+
+            // Convert paginator to array if it's a paginator object
+            if (isset($result['data']) && $result['data'] instanceof \Illuminate\Pagination\LengthAwarePaginator) {
+                $paginatorData = $result['data'];
+                $result = [
+                    'data' => $paginatorData->items(), // Get the actual array data
+                    'total' => $paginatorData->total(),
+                    'current_page' => $paginatorData->currentPage(),
+                    'last_page' => $paginatorData->lastPage(),
+                    'from' => $paginatorData->firstItem(),
+                    'to' => $paginatorData->lastItem(),
+                    'per_page' => $paginatorData->perPage(),
+                    'links' => $paginatorData->linkCollection()->toArray(),
+                ];
+            }
+        } catch (\Exception $e) {
+            // fallback
+            $result = [
+                'data' => $rawProjects,
+                'total' => count($rawProjects),
+                'current_page' => 1,
+                'last_page' => 1,
+                'from' => 1,
+                'to' => count($rawProjects),
+                'links' => [],
+            ];
         }
 
+        // Map employee names to projects - now $result['data'] should be an array
+        foreach ($result['data'] as $key => $project) {
+            if (is_object($project)) {
+                $result['data'][$key]->REQUESTOR_NAME = $employees[$project->PROJ_REQUESTOR] ?? 'Unknown';
+                $result['data'][$key]->CREATED_BY_NAME = $employees[$project->CREATED_BY] ?? 'Unknown';
+                $result['data'][$key]->UPDATED_BY_NAME = $employees[$project->UPDATED_BY] ?? null;
+            }
+        }
+        // Dropdown options
         $departments = DB::connection('masterlist')->select('
-            SELECT DEPTNAME AS value, DEPTNAME AS label
-            FROM tbldepts
-            ORDER BY DEPTNAME ASC
-        ');
+        SELECT DEPTNAME AS value, DEPTNAME AS label
+        FROM tbldepts
+        ORDER BY DEPTNAME ASC
+    ');
 
         $requestors = DB::connection('masterlist')->select('
-            SELECT EMPLOYID AS value,
-              CONCAT(EMPLOYID, " - ", EMPNAME) as label
-            FROM employee_masterlist WHERE ACCSTATUS = 1
-            ORDER BY EMPNAME ASC
-        ');
+        SELECT EMPLOYID AS value,
+               CONCAT(EMPLOYID, " - ", EMPNAME) AS label
+        FROM employee_masterlist WHERE ACCSTATUS = 1
+        ORDER BY EMPNAME ASC
+    ');
+
         $programmers = DB::connection('masterlist')->select('
-    SELECT EMPLOYID AS value,
-           CONCAT(EMPLOYID, " - ", EMPNAME) AS label
-    FROM employee_masterlist
-    WHERE JOB_TITLE LIKE "%Programmer%" 
-        AND ACCSTATUS = 1
-    ORDER BY EMPNAME ASC
-');
+        SELECT EMPLOYID AS value,
+               CONCAT(EMPLOYID, " - ", EMPNAME) AS label
+        FROM employee_masterlist
+        WHERE JOB_TITLE LIKE "%Programmer%" 
+          AND ACCSTATUS = 1
+        ORDER BY EMPNAME ASC
+    ');
+        // dd($result);
 
         return Inertia::render('ProjectManagement/ProjectList', [
-            'projects'    => $projects,
+            'projects' => $result,  // React now gets array with `data` key
             'departments' => $departments,
-            'requestors'  => $requestors,
+            'requestors' => $requestors,
             'programmers' => $programmers,
+            'tableFilters' => $request->only([
+                'search',
+                'perPage',
+                'sortBy',
+                'sortDirection',
+                'start',
+                'end',
+                'dropdownSearchValue',
+                'dropdownFields',
+                'department',
+                'requestor',
+                'status',
+            ]),
         ]);
     }
+
 
     public function store(Request $request, $id = null)
     {

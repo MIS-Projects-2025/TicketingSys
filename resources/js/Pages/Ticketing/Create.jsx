@@ -24,6 +24,7 @@ const Create = () => {
         ticketShowUrl,
         emp_data,
         employeeOptions = [],
+        projectOptions = [],
     } = usePage().props;
     console.log(usePage().props);
 
@@ -323,23 +324,63 @@ const Create = () => {
 
                                 {/* Project and Request Type Section */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <label className="floating-label">
-                                        <input
-                                            type="text"
-                                            placeholder="Project Name"
-                                            className="input input-bordered w-full"
-                                            readOnly={!isEditable}
-                                            value={formData.project_name}
-                                            onChange={(e) =>
-                                                handleFormChange(
-                                                    "project_name",
-                                                    e.target.value
-                                                )
-                                            }
-                                        />
-                                        <span>Project Name</span>
-                                    </label>
+                                    {/* Project Selection - Conditional based on request type */}
+                                    {requestType === "1" ? (
+                                        // Show text input for new project when request type is 1
+                                        <label className="floating-label">
+                                            <input
+                                                type="text"
+                                                placeholder="Project Name"
+                                                className="input input-bordered w-full"
+                                                readOnly={!isEditable}
+                                                value={formData.project_name}
+                                                onChange={(e) =>
+                                                    handleFormChange(
+                                                        "project_name",
+                                                        e.target.value
+                                                    )
+                                                }
+                                            />
+                                            <span>Project Name</span>
+                                        </label>
+                                    ) : (
+                                        // Show project select dropdown for existing projects
+                                        <label className="floating-label">
+                                            <Select
+                                                isDisabled={
+                                                    !isEditable ||
+                                                    !requestType ||
+                                                    requestType === "1"
+                                                }
+                                                value={
+                                                    projectOptions.find(
+                                                        (opt) =>
+                                                            opt.value ===
+                                                            formData.project_id
+                                                    ) || null
+                                                }
+                                                onChange={(option) =>
+                                                    handleFormChange(
+                                                        "project_id",
+                                                        option
+                                                            ? option.value
+                                                            : ""
+                                                    )
+                                                }
+                                                options={projectOptions}
+                                                styles={customDarkStyles}
+                                                placeholder="Choose Project"
+                                                isClearable
+                                                menuPortalTarget={document.body}
+                                                menuPosition="fixed"
+                                                className="react-select-container"
+                                                classNamePrefix="react-select"
+                                            />
+                                            <span>Project</span>
+                                        </label>
+                                    )}
 
+                                    {/* Request Type Selection */}
                                     <label className="floating-label">
                                         <select
                                             className="select select-bordered w-full"

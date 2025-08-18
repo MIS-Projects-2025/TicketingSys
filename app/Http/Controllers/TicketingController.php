@@ -65,11 +65,19 @@ class TicketingController extends Controller
         AND EMPLOYID != 0
         ORDER BY EMPNAME ASC
     ");
+
+        $projectOptions = DB::connection('projects')->select("
+    SELECT
+    PROJ_ID as value,
+    PROJ_NAME as label
+    FROM project_list
+    ");
         // dd($employeeOptions);
         return Inertia::render('Ticketing/Create', [
             'ticketOptions' => $ticketOptions,
             'ticketProjects' => $ticketProjectMap,
-            'employeeOptions' => $employeeOptions, // Add this line
+            'employeeOptions' => $employeeOptions,
+            'projectOptions' => $projectOptions,
             'addTicketUrl' => route('tickets.add'),
             'userAccountType' => $this->getUserAccountType($empData)
         ]);

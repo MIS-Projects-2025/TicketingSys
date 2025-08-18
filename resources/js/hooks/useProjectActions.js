@@ -21,6 +21,7 @@ const useProjectActions = () => {
         PROJ_REQUESTOR: "",
         DATE_START: "",
         DATE_END: "",
+        TARGET_DEADLINE: "",
         ASSIGNED_PROGS: [],
     };
 

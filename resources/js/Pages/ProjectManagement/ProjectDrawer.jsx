@@ -226,6 +226,17 @@ const ProjectDrawer = ({ mode, initialData, isOpen, onClose, drawerId }) => {
                             />
                             <span>Date End</span>
                         </label>
+                        <label className="floating-label">
+                            <input
+                                type="date"
+                                name="TARGET_DEADLINE"
+                                className="input input-bordered w-full"
+                                readOnly={isView}
+                                value={formData.TARGET_DEADLINE || ""}
+                                onChange={handleChange}
+                            />
+                            <span>Target Date</span>
+                        </label>
                         {/* Assigned Programmers */}
                         <label className="floating-label w-full">
                             <Select

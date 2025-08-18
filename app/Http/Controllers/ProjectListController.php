@@ -180,6 +180,7 @@ class ProjectListController extends Controller
             'PROJ_REQUESTOR' => 'nullable|string|max:255',
             'DATE_START' => 'nullable|date',
             'DATE_END' => 'nullable|date',
+            'TARGET_DEADLINE' => 'nullable|date',
             'ASSIGNED_PROGS' => 'nullable|array',
         ]);
 
@@ -203,6 +204,7 @@ class ProjectListController extends Controller
                     'PROJ_REQUESTOR' => $validated['PROJ_REQUESTOR'],
                     'DATE_START' => $validated['DATE_START'] ?? null,
                     'DATE_END' => $validated['DATE_END'] ?? null,
+                    'TARGET_DEADLINE' => $validated['TARGET_DEADLINE'] ?? null,
                     'ASSIGNED_PROGS' => $assignedProgs,
                     'UPDATED_BY' => $userId,
                     'UPDATED_AT' => now(),
@@ -219,6 +221,7 @@ class ProjectListController extends Controller
                 'PROJ_REQUESTOR' => $validated['PROJ_REQUESTOR'],
                 'DATE_START' => $validated['DATE_START'] ?? null,
                 'DATE_END' => $validated['DATE_END'] ?? null,
+                'TARGET_DEADLINE' => $validated['TARGET_DEADLINE'] ?? null,
                 'ASSIGNED_PROGS' => $assignedProgs,
                 'CREATED_BY' => $userId ?? null,
                 'CREATED_AT' => now(),
@@ -359,6 +362,7 @@ class ProjectListController extends Controller
                     'PROJ_REQUESTOR' => $processedData['PROJ_REQUESTOR'] ?? null,
                     'DATE_START' => $processedData['DATE_START'] ?? null,
                     'DATE_END' => $processedData['DATE_END'] ?? null,
+                    'TARGET_DEADLINE' => $processedData['TARGET_DEADLINE'] ?? null,
                     'ASSIGNED_PROGS' => $processedData['ASSIGNED_PROGS'] ?? null,
                     'UPDATED_BY' => $userId,
                     'UPDATED_AT' => now(),
@@ -375,6 +379,7 @@ class ProjectListController extends Controller
                 'PROJ_REQUESTOR' => $processedData['PROJ_REQUESTOR'] ?? null,
                 'DATE_START' => $processedData['DATE_START'] ?? null,
                 'DATE_END' => $processedData['DATE_END'] ?? null,
+                'TARGET_DEADLINE' => $processedData['TARGET_DEADLINE'] ?? null,
                 'ASSIGNED_PROGS' => $processedData['ASSIGNED_PROGS'] ?? null,
                 'CREATED_BY' => $userId,
                 'CREATED_AT' => now(),
@@ -429,7 +434,10 @@ class ProjectListController extends Controller
         $cleaned['DATE_END'] = isset($data['DATE_END']) && !empty($data['DATE_END'])
             ? date('Y-m-d', strtotime($data['DATE_END']))
             : null;
-
+        // TARGET_DEADLINE (optional)
+        $cleaned['TARGET_DEADLINE'] = isset($data['TARGET_DEADLINE']) && !empty($data['TARGET_DEADLINE'])
+            ? date('Y-m-d', strtotime($data['TARGET_DEADLINE']))
+            : null;
         // ASSIGNED_PROGS (optional)
         $cleaned['ASSIGNED_PROGS'] = isset($data['ASSIGNED_PROGS']) && !empty($data['ASSIGNED_PROGS'])
             ? implode(',', array_map('trim', explode(',', $data['ASSIGNED_PROGS'])))
@@ -490,12 +498,13 @@ class ProjectListController extends Controller
             'PROJ_REQUESTOR',
             'DATE_START',
             'DATE_END',
+            'TARGET_DEADLINE',
             'ASSIGNED_PROGS'
         ];
         $sampleData = [
-            ['', 'Sample Project 1', 'Sample description', 'MIS', 'Pending', '1390', '2025-08-18', '2025-09-18', "'1705,1706"],
-            ['', 'Sample Project 2', 'Another description', 'HR', 'In Progress', '', '', '', "'1707"],
-            ['', 'Sample Project 3', 'Third project', 'IT', 'Completed', '1705', '2025-08-01', '2025-08-31', ''],
+            ['', 'Sample Project 1', 'Sample description', 'MIS', 'Pending', '1390', '2025-08-18', '2025-09-18', '2025-08-01', "'1705,1706"],
+            ['', 'Sample Project 2', 'Another description', 'HR', 'In Progress', '', '', '', '2025-08-01', "'1707"],
+            ['', 'Sample Project 3', 'Third project', 'IT', 'Completed', '1705', '2025-08-01', '2025-08-31', '2025-08-01',  ''],
         ];
 
         // Create CSV content

@@ -285,8 +285,8 @@ const ProjectList = () => {
         ? projects.data.map((project) => ({
               ...project,
               status_badge: getStatusBadge(project.PROJ_STATUS),
-              formatted_created_at: formatDate(project.CREATED_AT),
-              formatted_updated_at: formatDate(project.UPDATED_AT),
+              formatted_target_deadline: formatDate(project.TARGET_DEADLINE),
+              //   formatted_updated_at: formatDate(project.UPDATED_AT),
               date_range: (
                   <DateRange
                       startDate={project.DATE_START}
@@ -317,8 +317,8 @@ const ProjectList = () => {
             cellClass: "overflow-visible",
         }, // New column with overflow
         { label: "Requestor", key: "REQUESTOR_NAME" },
-        { label: "Created By", key: "CREATED_BY_NAME" },
-        { label: "Created", key: "formatted_created_at" },
+        // { label: "Created By", key: "CREATED_BY_NAME" },
+        { label: "Target Deadline", key: "formatted_target_deadline" },
         { label: "Action", key: "action", cellClass: "overflow-visible" },
     ];
 

@@ -13,4 +13,8 @@ Route::prefix($app_name)->group(function () {
     Route::get('/projectList', [ProjectListController::class, 'projectList'])->name('project.list');
     Route::post('/projectList', [ProjectListController::class, 'store'])->name('project.store');
     Route::delete('/projectList/{id}', [ProjectListController::class, 'destroy'])->name('project.destroy');
+
+    // Excel Import Routes
+    Route::post('/projectList/import', [ProjectListController::class, 'importExcel'])->name('project.import');
+    Route::get('/projectList/template', [ProjectListController::class, 'downloadTemplate'])->name('project.template');
 });

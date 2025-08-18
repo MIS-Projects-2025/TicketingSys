@@ -11,7 +11,7 @@ const useProjectActions = () => {
 
     // State for selected project
     const [selectedProject, setSelectedProject] = useState(null);
-
+    const [showImportModal, setShowImportModal] = useState(false);
     // Default project data
     const defaultProjectData = {
         PROJ_NAME: "",
@@ -107,7 +107,8 @@ const useProjectActions = () => {
         // Modal actions
         openDeleteModal,
         closeDeleteModal,
-
+        setShowImportModal,
+        showImportModal,
         // Utility functions
         getStatusConfig,
         formatDate,

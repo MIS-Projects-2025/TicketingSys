@@ -1,12 +1,14 @@
-import { Link, usePage, router } from "@inertiajs/react";
+import { Link, usePage } from "@inertiajs/react";
 import { useState, useEffect } from "react";
 import Navigation from "@/Components/sidebar/Navigation";
 import ThemeToggler from "@/Components/sidebar/ThemeToggler";
+import { Menu, X, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function Sidebar() {
     const { display_name } = usePage().props;
     const [theme, setTheme] = useState("light");
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false); // for responsiveness
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true); // desktop toggle
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false); // mobile toggle
 
     useEffect(() => {
         const storedTheme = localStorage.getItem("theme") || "light";
@@ -30,47 +32,69 @@ export default function Sidebar() {
         <div className="flex">
             {/* Mobile Hamburger */}
             <button
-                className="absolute z-50 p-2 rounded top-4 right-4 md:hidden"
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="absolute z-50 p-2 rounded top-4 left-4 md:hidden"
+                onClick={() => setIsMobileSidebarOpen(true)}
             >
-                <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M4 6h16M4 12h16M4 18h16"
-                    />
-                </svg>
+                <Menu className="w-6 h-6" />
             </button>
+
+            {/* Overlay (mobile only) */}
+            {isMobileSidebarOpen && (
+                <div
+                    className="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden"
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                />
+            )}
 
             {/* Sidebar */}
             <div
                 className={`
-                    fixed md:relative top-0 left-0 z-40 transition-transform transform
-                    ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
+                    fixed md:relative top-0 left-0 z-50 transition-all duration-300
+                    ${
+                        isMobileSidebarOpen
+                            ? "translate-x-0"
+                            : "-translate-x-full"
+                    }
                     md:translate-x-0
-                    md:flex
-                    flex-col min-h-screen w-[270px] space-y-6 px-4 pb-6 pt-4
+                    flex flex-col min-h-screen
+                    ${isSidebarOpen ? "w-[270px]" : "w-[80px]"}
+                    px-4 pb-6 pt-4
                     ${
                         theme === "light"
                             ? "bg-gray-50 text-black"
                             : "bg-base-100 text-base-content"
                     }
                 `}
-                style={{
-                    scrollbarWidth: "none",
-                    msOverflowStyle: "none",
-                }}
             >
+                {/* Desktop Collapse Button */}
+                <button
+                    className="hidden md:flex items-center justify-center absolute top-4 right-[-18px] 
+               btn btn-sm btn-circle shadow-md 
+               bg-base-200 hover:bg-base-300 
+               transition"
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                >
+                    {isSidebarOpen ? (
+                        <ChevronLeft className="w-4 h-4" />
+                    ) : (
+                        <ChevronRight className="w-4 h-4" />
+                    )}
+                </button>
+
+                {/* Close button on mobile */}
+                <button
+                    className="absolute top-4 right-4 md:hidden"
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                >
+                    <X className="w-6 h-6" />
+                </button>
+
                 {/* LOGO */}
                 <Link
                     href={route("dashboard")}
-                    className="flex items-center pl-[10px] text-lg font-bold"
+                    className={`flex items-center ${
+                        isSidebarOpen ? "pl-[10px]" : "justify-center"
+                    } text-lg font-bold`}
                 >
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -78,7 +102,7 @@ export default function Sidebar() {
                         viewBox="0 0 24 24"
                         strokeWidth="1.5"
                         stroke="currentColor"
-                        className="w-5 h-5"
+                        className="w-6 h-6"
                     >
                         <path
                             strokeLinecap="round"
@@ -91,12 +115,20 @@ export default function Sidebar() {
                             d="M9 3h6v18H9z"
                         />
                     </svg>
-                    <p className="pt-[2px] pl-1">{formattedAppName}</p>
+                    {isSidebarOpen && (
+                        <p className="pt-[2px] pl-1">{formattedAppName}</p>
+                    )}
                 </Link>
 
-                <Navigation />
+                {/* Navigation */}
+                <Navigation isSidebarOpen={isSidebarOpen} />
 
-                <ThemeToggler toggleTheme={toggleTheme} theme={theme} />
+                {/* Theme toggler */}
+                <div
+                    className={`${isSidebarOpen ? "block" : "hidden"} md:block`}
+                >
+                    <ThemeToggler toggleTheme={toggleTheme} theme={theme} />
+                </div>
             </div>
         </div>
     );

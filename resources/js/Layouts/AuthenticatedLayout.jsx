@@ -72,12 +72,13 @@ export default function AuthenticatedLayout({ header, children }) {
         <div className="flex flex-col">
             {isLoading && <LoadingScreen text="Please wait..." />}
 
-            {/* <LoadingScreen text="Please wait..." /> */}
             <div className="flex h-screen overflow-hidden">
                 <Sidebar />
-                <div className="w-full ">
+                <div className="flex-1 min-w-0">
+                    {" "}
+                    {/* ✅ responsive instead of fixed w-full */}
                     <NavBar />
-                    <main className="h-screen px-6 py-6 pb-[70px] overflow-y-auto">
+                    <main className="h-screen px-4 sm:px-6 py-6 pb-[70px] overflow-y-auto">
                         <div className="">{children}</div>
                     </main>
                 </div>

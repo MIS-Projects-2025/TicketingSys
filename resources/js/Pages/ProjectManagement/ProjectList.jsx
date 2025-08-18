@@ -5,7 +5,8 @@ import { usePage } from "@inertiajs/react";
 import ProjectDrawer from "./ProjectDrawer";
 import DeleteModal from "./DeleteModal";
 import useProjectActions from "@/hooks/useProjectActions";
-
+import ImportModal from "./ImportModal";
+import { Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
 const ProjectList = () => {
     const { projects } = usePage().props;
     const {
@@ -29,7 +30,8 @@ const ProjectList = () => {
         closeViewDrawer,
         closeEditDrawer,
         closeDeleteModal,
-
+        showImportModal,
+        setShowImportModal,
         // Utility functions
         getStatusConfig,
         formatDate,
@@ -47,19 +49,19 @@ const ProjectList = () => {
                 className="btn btn-primary btn-sm"
                 onClick={() => openViewDrawer(project)}
             >
-                View
+                <Eye size={16} />
             </button>
             <button
                 className="btn btn-success btn-sm"
                 onClick={() => openEditDrawer(project)}
             >
-                Edit
+                <Pencil size={16} />
             </button>
             <button
                 className="btn btn-error btn-sm"
                 onClick={() => openDeleteModal(project)}
             >
-                Delete
+                <Trash2 size={16} />
             </button>
         </div>
     );
@@ -95,13 +97,27 @@ const ProjectList = () => {
                 {/* Header Section */}
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-bold">Projects List</h1>
-                    <button
-                        className="btn btn-primary"
-                        onClick={openCreateDrawer}
-                    >
-                        + Add New Project
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            className="btn btn-success flex items-center gap-2"
+                            onClick={() => setShowImportModal(true)}
+                        >
+                            <FileSpreadsheet size={18} />
+                            Import Excel
+                        </button>
+                        <button
+                            className="btn btn-primary"
+                            onClick={openCreateDrawer}
+                        >
+                            + Add New Project
+                        </button>
+                    </div>
                 </div>
+
+                <ImportModal
+                    isOpen={showImportModal}
+                    onClose={() => setShowImportModal(false)}
+                />
 
                 {/* Stats Section */}
                 <div className="stats shadow mb-6">
@@ -132,7 +148,6 @@ const ProjectList = () => {
                     onClose={closeCreateDrawer}
                     drawerId="create-project-drawer"
                 />
-
                 {/* View Project Drawer */}
                 <ProjectDrawer
                     mode="view"
@@ -141,7 +156,6 @@ const ProjectList = () => {
                     onClose={closeViewDrawer}
                     drawerId="view-project-drawer"
                 />
-
                 {/* Edit Project Drawer */}
                 <ProjectDrawer
                     mode="edit"
@@ -150,7 +164,6 @@ const ProjectList = () => {
                     onClose={closeEditDrawer}
                     drawerId="edit-project-drawer"
                 />
-
                 {/* Delete Confirmation Modal */}
                 <DeleteModal
                     project={selectedProject}

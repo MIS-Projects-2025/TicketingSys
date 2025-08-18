@@ -458,15 +458,29 @@ const EmptyState = ({ activeFilter, filterType }) => {
 };
 
 // Main component
+// Main component
 const Table = () => {
-    const { tickets = [], emp_data, userAccountType } = usePage().props;
-    const [activeFilter, setActiveFilter] = useState(FILTER_TYPES.ACTIVE); // State for StatCard filtering
+    const { tickets = {}, emp_data, userAccountType } = usePage().props;
+    const [activeFilter, setActiveFilter] = useState(FILTER_TYPES.ACTIVE);
 
     // Process tickets with action information
     const processedTickets = useMemo(() => {
-        if (!Array.isArray(tickets)) return [];
+        // Handle both old format (array) and new format (paginated object)
+        let ticketsData = [];
 
-        return tickets.map((ticket) => {
+        if (Array.isArray(tickets)) {
+            // Old format - direct array
+            ticketsData = tickets;
+        } else if (tickets.data && Array.isArray(tickets.data)) {
+            // New format - paginated object with data array
+            ticketsData = tickets.data;
+        } else {
+            // Fallback
+            console.warn("Tickets data format not recognized:", tickets);
+            return [];
+        }
+
+        return ticketsData.map((ticket) => {
             const actionConfig = getActionConfig(
                 ticket,
                 userAccountType,
@@ -500,6 +514,7 @@ const Table = () => {
         });
     }, [tickets, userAccountType, emp_data]);
 
+    // Rest of your component remains the same...
     // Categorize tickets
     const { activeTickets, viewOnlyTickets, urgent } = useMemo(() => {
         const activeTickets = processedTickets.filter(
@@ -547,12 +562,12 @@ const Table = () => {
             { label: "Ticket No", key: "TICKET_ID" },
             { label: "Project Name", key: "PROJECT_NAME" },
             { label: "Details", key: "DETAILS" },
-            { label: "Date Requested", key: "CREATED_AT" },
+            { label: "Date Requested", key: "FORMATTED_CREATED_AT" }, // Use formatted date
             {
                 label: "Status",
                 key: "STATUS_CELL", // Use the pre-processed status cell
             },
-            { label: "Requestor", key: "EMPNAME" },
+            { label: "Requestor", key: "EMPNAME" }, // Now added in controller
             { label: "Action", key: "action" },
         ],
         []
@@ -575,6 +590,10 @@ const Table = () => {
                 return "Showing all tickets";
         }
     };
+
+    // Debug log to check data structure
+    console.log("Tickets received:", tickets);
+    console.log("Processed tickets:", processedTickets);
 
     return (
         <AuthenticatedLayout>
@@ -643,8 +662,15 @@ const Table = () => {
                                 columns={columns}
                                 data={currentData}
                                 routeName="tickets.index"
-                                rowKey="ID"
-                                // showExport={true}
+                                rowKey="TICKET_ID" // Changed from "ID" to match your data
+                                meta={{
+                                    from: tickets.from || 1,
+                                    to: tickets.to || currentData.length,
+                                    total: tickets.total || currentData.length,
+                                    links: tickets.links || [],
+                                    currentPage: tickets.current_page || 1,
+                                    lastPage: tickets.last_page || 1,
+                                }}
                                 onSelectionChange={(selectedRows) => {
                                     console.log("Selected Rows:", selectedRows);
                                 }}

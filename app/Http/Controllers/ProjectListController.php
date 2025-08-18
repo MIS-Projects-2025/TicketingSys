@@ -39,11 +39,25 @@ class ProjectListController extends Controller
         $rawProjects = DB::connection('projects')
             ->select('SELECT * FROM project_list ORDER BY CREATED_AT DESC');
 
-        // Get all employee names
-        $employees = collect(DB::connection('masterlist')->select('
-        SELECT EMPLOYID, EMPNAME 
+        $employeeData = DB::connection('masterlist')->select('
+        SELECT EMPLOYID, EMPNAME, FIRSTNAME, LASTNAME 
         FROM employee_masterlist
-    '))->pluck('EMPNAME', 'EMPLOYID')->toArray();
+    ');
+
+        // Convert to associative array with detailed employee info
+        $employees = [];
+        foreach ($employeeData as $emp) {
+            $key = (string)$emp->EMPLOYID; // Cast to string for consistency
+            $employees[$key] = [
+                'EMPNAME' => $emp->EMPNAME,
+                'FIRSTNAME' => $emp->FIRSTNAME,
+                'LASTNAME' => $emp->LASTNAME,
+                'INITIALS' => strtoupper(
+                    substr($emp->FIRSTNAME ?? '', 0, 1) .
+                        substr($emp->LASTNAME ?? '', 0, 1)
+                )
+            ];
+        }
 
         try {
             // DataTableService already returns array with keys: data, total, current_page, etc.
@@ -98,14 +112,16 @@ class ProjectListController extends Controller
             ];
         }
 
-        // Map employee names to projects - now $result['data'] should be an array
+        // FIXED: Map employee names to projects - access EMPNAME from employee object
         foreach ($result['data'] as $key => $project) {
             if (is_object($project)) {
-                $result['data'][$key]->REQUESTOR_NAME = $employees[$project->PROJ_REQUESTOR] ?? 'Unknown';
-                $result['data'][$key]->CREATED_BY_NAME = $employees[$project->CREATED_BY] ?? 'Unknown';
-                $result['data'][$key]->UPDATED_BY_NAME = $employees[$project->UPDATED_BY] ?? null;
+                $result['data'][$key]->REQUESTOR_NAME = $employees[(string)$project->PROJ_REQUESTOR]['EMPNAME'] ?? 'Unknown';
+                $result['data'][$key]->CREATED_BY_NAME = $employees[(string)$project->CREATED_BY]['EMPNAME'] ?? 'Unknown';
+                $result['data'][$key]->UPDATED_BY_NAME = isset($project->UPDATED_BY) ?
+                    ($employees[(string)$project->UPDATED_BY]['EMPNAME'] ?? null) : null;
             }
         }
+
         // Dropdown options
         $departments = DB::connection('masterlist')->select('
         SELECT DEPTNAME AS value, DEPTNAME AS label
@@ -128,13 +144,13 @@ class ProjectListController extends Controller
           AND ACCSTATUS = 1
         ORDER BY EMPNAME ASC
     ');
-        // dd($result);
 
         return Inertia::render('ProjectManagement/ProjectList', [
             'projects' => $result,  // React now gets array with `data` key
             'departments' => $departments,
             'requestors' => $requestors,
             'programmers' => $programmers,
+            'employees' => $employees, // Contains detailed employee info
             'tableFilters' => $request->only([
                 'search',
                 'perPage',
@@ -150,7 +166,6 @@ class ProjectListController extends Controller
             ]),
         ]);
     }
-
 
     public function store(Request $request, $id = null)
     {

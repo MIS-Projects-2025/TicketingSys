@@ -8,7 +8,9 @@ import useProjectActions from "@/hooks/useProjectActions";
 import ImportModal from "./ImportModal";
 import { Ellipsis, Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
 const ProjectList = () => {
-    const { projects } = usePage().props;
+    const { projects, employees = {} } = usePage().props;
+    console.log(usePage().props);
+
     const {
         selectedProject,
         defaultProjectData,
@@ -36,7 +38,6 @@ const ProjectList = () => {
         openDropdown,
         // Utility functions
         getStatusConfig,
-        formatDate,
     } = useProjectActions();
 
     // Helper functions that return JSX
@@ -96,28 +97,228 @@ const ProjectList = () => {
         </div>
     );
 
-    // projects.data is now an array of project objects
+    const getInitialsFromEmployee = (employee) => {
+        if (!employee) return "??";
+
+        // If we have pre-calculated initials from controller
+        if (employee.INITIALS) {
+            return employee.INITIALS;
+        }
+
+        // Fallback: calculate from FIRSTNAME and LASTNAME
+        if (employee.FIRSTNAME && employee.LASTNAME) {
+            return (
+                employee.FIRSTNAME.charAt(0) + employee.LASTNAME.charAt(0)
+            ).toUpperCase();
+        }
+
+        // Final fallback: use EMPNAME
+        if (employee.EMPNAME) {
+            return getInitials(employee.EMPNAME);
+        }
+
+        return "??";
+    };
+
+    // Keep the original getInitials function for backward compatibility
+    const getInitials = (name) => {
+        if (!name) return "??";
+        return name
+            .split(" ")
+            .map((word) => word.charAt(0).toUpperCase())
+            .slice(0, 2) // Take only first 2 initials
+            .join("");
+    };
+
+    // Helper function to format date
+    const formatDate = (dateString) => {
+        if (!dateString) return "Not set";
+        try {
+            return new Date(dateString).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+            });
+        } catch {
+            return "Invalid date";
+        }
+    };
+    // DaisyUI avatar colors
+    const avatarColors = [
+        "bg-primary text-primary-content",
+        "bg-secondary text-secondary-content",
+        "bg-accent text-accent-content",
+        "bg-info text-info-content",
+        "bg-success text-success-content",
+        "bg-warning text-warning-content",
+        "bg-error text-error-content",
+        "bg-neutral text-neutral-content",
+    ];
+
+    const getAvatarColor = (employeeId) => {
+        if (!employeeId) return avatarColors[0];
+        const index = parseInt(employeeId) % avatarColors.length;
+        return avatarColors[index];
+    };
+
+    // AssignedProgrammers component
+    // Simplified AssignedProgrammers component
+    const AssignedProgrammers = ({ assignedProgs, employees }) => {
+        if (!assignedProgs) {
+            return (
+                <span className="italic text-base-content/60">
+                    No programmers assigned
+                </span>
+            );
+        }
+
+        const progIds = assignedProgs
+            .split(",")
+            .map((id) => id.trim())
+            .filter((id) => id);
+
+        if (progIds.length === 0) {
+            return (
+                <span className="italic text-base-content/60">
+                    No programmers assigned
+                </span>
+            );
+        }
+
+        const maxVisible = 3;
+        const visibleProgs = progIds.slice(0, maxVisible);
+        const remainingCount = progIds.length - maxVisible;
+
+        return (
+            <div className="flex items-center gap-2 flex-wrap relative">
+                <div className="flex -space-x-2 relative z-10">
+                    {visibleProgs.map((progId, index) => {
+                        // Clean lookup - employees should now work correctly
+                        const employee = employees[progId];
+                        const name = employee?.EMPNAME || "Unknown";
+                        const initials = getInitialsFromEmployee(employee);
+                        const colorClass = getAvatarColor(progId);
+
+                        return (
+                            <div
+                                key={progId}
+                                className="avatar placeholder tooltip tooltip-top relative"
+                                data-tip={`${name} (${progId})`}
+                                style={{ zIndex: 9999 + (maxVisible - index) }}
+                            >
+                                <div
+                                    className={`w-8 h-8 rounded-full ${colorClass} text-xs font-semibold flex items-center justify-center border-2 border-base-200 hover:scale-110 transition-transform cursor-pointer`}
+                                >
+                                    {initials}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {remainingCount > 0 && (
+                    <div
+                        className="avatar placeholder tooltip tooltip-top relative"
+                        data-tip={`+${remainingCount} more programmers`}
+                        style={{ zIndex: 9999 }}
+                    >
+                        <div className="w-8 h-8 rounded-full bg-base-300 text-base-content text-xs font-semibold flex items-center justify-center border-2 border-base-200 hover:scale-110 transition-transform cursor-pointer">
+                            +{remainingCount}
+                        </div>
+                    </div>
+                )}
+
+                <div className="text-xs text-base-content/70 ml-1">
+                    ({progIds.length} assigned)
+                </div>
+            </div>
+        );
+    };
+    const DateRange = ({ startDate, endDate }) => {
+        const start = formatDate(startDate);
+        const end = formatDate(endDate);
+
+        const isOverdue =
+            endDate && new Date(endDate) < new Date() && end !== "Not set";
+        const isUpcoming =
+            startDate &&
+            new Date(startDate) > new Date() &&
+            start !== "Not set";
+
+        return (
+            <div className="text-sm space-y-2">
+                <div className="flex items-center gap-2">
+                    <span className="font-medium text-base-content/70">
+                        Start:
+                    </span>
+                    <span
+                        className={`font-medium ${
+                            isUpcoming ? "text-info" : "text-base-content"
+                        }`}
+                    >
+                        {start}
+                    </span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="font-medium text-base-content/70">
+                        End:
+                    </span>
+                    <span
+                        className={`font-medium ${
+                            isOverdue ? "text-error" : "text-base-content"
+                        }`}
+                    >
+                        {end}
+                    </span>
+                    {isOverdue && (
+                        <span className="badge badge-error badge-xs">
+                            Overdue
+                        </span>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    // Updated processedData mapping in your main component
     const processedData = Array.isArray(projects.data)
         ? projects.data.map((project) => ({
               ...project,
               status_badge: getStatusBadge(project.PROJ_STATUS),
               formatted_created_at: formatDate(project.CREATED_AT),
               formatted_updated_at: formatDate(project.UPDATED_AT),
+              date_range: (
+                  <DateRange
+                      startDate={project.DATE_START}
+                      endDate={project.DATE_END}
+                  />
+              ),
+              assigned_programmers: (
+                  <AssignedProgrammers
+                      assignedProgs={project.ASSIGNED_PROGS}
+                      employees={employees} // Pass the employees object from your controller
+                  />
+              ),
               action: getActionButtons(project),
           }))
         : [];
 
-    // Table columns configuration
+    // Updated table columns configuration
     const columns = [
         { label: "ID", key: "PROJ_ID" },
         { label: "Project Name", key: "PROJ_NAME" },
         { label: "Description", key: "PROJ_DESC" },
         { label: "Department", key: "PROJ_DEPT" },
         { label: "Status", key: "status_badge" },
+        { label: "Date Range", key: "date_range" }, // New column
+        {
+            label: "Assigned Programmers",
+            key: "assigned_programmers",
+            cellClass: "overflow-visible",
+        }, // New column with overflow
         { label: "Requestor", key: "REQUESTOR_NAME" },
         { label: "Created By", key: "CREATED_BY_NAME" },
         { label: "Created", key: "formatted_created_at" },
-        { label: "Updated", key: "formatted_updated_at" },
         { label: "Action", key: "action", cellClass: "overflow-visible" },
     ];
 
@@ -150,14 +351,14 @@ const ProjectList = () => {
                 />
 
                 {/* Stats Section */}
-                <div className="stats shadow mb-6">
+                {/* <div className="stats shadow mb-6">
                     <div className="stat">
                         <div className="stat-title">Total Projects</div>
                         <div className="stat-value text-primary">
-                            {processedData.length}
+                            {projects.total || processedData.length}
                         </div>
                     </div>
-                </div>
+                </div> */}
                 <DataTable
                     columns={columns}
                     data={processedData}

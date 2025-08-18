@@ -19,6 +19,9 @@ const useProjectActions = () => {
         PROJ_DEPT: "",
         PROJ_STATUS: "1",
         PROJ_REQUESTOR: "",
+        DATE_START: "",
+        DATE_END: "",
+        ASSIGNED_PROGS: [],
     };
 
     // Drawer actions

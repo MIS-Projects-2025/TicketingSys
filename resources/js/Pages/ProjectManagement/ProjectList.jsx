@@ -54,7 +54,7 @@ const ProjectList = () => {
     };
 
     const getActionButtons = (project) => (
-        <div className="dropdown dropdown-left">
+        <div className="dropdown dropdown-end">
             <div tabIndex={0} role="button" className="btn btn-sm btn-ghost">
                 <Ellipsis />
             </div>

@@ -4,7 +4,7 @@ import Select from "react-select";
 import { customDarkStyles } from "@/styles/customDarkStyles";
 
 const ProjectDrawer = ({ mode, initialData, isOpen, onClose, drawerId }) => {
-    const { departments, requestors } = usePage().props;
+    const { departments, requestors, programmers } = usePage().props;
     const isView = mode === "view";
     const isEdit = mode === "edit";
 
@@ -25,10 +25,17 @@ const ProjectDrawer = ({ mode, initialData, isOpen, onClose, drawerId }) => {
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        console.log("Form data being sent:", formData);
-        console.log("Mode:", mode);
+        const submitData = { ...formData };
 
-        router.post(route("project.store"), formData, {
+        if (!Array.isArray(submitData.ASSIGNED_PROGS)) {
+            submitData.ASSIGNED_PROGS = submitData.ASSIGNED_PROGS
+                ? submitData.ASSIGNED_PROGS.split(",")
+                : [];
+        }
+
+        console.log("Form data being sent:", submitData);
+
+        router.post(route("project.store"), submitData, {
             onSuccess: () => {
                 onClose();
             },
@@ -193,6 +200,73 @@ const ProjectDrawer = ({ mode, initialData, isOpen, onClose, drawerId }) => {
                                 isDisabled={isView}
                             />
                             <span>Requestor</span>
+                        </label>
+                        {/* Date Start */}
+                        <label className="floating-label">
+                            <input
+                                type="date"
+                                name="DATE_START"
+                                className="input input-bordered w-full"
+                                readOnly={isView}
+                                value={formData.DATE_START || ""}
+                                onChange={handleChange}
+                            />
+                            <span>Date Start</span>
+                        </label>
+
+                        {/* Date End */}
+                        <label className="floating-label">
+                            <input
+                                type="date"
+                                name="DATE_END"
+                                className="input input-bordered w-full"
+                                readOnly={isView}
+                                value={formData.DATE_END || ""}
+                                onChange={handleChange}
+                            />
+                            <span>Date End</span>
+                        </label>
+                        {/* Assigned Programmers */}
+                        <label className="floating-label w-full">
+                            <Select
+                                name="ASSIGNED_PROGS"
+                                isMulti
+                                value={
+                                    formData.ASSIGNED_PROGS
+                                        ? programmers
+                                              .filter((r) =>
+                                                  formData.ASSIGNED_PROGS.includes(
+                                                      r.value
+                                                  )
+                                              )
+                                              .map((r) => ({
+                                                  value: r.value,
+                                                  label: r.label,
+                                              }))
+                                        : []
+                                }
+                                onChange={(selectedOptions) => {
+                                    const values = selectedOptions
+                                        ? selectedOptions.map(
+                                              (opt) => opt.value
+                                          )
+                                        : [];
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        ASSIGNED_PROGS: values,
+                                    }));
+                                }}
+                                styles={customDarkStyles}
+                                options={
+                                    programmers?.map((r) => ({
+                                        value: r.value,
+                                        label: r.label,
+                                    })) || []
+                                }
+                                placeholder="Assign Programmers"
+                                isDisabled={isView}
+                            />
+                            <span>Assigned Programmers</span>
                         </label>
 
                         {/* Actions */}

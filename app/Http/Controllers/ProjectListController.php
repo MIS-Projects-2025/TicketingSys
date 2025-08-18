@@ -54,14 +54,23 @@ class ProjectListController extends Controller
         $requestors = DB::connection('masterlist')->select('
             SELECT EMPLOYID AS value,
               CONCAT(EMPLOYID, " - ", EMPNAME) as label
-            FROM employee_masterlist
+            FROM employee_masterlist WHERE ACCSTATUS = 1
             ORDER BY EMPNAME ASC
         ');
+        $programmers = DB::connection('masterlist')->select('
+    SELECT EMPLOYID AS value,
+           CONCAT(EMPLOYID, " - ", EMPNAME) AS label
+    FROM employee_masterlist
+    WHERE JOB_TITLE LIKE "%Programmer%" 
+        AND ACCSTATUS = 1
+    ORDER BY EMPNAME ASC
+');
 
         return Inertia::render('ProjectManagement/ProjectList', [
             'projects'    => $projects,
             'departments' => $departments,
-            'requestors'  => $requestors
+            'requestors'  => $requestors,
+            'programmers' => $programmers,
         ]);
     }
 
@@ -69,14 +78,22 @@ class ProjectListController extends Controller
     {
         $empData = session('emp_data');
         $userId = $empData['emp_id'];
-
+        // dd($request->all());
         $validated = $request->validate([
             'PROJ_NAME' => 'required|string|max:255',
             'PROJ_DESC' => 'nullable|string',
             'PROJ_DEPT' => 'required|string|max:100',
             'PROJ_STATUS' => 'required|integer|in:1,2,3,4,5,6',
             'PROJ_REQUESTOR' => 'nullable|string|max:255',
+            'DATE_START' => 'nullable|date',
+            'DATE_END' => 'nullable|date',
+            'ASSIGNED_PROGS' => 'nullable|array',
         ]);
+
+        // Convert ASSIGNED_PROGS array -> "1705,1706"
+        $assignedProgs = $request->filled('ASSIGNED_PROGS')
+            ? implode(',', $request->ASSIGNED_PROGS)
+            : null;
 
         // Get PROJ_ID from request data instead of route parameter
         $projectId = $request->input('PROJ_ID');
@@ -91,6 +108,9 @@ class ProjectListController extends Controller
                     'PROJ_DEPT' => $validated['PROJ_DEPT'],
                     'PROJ_STATUS' => $validated['PROJ_STATUS'],
                     'PROJ_REQUESTOR' => $validated['PROJ_REQUESTOR'],
+                    'DATE_START' => $validated['DATE_START'] ?? null,
+                    'DATE_END' => $validated['DATE_END'] ?? null,
+                    'ASSIGNED_PROGS' => $assignedProgs,
                     'UPDATED_BY' => $userId,
                     'UPDATED_AT' => now(),
                 ]);
@@ -104,6 +124,9 @@ class ProjectListController extends Controller
                 'PROJ_DEPT' => $validated['PROJ_DEPT'],
                 'PROJ_STATUS' => $validated['PROJ_STATUS'],
                 'PROJ_REQUESTOR' => $validated['PROJ_REQUESTOR'],
+                'DATE_START' => $validated['DATE_START'] ?? null,
+                'DATE_END' => $validated['DATE_END'] ?? null,
+                'ASSIGNED_PROGS' => $assignedProgs,
                 'CREATED_BY' => $userId ?? null,
                 'CREATED_AT' => now(),
                 'UPDATED_AT' => now(),
@@ -241,6 +264,9 @@ class ProjectListController extends Controller
                     'PROJ_DEPT' => $processedData['PROJ_DEPT'],
                     'PROJ_STATUS' => $processedData['PROJ_STATUS'],
                     'PROJ_REQUESTOR' => $processedData['PROJ_REQUESTOR'] ?? null,
+                    'DATE_START' => $processedData['DATE_START'] ?? null,
+                    'DATE_END' => $processedData['DATE_END'] ?? null,
+                    'ASSIGNED_PROGS' => $processedData['ASSIGNED_PROGS'] ?? null,
                     'UPDATED_BY' => $userId,
                     'UPDATED_AT' => now(),
                 ]);
@@ -254,6 +280,9 @@ class ProjectListController extends Controller
                 'PROJ_DEPT' => $processedData['PROJ_DEPT'],
                 'PROJ_STATUS' => $processedData['PROJ_STATUS'],
                 'PROJ_REQUESTOR' => $processedData['PROJ_REQUESTOR'] ?? null,
+                'DATE_START' => $processedData['DATE_START'] ?? null,
+                'DATE_END' => $processedData['DATE_END'] ?? null,
+                'ASSIGNED_PROGS' => $processedData['ASSIGNED_PROGS'] ?? null,
                 'CREATED_BY' => $userId,
                 'CREATED_AT' => now(),
                 'UPDATED_AT' => now(),
@@ -267,39 +296,55 @@ class ProjectListController extends Controller
     {
         $cleaned = [];
 
-        // Clean PROJ_ID
+        // PROJ_ID
         if (isset($data['PROJ_ID']) && !empty($data['PROJ_ID'])) {
             $cleaned['PROJ_ID'] = (int)$data['PROJ_ID'];
         }
 
-        // Clean PROJ_NAME (required)
+        // PROJ_NAME (required)
         if (empty($data['PROJ_NAME'])) {
             throw new \Exception('Project name is required');
         }
         $cleaned['PROJ_NAME'] = trim($data['PROJ_NAME']);
 
-        // Clean PROJ_DESC
+        // PROJ_DESC
         $cleaned['PROJ_DESC'] = isset($data['PROJ_DESC']) ? trim($data['PROJ_DESC']) : null;
 
-        // Clean PROJ_DEPT (required)
+        // PROJ_DEPT (required)
         if (empty($data['PROJ_DEPT'])) {
             throw new \Exception('Project department is required');
         }
         $cleaned['PROJ_DEPT'] = trim($data['PROJ_DEPT']);
 
-        // Clean and convert PROJ_STATUS
+        // PROJ_STATUS (required)
         if (empty($data['PROJ_STATUS'])) {
             throw new \Exception('Project status is required');
         }
         $cleaned['PROJ_STATUS'] = $this->convertStatusToNumeric($data['PROJ_STATUS']);
 
-        // Clean PROJ_REQUESTOR (optional)
+        // PROJ_REQUESTOR (optional)
         $cleaned['PROJ_REQUESTOR'] = isset($data['PROJ_REQUESTOR']) && !empty(trim($data['PROJ_REQUESTOR']))
             ? trim($data['PROJ_REQUESTOR'])
             : null;
 
+        // DATE_START (optional)
+        $cleaned['DATE_START'] = isset($data['DATE_START']) && !empty($data['DATE_START'])
+            ? date('Y-m-d', strtotime($data['DATE_START']))
+            : null;
+
+        // DATE_END (optional)
+        $cleaned['DATE_END'] = isset($data['DATE_END']) && !empty($data['DATE_END'])
+            ? date('Y-m-d', strtotime($data['DATE_END']))
+            : null;
+
+        // ASSIGNED_PROGS (optional)
+        $cleaned['ASSIGNED_PROGS'] = isset($data['ASSIGNED_PROGS']) && !empty($data['ASSIGNED_PROGS'])
+            ? implode(',', array_map('trim', explode(',', $data['ASSIGNED_PROGS'])))
+            : null;
+
         return $cleaned;
     }
+
 
     private function convertStatusToNumeric($status)
     {
@@ -349,13 +394,15 @@ class ProjectListController extends Controller
             'PROJ_DESC',
             'PROJ_DEPT',
             'PROJ_STATUS',
-            'PROJ_REQUESTOR'
+            'PROJ_REQUESTOR',
+            'DATE_START',
+            'DATE_END',
+            'ASSIGNED_PROGS'
         ];
-
         $sampleData = [
-            ['', 'Sample Project 1', 'Sample description', 'MIS', 'Pending', '1390'],
-            ['', 'Sample Project 2', 'Another description', 'HR', 'In Progress', ''],
-            ['', 'Sample Project 3', 'Third project', 'IT', 'Completed', '1705'],
+            ['', 'Sample Project 1', 'Sample description', 'MIS', 'Pending', '1390', '2025-08-18', '2025-09-18', "'1705,1706"],
+            ['', 'Sample Project 2', 'Another description', 'HR', 'In Progress', '', '', '', "'1707"],
+            ['', 'Sample Project 3', 'Third project', 'IT', 'Completed', '1705', '2025-08-01', '2025-08-31', ''],
         ];
 
         // Create CSV content

@@ -7,9 +7,17 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Facades\Storage;
+use App\Services\DataTableService;
 
 class TicketingController extends Controller
 {
+    protected DataTableService $tableService;
+
+    //  Inject the service into the controller
+    public function __construct(DataTableService $tableService)
+    {
+        $this->tableService = $tableService;
+    }
     // Display Ticket List
     public function ticketList()
     {
@@ -68,7 +76,7 @@ class TicketingController extends Controller
 
         $projectOptions = DB::connection('projects')->select("
     SELECT
-    PROJ_ID as value,
+    PROJ_NAME as value,
     PROJ_NAME as label
     FROM project_list
     ");
@@ -378,90 +386,157 @@ class TicketingController extends Controller
             return $row->EMPLOYID;
         }, $supApproverIds);
 
-        // Base query for tickets
-        $ticketsQuery = "SELECT * FROM tickets WHERE DELETED_AT IS NULL";
-        $filters = [];
+        // Get masterlist data for employee names
+        $masterlistData = DB::connection('masterlist')->select('
+        SELECT EMPLOYID, EMPNAME, FIRSTNAME, LASTNAME 
+        FROM employee_masterlist
+    ');
 
-        // REQUESTOR filter
-        if ($this->isRequestorAccount($empData)) {
-            $filters[] = "(
-            EMPLOYEE_ID = '{$userId}' 
-            OR TESTING_BY = '{$userId}'
-            OR SUBSTRING_INDEX(TESTING_BY, '(', 1) = '{$userId}'
-        )";
+        // Convert to associative array with detailed employee info
+        $employees = [];
+        foreach ($masterlistData as $emp) {
+            $key = (string)$emp->EMPLOYID;
+            $employees[$key] = [
+                'EMPNAME' => $emp->EMPNAME,
+                'FIRSTNAME' => $emp->FIRSTNAME,
+                'LASTNAME' => $emp->LASTNAME,
+                'INITIALS' => strtoupper(
+                    substr($emp->FIRSTNAME ?? '', 0, 1) .
+                        substr($emp->LASTNAME ?? '', 0, 1)
+                )
+            ];
         }
 
-        if ($this->isDepartmentHead($empData)) {
-            if ($this->isODAccount($empData)) {
-                // OD + DH — only show records for employees where OD is both Approver1 and Approver2
-                if (!empty($odEmployeeIds)) {
-                    $idList = implode(",", array_map('intval', $odEmployeeIds));
-                    $filters[] = "(
-                    TYPE_OF_REQUEST NOT IN ('3', '4') 
-                    OR EMPLOYEE_ID IN ({$idList})
-                )";
-                }
-            } else {
-                // Normal DH
-                if (!empty($odEmployeeIds)) {
-                    $idList = implode(",", array_map('intval', $odEmployeeIds));
-                    $filters[] = "(
-                    EMPLOYEE_ID IN ({$idList})
-                )";
-                }
+        // Raw tickets for fallback/debug
+        $rawTickets = DB::select('SELECT * FROM tickets WHERE DELETED_AT IS NULL ORDER BY CREATED_AT DESC');
+
+        try {
+            // Use DataTableService with custom conditions
+            $result = $this->tableService->handle(
+                $request,
+                'mysql', // or whatever your tickets connection name is
+                'tickets',
+                [
+                    'defaultSortBy' => 'CREATED_AT',
+                    'defaultSortDirection' => 'desc',
+                    'dateColumn' => 'CREATED_AT',
+                    'searchColumns' => ['EMPLOYEE_ID', 'TYPE_OF_REQUEST'], // Add other searchable columns
+                    'conditions' => function ($query) use ($empData, $userId, $odEmployeeIds, $supEmployeeIds) {
+                        // Base condition - exclude soft deleted
+                        $query->whereNull('DELETED_AT');
+
+                        $filters = [];
+
+                        // REQUESTOR filter
+                        if ($this->isRequestorAccount($empData)) {
+                            $query->where(function ($q) use ($userId) {
+                                $q->where('EMPLOYEE_ID', $userId)
+                                    ->orWhere('TESTING_BY', $userId)
+                                    ->orWhereRaw("SUBSTRING_INDEX(TESTING_BY, '(', 1) = ?", [$userId]);
+                            });
+                            return $query;
+                        }
+
+                        if ($this->isDepartmentHead($empData)) {
+                            if ($this->isODAccount($empData)) {
+                                // OD + DH — only show records for employees where OD is both Approver1 and Approver2
+                                if (!empty($odEmployeeIds)) {
+                                    $query->where(function ($q) use ($odEmployeeIds) {
+                                        $q->whereNotIn('TYPE_OF_REQUEST', ['3', '4'])
+                                            ->orWhereIn('EMPLOYEE_ID', $odEmployeeIds);
+                                    });
+                                }
+                            } else {
+                                // Normal DH
+                                if (!empty($odEmployeeIds)) {
+                                    $query->whereIn('EMPLOYEE_ID', $odEmployeeIds);
+                                }
+                            }
+                        }
+
+                        return $query;
+                    },
+                    'filename' => 'tickets_export',
+                    'exportColumns' => [
+                        'EMPLOYEE_ID',
+                        'TYPE_OF_REQUEST',
+                        'CREATED_AT',
+                        // Add other columns you want to export
+                    ],
+                ]
+            );
+
+            // Convert paginator to array if it's a paginator object
+            if (isset($result['data']) && $result['data'] instanceof \Illuminate\Pagination\LengthAwarePaginator) {
+                $paginatorData = $result['data'];
+                $result = [
+                    'data' => $paginatorData->items(),
+                    'total' => $paginatorData->total(),
+                    'current_page' => $paginatorData->currentPage(),
+                    'last_page' => $paginatorData->lastPage(),
+                    'from' => $paginatorData->firstItem(),
+                    'to' => $paginatorData->lastItem(),
+                    'per_page' => $paginatorData->perPage(),
+                    'links' => $paginatorData->linkCollection()->toArray(),
+                ];
+            }
+        } catch (\Exception $e) {
+            // Fallback to raw data if DataTable service fails
+            $processedTickets = collect($rawTickets)->map(function ($ticket) use ($employees) {
+                $ticketArray = (array) $ticket;
+
+                // Add employee name from masterlist
+                $employeeId = $ticket->EMPLOYEE_ID ?? null;
+                $ticketArray['EMPNAME'] = $employees[(string)$employeeId]['EMPNAME'] ?? 'Unknown Employee';
+
+                // Format dates if needed
+                $ticketArray['FORMATTED_CREATED_AT'] = $ticket->CREATED_AT ?
+                    date('M j, Y g:i A', strtotime($ticket->CREATED_AT)) : '';
+
+                return (object) $ticketArray;
+            })->toArray();
+
+            $result = [
+                'data' => $processedTickets,
+                'total' => count($processedTickets),
+                'current_page' => 1,
+                'last_page' => 1,
+                'from' => count($processedTickets) > 0 ? 1 : 0,
+                'to' => count($processedTickets),
+                'per_page' => count($processedTickets),
+                'links' => [],
+            ];
+        }
+
+        // Add employee names to the paginated results
+        foreach ($result['data'] as $key => $ticket) {
+            if (is_object($ticket)) {
+                $employeeId = $ticket->EMPLOYEE_ID ?? null;
+                $result['data'][$key]->EMPNAME = $employees[(string)$employeeId]['EMPNAME'] ?? 'Unknown Employee';
+
+                // Format dates
+                $result['data'][$key]->FORMATTED_CREATED_AT = $ticket->CREATED_AT ?
+                    date('M j, Y g:i A', strtotime($ticket->CREATED_AT)) : '';
             }
         }
 
-        if (!empty($filters)) {
-            $ticketsQuery .= " AND (" . implode(" OR ", $filters) . ")";
-        }
-
-        $ticketsQuery .= " ORDER BY CREATED_AT DESC";
-
-        // Get raw tickets data
-        $rawTickets = DB::select($ticketsQuery);
-
-        // Get masterlist data
-        $masterlist = DB::connection('masterlist')->select('
-        SELECT * FROM employee_masterlist     
-    ');
-
-        // Convert masterlist to associative array for easier lookup
-        $employeeData = collect($masterlist)->keyBy('EMPLOYID')->toArray();
-
-        // Process tickets and add employee names
-        $processedTickets = collect($rawTickets)->map(function ($ticket) use ($employeeData) {
-            // Convert stdClass to array for easier manipulation
-            $ticketArray = (array) $ticket;
-
-            // Add employee name from masterlist
-            $employeeId = $ticket->EMPLOYEE_ID ?? null;
-            $ticketArray['EMPNAME'] = $employeeData[$employeeId]->EMPNAME ?? 'Unknown Employee';
-
-            // Format dates if needed
-            $ticketArray['FORMATTED_CREATED_AT'] = $ticket->CREATED_AT ?
-                date('M j, Y g:i A', strtotime($ticket->CREATED_AT)) : '';
-
-            return (object) $ticketArray; // Convert back to object
-        })->toArray();
-
-        // Create pagination-like structure that your DataTable expects
-        $ticketsPaginated = [
-            'data' => $processedTickets,
-            'total' => count($processedTickets),
-            'current_page' => 1,
-            'last_page' => 1,
-            'from' => count($processedTickets) > 0 ? 1 : 0,
-            'to' => count($processedTickets),
-            'per_page' => count($processedTickets),
-            'links' => [],
-        ];
-        // dd($ticketsPaginated);
         return Inertia::render('Ticketing/Table', [
-            'tickets' => $ticketsPaginated, // Now structured like your project data
-            'masterlist' => $masterlist,
+            'tickets' => $result, // Now using DataTable service structure
+            'masterlist' => $masterlistData,
             'userAccountType' => $this->getUserAccountType($empData),
-            'empData' => $empData, // Add this if not already passed
+            'empData' => $empData,
+            'employees' => $employees, // Contains detailed employee info
+            'tableFilters' => $request->only([
+                'search',
+                'perPage',
+                'sortBy',
+                'sortDirection',
+                'start',
+                'end',
+                'dropdownSearchValue',
+                'dropdownFields',
+                // Add any other filters specific to tickets
+            ]),
         ]);
     }
     public function updateStatus(Request $request, $hash)

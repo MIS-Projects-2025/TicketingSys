@@ -344,38 +344,57 @@ const Create = () => {
                                             <span>Project Name</span>
                                         </label>
                                     ) : (
-                                        // Show project select dropdown for existing projects
+                                        // Show project select dropdown for existing projects OR text when not editable
                                         <label className="floating-label">
-                                            <Select
-                                                isDisabled={
-                                                    !isEditable ||
-                                                    !requestType ||
-                                                    requestType === "1"
-                                                }
-                                                value={
-                                                    projectOptions.find(
-                                                        (opt) =>
-                                                            opt.value ===
-                                                            formData.project_id
-                                                    ) || null
-                                                }
-                                                onChange={(option) =>
-                                                    handleFormChange(
-                                                        "project_id",
-                                                        option
-                                                            ? option.value
-                                                            : ""
-                                                    )
-                                                }
-                                                options={projectOptions}
-                                                styles={customDarkStyles}
-                                                placeholder="Choose Project"
-                                                isClearable
-                                                menuPortalTarget={document.body}
-                                                menuPosition="fixed"
-                                                className="react-select-container"
-                                                classNamePrefix="react-select"
-                                            />
+                                            {!isEditable ? (
+                                                // Show as text when not editable
+                                                <input
+                                                    type="text"
+                                                    className="input input-bordered w-full"
+                                                    value={
+                                                        formData.project_name
+                                                    }
+                                                    readOnly
+                                                />
+                                            ) : (
+                                                // Show dropdown when editable
+                                                <Select
+                                                    isDisabled={
+                                                        !isEditable ||
+                                                        !requestType ||
+                                                        requestType === "1"
+                                                    }
+                                                    value={
+                                                        projectOptions.find(
+                                                            (opt) =>
+                                                                String(
+                                                                    opt.value
+                                                                ) ===
+                                                                String(
+                                                                    formData.project_name
+                                                                )
+                                                        ) || null
+                                                    }
+                                                    onChange={(option) =>
+                                                        handleFormChange(
+                                                            "project_name",
+                                                            option
+                                                                ? option.value
+                                                                : ""
+                                                        )
+                                                    }
+                                                    options={projectOptions}
+                                                    styles={customDarkStyles}
+                                                    placeholder="Choose Project"
+                                                    isClearable
+                                                    menuPortalTarget={
+                                                        document.body
+                                                    }
+                                                    menuPosition="fixed"
+                                                    className="react-select-container"
+                                                    classNamePrefix="react-select"
+                                                />
+                                            )}
                                             <span>Project</span>
                                         </label>
                                     )}

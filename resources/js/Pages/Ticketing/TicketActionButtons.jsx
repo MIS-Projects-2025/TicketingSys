@@ -92,7 +92,7 @@ const TicketActionButtons = ({
                                 </span>
                             </div>
                         )}
-                        {ticketData.TESTING_BY && (
+                        {ticketData.TESTING_BY && ticketData.STATUS != "13" && (
                             <div className="flex flex-col">
                                 <span className="text-sm font-medium text-info">
                                     Tested By:

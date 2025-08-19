@@ -96,7 +96,7 @@ class TicketingController extends Controller
         $validated = $request->validate($this->ticketValidationRules());
 
         $now = now();
-
+        dd($request->all());
         // Check if this is a child ticket
         if (!empty($validated['parent_ticket_id'])) {
             // This is a child ticket

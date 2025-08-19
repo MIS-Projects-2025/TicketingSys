@@ -116,12 +116,17 @@ export function useTicketManagement() {
 
     const determineTicketType = useCallback(
         (data = formData) => {
-            if (!data.ticket_id) return "parent";
-
-            if (data.ticket_id && data.type_of_request != "1") {
+            // A child ticket is only created when:
+            // 1. A parent ticket is explicitly selected (ticket_id exists)
+            // 2. AND the request type is one of the child-eligible types (2, 3, 4)
+            if (
+                data.ticket_id &&
+                ["2", "3", "4", 2, 3, 4].includes(data.type_of_request)
+            ) {
                 return "child";
             }
 
+            // All other cases are parent tickets (including type_of_request = 1 and standalone projects)
             return "parent";
         },
         [formData]
@@ -129,15 +134,17 @@ export function useTicketManagement() {
 
     const isChildTicket = useCallback(
         (data = formData) => {
+            // Child ticket requires BOTH conditions:
+            // 1. Parent ticket selected
+            // 2. Request type is child-eligible (2, 3, 4)
             return (
                 data.ticket_id &&
-                data.type_of_request !== "request_form" &&
-                data.type_of_request !== ""
+                data.ticket_id.trim() !== "" &&
+                ["2", "3", "4", 2, 3, 4].includes(data.type_of_request)
             );
         },
         [formData]
     );
-
     const validateForm = useCallback(() => {
         const ticketType = determineTicketType();
 
@@ -155,26 +162,37 @@ export function useTicketManagement() {
             };
         }
 
+        // Child ticket validation
         if (ticketType === "child") {
-            if (!formData.ticket_id) {
+            if (!formData.ticket_id || formData.ticket_id.trim() === "") {
                 return {
                     isValid: false,
                     message:
-                        "Please select a parent ticket for Testing/Adjustment/Enhancement forms.",
+                        "Please select a parent ticket for this request type.",
                 };
             }
 
-            // Check if request type is one of the child ticket types (2, 3, 4)
-            // HTML select returns string values, so check both string and numeric versions
+            // Ensure request type is child-eligible when parent ticket is selected
             const childTicketTypes = ["2", "3", "4", 2, 3, 4];
-
             if (!childTicketTypes.includes(formData.type_of_request)) {
                 return {
                     isValid: false,
                     message:
-                        "Testing, Adjustment and Enhancement forms require a parent ticket.",
+                        "Selected request type cannot be used with a parent ticket.",
                 };
             }
+        }
+
+        // Optional: Warn if child-eligible request type is used without parent ticket
+        const childEligibleTypes = ["2", "3", "4", 2, 3, 4];
+        if (
+            childEligibleTypes.includes(formData.type_of_request) &&
+            (!formData.ticket_id || formData.ticket_id.trim() === "")
+        ) {
+            // This could be a warning instead of an error, depending on your business logic
+            console.warn(
+                "Child-eligible request type used without parent ticket - creating as standalone ticket"
+            );
         }
 
         return { isValid: true };
@@ -189,12 +207,12 @@ export function useTicketManagement() {
             setFormData((prev) => {
                 const updated = { ...prev, [field]: value };
 
-                // Clear ticket_id when switching to request_form
-                if (field === "type_of_request" && value === "request_form") {
+                // Clear ticket_id when switching to request_form (type 1)
+                if (field === "type_of_request" && value === "1") {
                     updated.ticket_id = "";
                 }
 
-                // Auto-determine ticket type
+                // Auto-determine ticket type based on new logic
                 const ticketType = determineTicketType(updated);
                 updated.ticket_level = ticketType;
 
@@ -208,7 +226,6 @@ export function useTicketManagement() {
         },
         [determineTicketType]
     );
-
     const handleAssignmentChange = useCallback((field, value) => {
         setAssignmentData((prev) => ({
             ...prev,

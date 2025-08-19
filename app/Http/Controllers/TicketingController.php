@@ -96,7 +96,7 @@ class TicketingController extends Controller
         $validated = $request->validate($this->ticketValidationRules());
 
         $now = now();
-        dd($request->all());
+        // dd($request->all());
         // Check if this is a child ticket
         if (!empty($validated['parent_ticket_id'])) {
             // This is a child ticket
@@ -539,13 +539,13 @@ class TicketingController extends Controller
             ]),
         ]);
     }
+
     public function updateStatus(Request $request, $hash)
     {
         $ticketId = base64_decode($hash);
 
         $validated = $request->validate([
             'status' => 'required|integer|in:1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16',
-            // 'status' => 'required|string|in:OPEN,IN_PROGRESS,ASSESSED,PENDING_APPROVAL,PENDING_DH_APPROVAL,PENDING_OD_APPROVAL,APPROVED,ASSIGNED,DISAPPROVED,RETURNED,CLOSED,ON_HOLD,CANCELLED,ACKNOWLEDGED,REJECT',
             'remark' => 'nullable|string',
             'updated_by' => 'required|string|max:100',
             'role' => 'required|string|in:PROGRAMMER,DEPARTMENT_HEAD,OD,REQUESTOR,SUPERVISOR',
@@ -556,26 +556,26 @@ class TicketingController extends Controller
             'details' => 'nullable|string',
             'type_of_request' => 'nullable|integer|in:1,2,3,4',
         ]);
-        // dd($ticketId, $validated['status'], $validated['updated_by'], $validated['role'], $validated['project_name'], $validated['details'], $validated['type_of_request']);
+
         $currentTicket = DB::selectOne('SELECT STATUS, PROJECT_NAME, DETAILS, TYPE_OF_REQUEST, ASSIGNED_TO, TESTING_BY FROM tickets WHERE TICKET_ID = ?', [$ticketId]);
         if (!$currentTicket) {
             abort(404, 'Ticket not found');
         }
 
         $oldStatus = $currentTicket->STATUS;
-        $newStatus = strtoupper($validated['status']);
+        $newStatus = $validated['status']; // Keep as numeric
         $updatedBy = $validated['updated_by'];
         $role = strtoupper($validated['role']);
         $now = now();
 
         $actionFields = [];
-        // dd($role, $oldStatus, $newStatus, $updatedBy, $now);
+
         switch ($role) {
             case 'PROGRAMMER':
                 // Handle acknowledgment specifically for ASSIGNED -> ACKNOWLEDGED status change
-                if ($oldStatus === 'ASSIGNED' && $newStatus === 'ACKNOWLEDGED') {
+                if ($oldStatus == 5 && $newStatus == 6) { // ASSIGNED -> ACKNOWLEDGED
                     $actionFields = [
-                        'prog_action_by' => "{$updatedBy} ({$newStatus})",
+                        'prog_action_by' => "{$updatedBy} (ACKNOWLEDGED)",
                         'prog_action_at' => $now,
                         'acknowledged_by' => $updatedBy,
                         'acknowledged_at' => $now,
@@ -583,25 +583,26 @@ class TicketingController extends Controller
                 } else {
                     // Regular programmer action
                     $actionFields = [
-                        'prog_action_by' => "{$updatedBy} ({$newStatus})",
+                        'prog_action_by' => "{$updatedBy} (STATUS_{$newStatus})",
                         'prog_action_at' => $now,
                     ];
                 }
                 break;
             case 'SUPERVISOR':
                 $actionFields = [
-                    'sup_action_by' => "{$updatedBy} ({$newStatus})",
+                    'sup_action_by' => "{$updatedBy} (STATUS_{$newStatus})",
                     'sup_action_at' => $now,
                 ];
+                break;
             case 'DEPARTMENT_HEAD':
                 $actionFields = [
-                    'dm_action_by' => "{$updatedBy} ({$newStatus})",
+                    'dm_action_by' => "{$updatedBy} (STATUS_{$newStatus})",
                     'dm_action_at' => $now,
                 ];
                 break;
             case 'OD':
                 $actionFields = [
-                    'od_action_by' => "{$updatedBy} ({$newStatus})",
+                    'od_action_by' => "{$updatedBy} (STATUS_{$newStatus})",
                     'od_action_at' => $now,
                 ];
                 break;
@@ -615,13 +616,13 @@ class TicketingController extends Controller
 
         // Check if testing_by matches updated_by and update accordingly
         if (!empty($currentTicket->TESTING_BY) && $currentTicket->TESTING_BY === $updatedBy) {
-            $fieldsToUpdate['TESTING_BY'] = "{$updatedBy}({$newStatus})";
+            $fieldsToUpdate['TESTING_BY'] = "{$updatedBy}(STATUS_{$newStatus})";
             $fieldsToUpdate['TESTING_AT'] = $now;
         }
 
         // For resubmitting or updating ticket details, add additional fields
         $updatingDetails = false;
-        if ($newStatus === 'OPEN' && $role === 'REQUESTOR') { // Resubmitting
+        if ($newStatus == 1 && $role === 'REQUESTOR') { // Resubmitting (OPEN)
             if (!empty($validated['project_name']) && $validated['project_name'] !== $currentTicket->PROJECT_NAME) {
                 $fieldsToUpdate['PROJECT_NAME'] = $validated['project_name'];
                 $this->logTicketHistory($ticketId, 'FIELD_CHANGE', 'PROJECT_NAME', $currentTicket->PROJECT_NAME, $validated['project_name'], $updatedBy);
@@ -635,8 +636,8 @@ class TicketingController extends Controller
             }
 
             if (!empty($validated['type_of_request']) && $validated['type_of_request'] !== $currentTicket->TYPE_OF_REQUEST) {
-                $fieldsToUpdate['TYPE_OF_REQUEST'] = strtoupper($validated['type_of_request']);
-                $this->logTicketHistory($ticketId, 'FIELD_CHANGE', 'TYPE_OF_REQUEST', $currentTicket->TYPE_OF_REQUEST, strtoupper($validated['type_of_request']), $updatedBy);
+                $fieldsToUpdate['TYPE_OF_REQUEST'] = $validated['type_of_request'];
+                $this->logTicketHistory($ticketId, 'FIELD_CHANGE', 'TYPE_OF_REQUEST', $currentTicket->TYPE_OF_REQUEST, $validated['type_of_request'], $updatedBy);
                 $updatingDetails = true;
             }
         }
@@ -653,12 +654,12 @@ class TicketingController extends Controller
 
         // Insert remarks with appropriate message
         $remarkMessage = $validated['remark'] ?? "Status changed from {$oldStatus} to {$newStatus}";
-        if ($updatingDetails && $newStatus === 'OPEN') {
+        if ($updatingDetails && $newStatus == 1) {
             $remarkMessage = ($validated['remark'] ?? '') . ' (Ticket details updated during resubmission)';
         }
 
         // Special message for acknowledgment
-        if ($oldStatus === 'ASSIGNED' && $newStatus === 'ACKNOWLEDGED' && $role === 'PROGRAMMER') {
+        if ($oldStatus == 5 && $newStatus == 6 && $role === 'PROGRAMMER') { // ASSIGNED -> ACKNOWLEDGED
             $remarkMessage = $validated['remark'] ?? "Ticket acknowledged by programmer";
         }
 
@@ -679,12 +680,13 @@ class TicketingController extends Controller
         $successMessage = 'Ticket status updated successfully!';
         if ($updatingDetails) {
             $successMessage = 'Ticket details and status updated successfully!';
-        } elseif ($oldStatus === 'ASSIGNED' && $newStatus === 'ACKNOWLEDGED') {
+        } elseif ($oldStatus == 5 && $newStatus == 6) { // ASSIGNED -> ACKNOWLEDGED
             $successMessage = 'Ticket acknowledged successfully!';
         }
 
         return redirect()->route('tickets-table')->with('success', $successMessage);
     }
+
     // Assign ticket
     public function assignTicket(Request $request, $hash)
     {
@@ -700,35 +702,76 @@ class TicketingController extends Controller
         // Convert array to comma-separated string for DB
         $newAssignedTo = implode(',', $validated['assigned_to']);
 
-        // Get current assignment
-        $currentTicket = DB::selectOne('SELECT ASSIGNED_TO FROM tickets WHERE TICKET_ID = ?', [$ticketId]);
+        // Get current ticket data
+        $currentTicket = DB::selectOne('SELECT ASSIGNED_TO, PROJECT_NAME, DETAILS, DEPARTMENT, PARENT_TICKET_ID,TYPE_OF_REQUEST FROM tickets WHERE TICKET_ID = ?', [$ticketId]);
         if (!$currentTicket) {
             abort(404, 'Ticket not found');
         }
-
+        // dd($request->all());
+        // dd($currentTicket);
         $oldAssignedTo = $currentTicket->ASSIGNED_TO;
         $supervisorEmpId = $validated['mis_action_by'];
 
         // Update assignment and supervisor action
         DB::update('
-        UPDATE tickets 
-        SET 
-            STATUS = ?,
-            ASSIGNED_TO = ?, 
-            DATE_ASSIGNED = ?, 
-            MIS_SUP_ACTION_BY = ?, 
-            MIS_SUP_ACTION_AT = ?, 
-            UPDATED_AT = ? 
-        WHERE TICKET_ID = ?
-    ', [
-            '5',
-            $newAssignedTo, // ✅ now a string
+            UPDATE tickets 
+            SET 
+                STATUS = ?,
+                ASSIGNED_TO = ?, 
+                DATE_ASSIGNED = ?, 
+                MIS_SUP_ACTION_BY = ?, 
+                MIS_SUP_ACTION_AT = ?, 
+                UPDATED_AT = ? 
+            WHERE TICKET_ID = ?
+        ', [
+            5, // ASSIGNED status (numeric)
+            $newAssignedTo,
             now(),
             $supervisorEmpId,
             now(),
             now(),
             $ticketId
         ]);
+
+        // 🔹 Auto-create project if needed (moved here from updateStatus)
+        if (empty($currentTicket->PARENT_TICKET_ID)) {
+            $ticketData = (object) [
+                'TICKET_ID'    => $ticketId,
+                'PROJECT_NAME' => $currentTicket->PROJECT_NAME,
+                'DETAILS'      => $currentTicket->DETAILS,
+                'DEPARTMENT'   => $currentTicket->DEPARTMENT ?? null,
+                'EMPLOYEE_ID'  => $newAssignedTo, // Use newly assigned employees
+
+            ];
+
+            $empData = session('emp_data');
+            $userId = $empData['emp_id'] ?? 'SYSTEM';
+
+            // dd([
+            //     'step' => 'Before createProjectFromTicket',
+            //     'ticketData' => $ticketData,
+            //     'userId' => $userId,
+            // ]);
+            \App\Http\Controllers\ProjectListController::createProjectFromTicket($ticketData, $userId);
+        }
+
+        // 🔹 Always create task for assigned programmers (moved here from updateStatus)
+        $ticketData = (object) [
+            'TICKET_ID'    => $ticketId,
+            'PROJECT_NAME' => $currentTicket->PROJECT_NAME,
+            'DETAILS'      => $currentTicket->DETAILS,
+            'TYPE_OF_REQUEST' => $currentTicket->TYPE_OF_REQUEST ?? null,
+        ];
+
+        $assignedEmployees = is_string($newAssignedTo)
+            ? explode(',', $newAssignedTo)
+            : (array) $newAssignedTo;
+        // dd([
+        //     'step' => 'Before createTaskFromTicket',
+        //     'ticketData' => $ticketData,
+        //     'assignedEmployees' => $assignedEmployees,
+        // ]);
+        \App\Http\Controllers\TaskController::createTaskFromTicket($ticketData, $assignedEmployees);
 
         // Log assignment change
         $this->logTicketHistory(
@@ -752,9 +795,9 @@ class TicketingController extends Controller
             $newAssignedTo
         );
 
-        return redirect()->back()->with('success', 'Ticket assigned successfully!');
-    }
 
+        return redirect()->route('tickets-table')->with('success', 'Ticket assigned successfully!');
+    }
     // Add remark to ticket (public method for HTTP requests)
     public function addRemark(Request $request, $hash)
     {
@@ -1030,7 +1073,7 @@ class TicketingController extends Controller
             'od_action_at' => 'nullable|date',
             'assigned_to' => 'nullable|string|max:100',
             'date_assigned' => 'nullable|date',
-            'testing_by' => 'required|string|max:100',
+            'testing_by' => 'nullable|string|max:100',
         ];
     }
     /**

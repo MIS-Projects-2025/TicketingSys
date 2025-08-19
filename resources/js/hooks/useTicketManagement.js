@@ -359,7 +359,7 @@ export function useTicketManagement() {
     const handleApprovalAction = useCallback(
         (action) => {
             // Check if this is a request form or not
-            const isRequestForm = formData.type_of_request == "request_form";
+            const isRequestForm = formData.type_of_request == 1;
 
             // Dynamic status mapping based on ticket type - returns numeric values
             const getStatusForAction = (actionType) => {
@@ -377,7 +377,7 @@ export function useTicketManagement() {
                 };
 
                 // Handle DH approval differently based on ticket type
-                if (actionType === "approve_dh") {
+                if (actionType == "approve_dh") {
                     return isRequestForm
                         ? TICKET_STATUS.PENDING_OD_APPROVAL
                         : TICKET_STATUS.APPROVED;

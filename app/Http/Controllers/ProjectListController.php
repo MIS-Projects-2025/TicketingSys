@@ -258,6 +258,42 @@ class ProjectListController extends Controller
             return redirect()->route('project.list')->with('error', 'Failed to delete project: ' . $e->getMessage());
         }
     }
+    public static function createProjectFromTicket($ticketData, $userId)
+    {
+        // Check if project already exists
+        $existing = DB::connection('projects')
+            ->table('project_list')
+            ->where('PROJ_NAME', $ticketData->PROJECT_NAME)
+            ->first();
+
+        if ($existing) {
+            return $existing->PROJ_ID;
+        }
+
+        // Convert assigned progs (from ticketData->EMPLOYEE_ID)
+        $assignedProgs = null;
+        if (!empty($ticketData->EMPLOYEE_ID)) {
+            $assignedProgs = is_array($ticketData->EMPLOYEE_ID)
+                ? implode(',', $ticketData->EMPLOYEE_ID)
+                : (string) $ticketData->EMPLOYEE_ID;
+        }
+        // dd($assignedProgs);
+        DB::connection('projects')->table('project_list')->insert([
+            'PROJ_NAME'      => $ticketData->PROJECT_NAME,
+            'PROJ_DESC'      => $ticketData->DETAILS ?? null,
+            'PROJ_DEPT'      => $ticketData->DEPARTMENT ?? null,
+            'PROJ_STATUS'    => 1,
+            'PROJ_REQUESTOR' => $ticketData->EMPLOYEE_ID ?? null,
+            'DATE_START'     => now()->format('Y-m-d'),
+            'ASSIGNED_PROGS' => $assignedProgs, // now filled correctly
+            'CREATED_BY'     => $userId,
+            'CREATED_AT'     => now(),
+            'UPDATED_AT'     => now(),
+        ]);
+
+        return DB::connection('projects')->getPdo()->lastInsertId();
+    }
+
 
     public function importExcel(Request $request)
     {

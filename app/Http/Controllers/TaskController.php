@@ -225,13 +225,13 @@ class TaskController extends Controller
             // Determine priority based on ticket status/urgency
             $priority = self::getTicketPriority($ticketData);
 
-            DB::insert('
-                INSERT INTO daily_tasks (
-                    TASK_ID, TASK_DATE, EMPLOYEE_ID, SOURCE_TYPE, SOURCE_ID,
-                    TASK_TITLE, TASK_DESCRIPTION, PRIORITY, STATUS,
-                    TARGET_COMPLETION, CREATED_BY, CREATED_AT, UPDATED_AT
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ', [
+            DB::connection('task')->insert('
+    INSERT INTO daily_tasks (
+        TASK_ID, TASK_DATE, EMPLOYID, SOURCE_TYPE, SOURCE_ID,
+        TASK_TITLE, TASK_DESCRIPTION, PRIORITY, STATUS,
+        TARGET_COMPLETION, CREATED_BY, CREATED_AT, UPDATED_AT
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+', [
                 $taskId,
                 Carbon::today()->format('Y-m-d'),
                 $employeeId,
@@ -241,11 +241,12 @@ class TaskController extends Controller
                 $ticketData->DETAILS,
                 $priority,
                 'PENDING',
-                null, // No specific deadline from ticket
-                'SYSTEM', // System-generated
+                null,
+                'SYSTEM',
                 $now,
                 $now
             ]);
+
 
             // Log task creation
             self::logTaskHistoryStatic($taskId, 'AUTO_CREATED_FROM_TICKET', 'SOURCE_ID', null, $ticketData->TICKET_ID, 'SYSTEM');
@@ -348,16 +349,17 @@ class TaskController extends Controller
     }
 
     // Private helper methods
-    private function generateTaskId()
+    private static function generateTaskId()
     {
         $date = date('Ymd');
         $prefix = "TSK-{$date}-";
 
-        $lastTask = DB::selectOne('
-            SELECT TASK_ID FROM daily_tasks 
-            WHERE TASK_ID LIKE ? 
-            ORDER BY TASK_ID DESC LIMIT 1
-        ', ["{$prefix}%"]);
+        // Force task connection
+        $lastTask = DB::connection('task')->selectOne('
+        SELECT TASK_ID FROM daily_tasks 
+        WHERE TASK_ID LIKE ? 
+        ORDER BY TASK_ID DESC LIMIT 1
+    ', ["{$prefix}%"]);
 
         if ($lastTask) {
             $lastNumber = (int) substr($lastTask->TASK_ID, -3);
@@ -422,12 +424,12 @@ class TaskController extends Controller
 
     private function logTaskHistory($taskId, $action, $fieldName = null, $oldValue = null, $newValue = null, $changedBy)
     {
-        DB::table('task_history')->insert([
-            'TASK_ID' => $taskId,
-            'ACTION' => $action,
+        DB::connection('task')->table('task_history')->insert([
+            'TASK_ID'    => $taskId,
+            'ACTION'     => $action,
             'FIELD_NAME' => $fieldName,
-            'OLD_VALUE' => $oldValue,
-            'NEW_VALUE' => $newValue,
+            'OLD_VALUE'  => $oldValue,
+            'NEW_VALUE'  => $newValue,
             'CHANGED_BY' => $changedBy,
             'CHANGED_AT' => now(),
         ]);
@@ -435,12 +437,12 @@ class TaskController extends Controller
 
     private static function logTaskHistoryStatic($taskId, $action, $fieldName = null, $oldValue = null, $newValue = null, $changedBy)
     {
-        DB::table('task_history')->insert([
-            'TASK_ID' => $taskId,
-            'ACTION' => $action,
+        DB::connection('task')->table('task_history')->insert([
+            'TASK_ID'    => $taskId,
+            'ACTION'     => $action,
             'FIELD_NAME' => $fieldName,
-            'OLD_VALUE' => $oldValue,
-            'NEW_VALUE' => $newValue,
+            'OLD_VALUE'  => $oldValue,
+            'NEW_VALUE'  => $newValue,
             'CHANGED_BY' => $changedBy,
             'CHANGED_AT' => now(),
         ]);

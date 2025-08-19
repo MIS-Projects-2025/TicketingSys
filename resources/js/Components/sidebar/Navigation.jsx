@@ -1,11 +1,29 @@
 import Dropdown from "@/Components/sidebar/Dropdown";
 import SidebarLink from "@/Components/sidebar/SidebarLink";
 import { usePage } from "@inertiajs/react";
-import { LayoutDashboard, TicketPlus, Ticket } from "lucide-react";
+import {
+    LayoutDashboard,
+    TicketPlus,
+    Ticket,
+    FolderKanban,
+} from "lucide-react";
 
 export default function NavLinks({ isSidebarOpen }) {
-    // 👈 accept prop
     const { emp_data } = usePage().props;
+
+    // Define ticket dropdown links
+    const ticketLinks = [
+        {
+            href: route("tickets"),
+            label: "Generate Ticket",
+            icon: <TicketPlus className="w-4 h-4" />,
+        },
+        {
+            href: route("tickets-table"),
+            label: "Ticket List",
+            icon: <Ticket className="w-4 h-4" />,
+        },
+    ];
 
     return (
         <nav
@@ -19,20 +37,22 @@ export default function NavLinks({ isSidebarOpen }) {
                 isSidebarOpen={isSidebarOpen}
             />
 
-            <SidebarLink
-                href={route("tickets-table")}
-                label="Ticket List"
+            {/* Tickets Dropdown */}
+            <Dropdown
+                label="Tickets"
                 icon={<Ticket className="w-5 h-5" />}
-                isSidebarOpen={isSidebarOpen}
+                links={ticketLinks}
             />
 
+            {/* Projects as regular sidebar link */}
             <SidebarLink
-                href={route("tickets")}
-                label="Generate Ticket"
-                icon={<TicketPlus className="w-5 h-5" />}
+                href={route("project.list")}
+                label="Projects"
+                icon={<FolderKanban className="w-5 h-5" />}
                 isSidebarOpen={isSidebarOpen}
             />
 
+            {/* Admin section */}
             {["superadmin", "admin"].includes(emp_data?.emp_system_role) && (
                 <SidebarLink
                     href={route("admin")}

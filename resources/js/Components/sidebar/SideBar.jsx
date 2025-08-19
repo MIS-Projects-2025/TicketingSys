@@ -2,7 +2,14 @@ import { Link, usePage } from "@inertiajs/react";
 import { useState, useEffect } from "react";
 import Navigation from "@/Components/sidebar/Navigation";
 import ThemeToggler from "@/Components/sidebar/ThemeToggler";
-import { Menu, X, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+    Menu,
+    X,
+    ChevronLeft,
+    ChevronRight,
+    PanelLeftClose,
+    PanelLeftOpen,
+} from "lucide-react";
 
 export default function Sidebar() {
     const { display_name } = usePage().props;
@@ -69,15 +76,15 @@ export default function Sidebar() {
                 {/* Desktop Collapse Button */}
                 <button
                     className="hidden md:flex items-center justify-center absolute top-4 right-[-18px] 
-               btn btn-sm btn-circle shadow-md 
-               bg-base-200 hover:bg-base-300 
-               transition"
+           btn btn-sm btn-circle shadow-md 
+           bg-base-200 hover:bg-base-300 
+           transition"
                     onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 >
                     {isSidebarOpen ? (
-                        <ChevronLeft className="w-4 h-4" />
+                        <PanelLeftClose className="w-4 h-4" />
                     ) : (
-                        <ChevronRight className="w-4 h-4" />
+                        <PanelLeftOpen className="w-4 h-4" />
                     )}
                 </button>
 
@@ -119,7 +126,7 @@ export default function Sidebar() {
                         <p className="pt-[2px] pl-1">{formattedAppName}</p>
                     )}
                 </Link>
-
+                <br />
                 {/* Navigation */}
                 <Navigation isSidebarOpen={isSidebarOpen} />
 

@@ -52,7 +52,7 @@ class TaskController extends Controller
             ) as existing_auto_tasks
         FROM tickets t
         WHERE FIND_IN_SET(?, t.ASSIGNED_TO) > 0 
-        AND t.STATUS IN ("5", "8", "13") 
+        AND t.STATUS IN ("5", "6") 
         AND t.DELETED_AT IS NULL 
         ORDER BY t.CREATED_AT DESC
     ', [$userId, $userId]);

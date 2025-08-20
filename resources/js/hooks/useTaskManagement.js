@@ -88,9 +88,19 @@ export default function useTaskManagement({
 
     const getPriorityConfig = (code) =>
         priorityConfig[code] || { text: "Unknown", color: "badge-ghost" };
-
+    const setSelectedTasks = (tasks) => {
+        setFormState((prev) => ({
+            ...prev,
+            selectedTasks:
+                typeof tasks === "function" ? tasks(prev.selectedTasks) : tasks,
+        }));
+    };
     // Event handlers
     const handleTaskSelect = (taskId) => {
+        console.log("Current selectedTasks:", selectedTasks);
+        console.log("Current formState:", formState);
+        console.log("TaskId being toggled:", taskId);
+
         setFormState((prev) => ({
             ...prev,
             selectedTasks: prev.selectedTasks.includes(taskId)
@@ -380,6 +390,7 @@ export default function useTaskManagement({
         isSubmitting,
         showForm,
         selectedTasks,
+        setSelectedTasks,
         viewMode,
 
         // --- Helpers ---

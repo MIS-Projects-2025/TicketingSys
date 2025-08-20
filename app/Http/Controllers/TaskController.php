@@ -112,49 +112,60 @@ class TaskController extends Controller
         $empData = session('emp_data');
         $userId = $empData['emp_id'];
         dd($request->all());
+        // Updated validation rules to handle tasks array
         $validated = $request->validate([
             'task_date' => 'required|date',
-            'source_type' => 'required|string|in:PROJECT,TICKET,MANUAL',
+            'source_type' => 'required|string|in:PROJECT,TICKET,MANUAL,ADDITIONAL',
             'source_id' => 'nullable|string|max:50',
-            'task_title' => 'required|string|max:255',
-            'task_description' => 'required|string',
             'priority' => 'required|integer|in:1,2,3,4,5',
             'status' => 'required|integer|in:1,2,3,4,5',
-            'estimated_hours' => 'nullable|numeric|min:0|max:24',
-            'target_completion' => 'nullable|date',
+            'tasks' => 'required|array|min:1',
+            'tasks.*.task_title' => 'required|string|max:255',
+            'tasks.*.task_description' => 'nullable|string',
+            'tasks.*.estimated_hours' => 'nullable|numeric|min:0|max:24',
+            'tasks.*.target_completion' => 'nullable|date',
         ]);
 
-        $taskId = $this->generateTaskId();
+        $createdTasks = [];
         $now = now();
 
-        // Insert task - Use task connection and EMPLOYID column
-        DB::connection('task')->insert('
+        // Loop through tasks array and create each task
+        foreach ($validated['tasks'] as $taskData) {
+            $taskId = $this->generateTaskId();
+
+            DB::connection('task')->insert('
             INSERT INTO daily_tasks (
                 TASK_ID, TASK_DATE, EMPLOYID, SOURCE_TYPE, SOURCE_ID,
                 TASK_TITLE, TASK_DESCRIPTION, PRIORITY, STATUS,
                 ESTIMATED_HOURS, TARGET_COMPLETION, CREATED_BY, CREATED_AT, UPDATED_AT
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ', [
-            $taskId,
-            $validated['task_date'],
-            $userId,
-            $validated['source_type'],
-            $validated['source_id'],
-            $validated['task_title'],
-            $validated['task_description'],
-            $validated['priority'],
-            $validated['status'],
-            $validated['estimated_hours'],
-            $validated['target_completion'],
-            $userId,
-            $now,
-            $now
-        ]);
+                $taskId,
+                $validated['task_date'],
+                $userId,
+                $validated['source_type'],
+                $validated['source_id'],
+                $taskData['task_title'],
+                $taskData['task_description'] ?? null,
+                $validated['priority'],
+                $validated['status'],
+                $taskData['estimated_hours'] ?? null,
+                $taskData['target_completion'] ?? null,
+                $userId,
+                $now,
+                $now
+            ]);
 
-        // Log task creation
-        $this->logTaskHistory($taskId, 'CREATED', null, null, null, $userId);
+            // Log task creation
+            $this->logTaskHistory($taskId, 'CREATED', null, null, null, $userId);
+            $createdTasks[] = $taskId;
+        }
 
-        return redirect()->route('tasks.dashboard')->with('success', 'Task created successfully! Task ID: ' . $taskId);
+        $message = count($createdTasks) > 1
+            ? 'Tasks created successfully! Task IDs: ' . implode(', ', $createdTasks)
+            : 'Task created successfully! Task ID: ' . $createdTasks[0];
+
+        return redirect()->route('tasks.create')->with('success', $message);
     }
 
     // Update Task Status and Progress

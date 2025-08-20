@@ -1,22 +1,17 @@
-import React, { useState, useEffect } from "react";
-import { usePage, router } from "@inertiajs/react";
-import {
-    User,
-    Calendar,
-    Clock,
-    CheckCircle,
-    AlertCircle,
-    Circle,
-    Briefcase,
-    Ticket,
-    Plus,
-    Filter,
-    Pause,
-    XCircle,
-} from "lucide-react";
+import React, { useState } from "react";
+import { usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-
+import useTaskManagement from "@/hooks/useTaskManagement";
+import {
+    AlertCircle,
+    Briefcase,
+    Clock,
+    Plus,
+    Ticket,
+    Calendar,
+} from "lucide-react";
 const CreateTask = () => {
+    // --- Page Props ---
     const {
         assignedProjects,
         assignedTickets,
@@ -26,207 +21,43 @@ const CreateTask = () => {
         empData,
         saveTaskUrl,
     } = usePage().props;
-    console.log(usePage().props);
 
-    const [viewMode, setViewMode] = useState("table");
-    const [selectedTasks, setSelectedTasks] = useState([]);
-    const [showForm, setShowForm] = useState(false);
+    // --- Task Management Hook ---
+    const {
+        // Form State
+        formData,
+        setFormData,
+        errors,
+        isSubmitting,
 
-    // Form state
-    const [formData, setFormData] = useState({
-        taskSource: "",
-        project: "",
-        ticket: "",
-        priority: "3", // Default to Medium
-        title: "",
-        description: "",
-        estimatedHours: "",
-        targetCompletion: "",
+        // UI State
+        showForm,
+        setShowForm,
+        viewMode,
+
+        // Task Selection
+        selectedTasks,
+        handleTaskSelect,
+
+        // Form Handling
+        handleFormChange,
+        handleSubmit,
+
+        // Config Getters
+        getStatusConfig,
+        getPriorityConfig,
+        sourceTypeIcons,
+
+        // Derived Data
+        filteredTasks,
+        selectedTicket,
+        selectedProject,
+    } = useTaskManagement({
+        existingTasks,
+        assignedProjects,
+        assignedTickets,
+        saveTaskUrl,
     });
-
-    const [errors, setErrors] = useState({});
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    // Updated status config with NUMERIC keys (matching backend)
-    const statusConfig = {
-        1: { text: "Pending", color: "badge-warning", icon: Clock },
-        2: { text: "In Progress", color: "badge-info", icon: AlertCircle },
-        3: { text: "On Hold", color: "badge-secondary", icon: Pause },
-        4: { text: "Completed", color: "badge-success", icon: CheckCircle },
-        5: { text: "Cancelled", color: "badge-error", icon: XCircle },
-    };
-
-    // Priority config (already correct with numeric keys)
-    const priorityConfig = {
-        1: { text: "Critical", color: "badge-error" },
-        2: { text: "High", color: "badge-error badge-outline" },
-        3: { text: "Medium", color: "badge-warning" },
-        4: { text: "Low", color: "badge-success" },
-        5: { text: "Very Low", color: "badge-neutral" },
-    };
-
-    const sourceTypeIcons = {
-        MANUAL: Plus,
-        PROJECT: Briefcase,
-        ADDITIONAL: Ticket,
-        TICKET: Ticket,
-    };
-
-    // Helper functions for safe config access
-    const getStatusConfig = (statusCode) => {
-        return (
-            statusConfig[statusCode] || {
-                text: "Unknown",
-                color: "badge-ghost",
-                icon: AlertCircle,
-            }
-        );
-    };
-
-    const getPriorityConfig = (priorityCode) => {
-        return (
-            priorityConfig[priorityCode] || {
-                text: "Unknown",
-                color: "badge-ghost",
-            }
-        );
-    };
-
-    const handleTaskSelect = (taskId) => {
-        setSelectedTasks((prev) =>
-            prev.includes(taskId)
-                ? prev.filter((id) => id !== taskId)
-                : [...prev, taskId]
-        );
-    };
-
-    const handleFormChange = (field, value) => {
-        setFormData((prev) => ({
-            ...prev,
-            [field]: value,
-        }));
-
-        // Clear error when user starts typing
-        if (errors[field]) {
-            setErrors((prev) => ({
-                ...prev,
-                [field]: null,
-            }));
-        }
-    };
-
-    const validateForm = () => {
-        const newErrors = {};
-
-        if (!formData.taskSource) {
-            newErrors.taskSource = "Task source is required";
-        }
-
-        if (!formData.title.trim()) {
-            newErrors.title = "Task title is required";
-        }
-
-        if (formData.taskSource === "PROJECT" && !formData.project) {
-            newErrors.project =
-                "Project selection is required for project-based tasks";
-        }
-
-        if (formData.taskSource === "ADDITIONAL" && !formData.ticket) {
-            newErrors.ticket =
-                "Ticket selection is required for additional tasks";
-        }
-
-        if (
-            formData.estimatedHours &&
-            parseFloat(formData.estimatedHours) <= 0
-        ) {
-            newErrors.estimatedHours = "Estimated hours must be greater than 0";
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleSubmit = async () => {
-        if (!validateForm()) {
-            return;
-        }
-
-        setIsSubmitting(true);
-
-        try {
-            await router.post(
-                saveTaskUrl,
-                {
-                    task_date: new Date().toISOString().split("T")[0], // Add current date
-                    source_type: formData.taskSource,
-                    source_id: formData.project || formData.ticket || null,
-                    task_title: formData.title,
-                    task_description: formData.description,
-                    priority: parseInt(formData.priority), // Ensure integer
-                    estimated_hours: formData.estimatedHours
-                        ? parseFloat(formData.estimatedHours)
-                        : null,
-                    target_completion: formData.targetCompletion || null,
-                },
-                {
-                    onSuccess: () => {
-                        // Reset form
-                        setFormData({
-                            taskSource: "",
-                            project: "",
-                            ticket: "",
-                            priority: "3",
-                            title: "",
-                            description: "",
-                            estimatedHours: "",
-                            targetCompletion: "",
-                        });
-                        setShowForm(false);
-                        setErrors({});
-                    },
-                    onError: (errors) => {
-                        setErrors(errors);
-                    },
-                }
-            );
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    // Get selected project details for auto-filling
-    const selectedProject = assignedProjects?.find(
-        (p) => p.value === formData.project
-    );
-    const selectedTicket = assignedTickets?.find(
-        (t) => t.value === formData.ticket
-    );
-
-    // Auto-fill title based on selection
-    useEffect(() => {
-        if (
-            formData.taskSource === "PROJECT" &&
-            selectedProject &&
-            !formData.title
-        ) {
-            setFormData((prev) => ({
-                ...prev,
-                title: `Project: ${selectedProject.PROJ_NAME}`,
-            }));
-        } else if (
-            formData.taskSource === "ADDITIONAL" &&
-            selectedTicket &&
-            !formData.title
-        ) {
-            setFormData((prev) => ({
-                ...prev,
-                title: `Additional: ${selectedTicket.PROJECT_NAME}`,
-            }));
-        }
-    }, [formData.taskSource, selectedProject, selectedTicket]);
-
-    const filteredTasks = existingTasks || [];
 
     return (
         <AuthenticatedLayout>
@@ -240,22 +71,19 @@ const CreateTask = () => {
                             Welcome back, {empData?.emp_name}
                         </p>
                     </div>
-                    <button
-                        className="btn btn-primary gap-2"
-                        onClick={() => setShowForm(!showForm)}
-                    >
-                        <Plus size={16} />
-                        {showForm ? "Cancel" : "Create New Task"}
-                    </button>
-                </div>
 
-                {/* Task Creation Form */}
-                {showForm && (
-                    <div className="card bg-base-100 shadow-xl mb-8">
-                        <div className="card-body">
-                            <h2 className="card-title text-xl mb-4">
-                                Create New Task
+                    {/* DaisyUI Modal */}
+                    <input
+                        type="checkbox"
+                        id="task-modal"
+                        className="modal-toggle"
+                    />
+                    <div className="modal">
+                        <div className="modal-box max-w-5xl">
+                            <h2 className="font-bold text-xl mb-4">
+                                Create New Task(s)
                             </h2>
+
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {/* Task Source */}
@@ -277,12 +105,20 @@ const CreateTask = () => {
                                                     "taskSource",
                                                     e.target.value
                                                 );
-                                                // Reset related fields when source changes
                                                 setFormData((prev) => ({
                                                     ...prev,
                                                     project: "",
                                                     ticket: "",
                                                     title: "",
+                                                    tasks: [
+                                                        {
+                                                            description: "",
+                                                            priority: "3",
+                                                            estimatedHours: "",
+                                                            targetCompletion:
+                                                                "",
+                                                        },
+                                                    ],
                                                 }));
                                             }}
                                         >
@@ -305,35 +141,7 @@ const CreateTask = () => {
                                         )}
                                     </div>
 
-                                    {/* Priority */}
-                                    <div className="form-control">
-                                        <label className="label">
-                                            <span className="label-text font-semibold">
-                                                Priority
-                                            </span>
-                                        </label>
-                                        <select
-                                            className="select select-bordered w-full"
-                                            value={formData.priority}
-                                            onChange={(e) =>
-                                                handleFormChange(
-                                                    "priority",
-                                                    e.target.value
-                                                )
-                                            }
-                                        >
-                                            {priorityLevels?.map((prio) => (
-                                                <option
-                                                    key={prio.value}
-                                                    value={prio.value}
-                                                >
-                                                    {prio.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Project - Show only for PROJECT source */}
+                                    {/* Project */}
                                     {formData.taskSource === "PROJECT" && (
                                         <div className="form-control">
                                             <label className="label">
@@ -374,21 +182,11 @@ const CreateTask = () => {
                                                     {errors.project}
                                                 </span>
                                             )}
-                                            {selectedProject && (
-                                                <span className="label-text-alt text-info mt-1">
-                                                    Deadline:{" "}
-                                                    {selectedProject.TARGET_DEADLINE
-                                                        ? new Date(
-                                                              selectedProject.TARGET_DEADLINE
-                                                          ).toLocaleDateString()
-                                                        : "Not set"}
-                                                </span>
-                                            )}
                                         </div>
                                     )}
 
-                                    {/* Ticket - Show only for ADDITIONAL source */}
-                                    {formData.taskSource === "ADDITIONAL" && (
+                                    {/* Ticket */}
+                                    {formData.taskSource === "TICKET" && (
                                         <div className="form-control">
                                             <label className="label">
                                                 <span className="label-text font-semibold">
@@ -418,9 +216,6 @@ const CreateTask = () => {
                                                         value={tkt.value}
                                                     >
                                                         {tkt.label}
-                                                        {tkt.existing_auto_tasks >
-                                                            0 &&
-                                                            ` (${tkt.existing_auto_tasks} existing tasks)`}
                                                     </option>
                                                 ))}
                                             </select>
@@ -429,171 +224,215 @@ const CreateTask = () => {
                                                     {errors.ticket}
                                                 </span>
                                             )}
-                                            {selectedTicket &&
-                                                selectedTicket.existing_auto_tasks >
-                                                    0 && (
-                                                    <span className="label-text-alt text-warning mt-1">
-                                                        Note: This ticket
-                                                        already has{" "}
-                                                        {
-                                                            selectedTicket.existing_auto_tasks
-                                                        }{" "}
-                                                        existing task(s)
-                                                    </span>
-                                                )}
+                                        </div>
+                                    )}
+
+                                    {/* Task Title → only for MANUAL */}
+                                    {formData.taskSource === "MANUAL" && (
+                                        <div className="form-control col-span-2">
+                                            <label className="label">
+                                                <span className="label-text font-semibold">
+                                                    Task Title *
+                                                </span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                className={`input input-bordered w-full ${
+                                                    errors.title
+                                                        ? "input-error"
+                                                        : ""
+                                                }`}
+                                                placeholder="Enter task title"
+                                                value={formData.title}
+                                                onChange={(e) =>
+                                                    handleFormChange(
+                                                        "title",
+                                                        e.target.value
+                                                    )
+                                                }
+                                            />
+                                            {errors.title && (
+                                                <span className="label-text-alt text-error">
+                                                    {errors.title}
+                                                </span>
+                                            )}
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Task Title */}
-                                <div className="form-control">
-                                    <label className="label">
-                                        <span className="label-text font-semibold">
-                                            Task Title *
-                                        </span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        className={`input input-bordered w-full ${
-                                            errors.title ? "input-error" : ""
-                                        }`}
-                                        placeholder="Enter task title"
-                                        value={formData.title}
-                                        onChange={(e) =>
-                                            handleFormChange(
-                                                "title",
-                                                e.target.value
-                                            )
-                                        }
-                                    />
-                                    {errors.title && (
-                                        <span className="label-text-alt text-error">
-                                            {errors.title}
-                                        </span>
-                                    )}
-                                </div>
+                                {/* Repeatable Bulk Task Fields */}
+                                <div className="space-y-6">
+                                    {formData.tasks.map((task, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="p-4 border rounded-lg bg-base-200"
+                                        >
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {/* Description */}
+                                                <div className="form-control col-span-2">
+                                                    <label className="label">
+                                                        <span className="label-text font-semibold">
+                                                            Description
+                                                        </span>
+                                                    </label>
+                                                    <textarea
+                                                        className="textarea textarea-bordered"
+                                                        placeholder="Enter description"
+                                                        value={task.description}
+                                                        onChange={(e) =>
+                                                            updateTaskField(
+                                                                idx,
+                                                                "description",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                    ></textarea>
+                                                </div>
 
-                                {/* Task Description */}
-                                <div className="form-control">
-                                    <label className="label">
-                                        <span className="label-text font-semibold">
-                                            Description
-                                        </span>
-                                    </label>
-                                    <textarea
-                                        className="textarea textarea-bordered h-24"
-                                        placeholder="Enter task description (optional)"
-                                        value={formData.description}
-                                        onChange={(e) =>
-                                            handleFormChange(
-                                                "description",
-                                                e.target.value
-                                            )
-                                        }
-                                    ></textarea>
-                                    {selectedTicket &&
-                                        selectedTicket.DETAILS && (
-                                            <span className="label-text-alt text-info mt-1">
-                                                Ticket details:{" "}
-                                                {selectedTicket.DETAILS.substring(
-                                                    0,
-                                                    100
-                                                )}
-                                                ...
-                                            </span>
-                                        )}
-                                </div>
+                                                {/* Priority */}
+                                                <div className="form-control">
+                                                    <label className="label">
+                                                        <span className="label-text font-semibold">
+                                                            Priority
+                                                        </span>
+                                                    </label>
+                                                    <select
+                                                        className="select select-bordered"
+                                                        value={task.priority}
+                                                        onChange={(e) =>
+                                                            updateTaskField(
+                                                                idx,
+                                                                "priority",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                    >
+                                                        {priorityLevels?.map(
+                                                            (prio) => (
+                                                                <option
+                                                                    key={
+                                                                        prio.value
+                                                                    }
+                                                                    value={
+                                                                        prio.value
+                                                                    }
+                                                                >
+                                                                    {prio.label}
+                                                                </option>
+                                                            )
+                                                        )}
+                                                    </select>
+                                                </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Estimated Hours */}
-                                    <div className="form-control">
-                                        <label className="label">
-                                            <span className="label-text font-semibold">
-                                                Estimated Hours
-                                            </span>
-                                        </label>
-                                        <input
-                                            type="number"
-                                            className={`input input-bordered w-full ${
-                                                errors.estimatedHours
-                                                    ? "input-error"
-                                                    : ""
-                                            }`}
-                                            placeholder="0"
-                                            min="0"
-                                            step="0.5"
-                                            value={formData.estimatedHours}
-                                            onChange={(e) =>
-                                                handleFormChange(
-                                                    "estimatedHours",
-                                                    e.target.value
-                                                )
-                                            }
-                                        />
-                                        {errors.estimatedHours && (
-                                            <span className="label-text-alt text-error">
-                                                {errors.estimatedHours}
-                                            </span>
-                                        )}
-                                    </div>
+                                                {/* Estimated Hours */}
+                                                <div className="form-control">
+                                                    <label className="label">
+                                                        <span className="label-text font-semibold">
+                                                            Estimated Hours
+                                                        </span>
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.5"
+                                                        className="input input-bordered"
+                                                        value={
+                                                            task.estimatedHours
+                                                        }
+                                                        onChange={(e) =>
+                                                            updateTaskField(
+                                                                idx,
+                                                                "estimatedHours",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
 
-                                    {/* Target Completion */}
-                                    <div className="form-control">
-                                        <label className="label">
-                                            <span className="label-text font-semibold">
-                                                Target Completion
-                                            </span>
-                                        </label>
-                                        <input
-                                            type="date"
-                                            className="input input-bordered w-full"
-                                            value={formData.targetCompletion}
-                                            onChange={(e) =>
-                                                handleFormChange(
-                                                    "targetCompletion",
-                                                    e.target.value
-                                                )
-                                            }
-                                            min={
-                                                new Date()
-                                                    .toISOString()
-                                                    .split("T")[0]
-                                            }
-                                        />
-                                    </div>
-                                </div>
+                                                {/* Target Completion */}
+                                                <div className="form-control">
+                                                    <label className="label">
+                                                        <span className="label-text font-semibold">
+                                                            Target Completion
+                                                        </span>
+                                                    </label>
+                                                    <input
+                                                        type="date"
+                                                        className="input input-bordered"
+                                                        value={
+                                                            task.targetCompletion
+                                                        }
+                                                        onChange={(e) =>
+                                                            updateTaskField(
+                                                                idx,
+                                                                "targetCompletion",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        min={
+                                                            new Date()
+                                                                .toISOString()
+                                                                .split("T")[0]
+                                                        }
+                                                    />
+                                                </div>
+                                            </div>
 
-                                {/* Submit Button */}
-                                <div className="card-actions justify-end pt-4">
+                                            {/* Remove Task Button */}
+                                            {formData.tasks.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-error btn-sm mt-3"
+                                                    onClick={() =>
+                                                        removeTask(idx)
+                                                    }
+                                                >
+                                                    Remove
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    {/* Add Another Task Button */}
                                     <button
-                                        onClick={() => setShowForm(false)}
-                                        className="btn btn-ghost"
-                                        disabled={isSubmitting}
+                                        type="button"
+                                        className="btn btn-outline w-full"
+                                        onClick={addNewTask}
                                     >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        onClick={handleSubmit}
-                                        className="btn btn-primary"
-                                        disabled={isSubmitting}
-                                    >
-                                        {isSubmitting ? (
-                                            <>
-                                                <span className="loading loading-spinner loading-sm"></span>
-                                                Creating...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Plus size={16} />
-                                                Create Task
-                                            </>
-                                        )}
+                                        + Add Another Task
                                     </button>
                                 </div>
                             </div>
+
+                            {/* Modal Actions */}
+                            <div className="modal-action">
+                                <label
+                                    htmlFor="task-modal"
+                                    className="btn btn-ghost"
+                                >
+                                    Cancel
+                                </label>
+                                <button
+                                    onClick={handleSubmit}
+                                    className="btn btn-primary"
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? (
+                                        <>
+                                            <span className="loading loading-spinner loading-sm"></span>
+                                            Creating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus size={16} />
+                                            Create Task(s)
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                )}
+                </div>
 
                 {/* Statistics Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">

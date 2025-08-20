@@ -119,6 +119,7 @@ class TaskController extends Controller
             'task_title' => 'required|string|max:255',
             'task_description' => 'required|string',
             'priority' => 'required|integer|in:1,2,3,4,5',
+            'status' => 'required|integer|in:1,2,3,4,5',
             'estimated_hours' => 'nullable|numeric|min:0|max:24',
             'target_completion' => 'nullable|date',
         ]);
@@ -142,7 +143,7 @@ class TaskController extends Controller
             $validated['task_title'],
             $validated['task_description'],
             $validated['priority'],
-            self::STATUS_PENDING,
+            $validated['status'],
             $validated['estimated_hours'],
             $validated['target_completion'],
             $userId,

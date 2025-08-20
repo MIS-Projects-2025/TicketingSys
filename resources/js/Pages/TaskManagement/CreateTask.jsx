@@ -1,15 +1,9 @@
-import React, { useState } from "react";
+import React from "react";
 import { usePage } from "@inertiajs/react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import useTaskManagement from "@/hooks/useTaskManagement";
-import {
-    AlertCircle,
-    Briefcase,
-    Clock,
-    Plus,
-    Ticket,
-    Calendar,
-} from "lucide-react";
+import { Plus } from "lucide-react";
+
 const CreateTask = () => {
     // --- Page Props ---
     const {
@@ -18,46 +12,32 @@ const CreateTask = () => {
         existingTasks,
         taskSourceTypes,
         priorityLevels,
+        statusLevels,
         empData,
         saveTaskUrl,
     } = usePage().props;
 
     // --- Task Management Hook ---
     const {
-        // Form State
+        // State
         formData,
-        setFormData,
         errors,
         isSubmitting,
 
-        // UI State
-        showForm,
-        setShowForm,
-        viewMode,
-
-        // Task Selection
-        selectedTasks,
-        handleTaskSelect,
-
-        // Form Handling
+        // Actions
         handleFormChange,
+        handleTaskUpdate,
+        addNewTask,
+        removeTask,
         handleSubmit,
-
-        // Config Getters
-        getStatusConfig,
-        getPriorityConfig,
-        sourceTypeIcons,
-
-        // Derived Data
-        filteredTasks,
-        selectedTicket,
-        selectedProject,
+        resetForm,
     } = useTaskManagement({
         existingTasks,
         assignedProjects,
         assignedTickets,
         saveTaskUrl,
     });
+    console.log(usePage().props);
 
     return (
         <AuthenticatedLayout>
@@ -95,7 +75,7 @@ const CreateTask = () => {
                         </h2>
 
                         <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 {/* Task Source */}
                                 <div className="form-control">
                                     <label className="label">
@@ -115,12 +95,6 @@ const CreateTask = () => {
                                                 "taskSource",
                                                 e.target.value
                                             );
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                project: "",
-                                                ticket: "",
-                                                title: "",
-                                            }));
                                         }}
                                     >
                                         <option value="">
@@ -169,7 +143,32 @@ const CreateTask = () => {
                                         ))}
                                     </select>
                                 </div>
-
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text font-semibold">
+                                            Status
+                                        </span>
+                                    </label>
+                                    <select
+                                        className="select select-bordered w-full"
+                                        value={formData.status}
+                                        onChange={(e) =>
+                                            handleFormChange(
+                                                "status",
+                                                e.target.value
+                                            )
+                                        }
+                                    >
+                                        {statusLevels?.map((stat) => (
+                                            <option
+                                                key={stat.value}
+                                                value={stat.value}
+                                            >
+                                                {stat.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                                 {/* Project */}
                                 {formData.taskSource === "PROJECT" && (
                                     <div className="form-control">
@@ -213,7 +212,8 @@ const CreateTask = () => {
                                 )}
 
                                 {/* Ticket */}
-                                {formData.taskSource === "TICKET" && (
+                                {(formData.taskSource === "TICKET" ||
+                                    formData.taskSource === "ADDITIONAL") && (
                                     <div className="form-control">
                                         <label className="label">
                                             <span className="label-text font-semibold">
@@ -255,113 +255,182 @@ const CreateTask = () => {
                                 )}
                             </div>
 
-                            {/* Task Title → only for MANUAL */}
-                            {formData.taskSource === "MANUAL" && (
-                                <div className="form-control">
-                                    <label className="label">
-                                        <span className="label-text font-semibold">
-                                            Task Title *
-                                        </span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        className={`input input-bordered w-full ${
-                                            errors.title ? "input-error" : ""
-                                        }`}
-                                        placeholder="Enter task title"
-                                        value={formData.title}
-                                        onChange={(e) =>
-                                            handleFormChange(
-                                                "title",
-                                                e.target.value
-                                            )
-                                        }
-                                    />
-                                    {errors.title && (
-                                        <span className="label-text-alt text-error">
-                                            {errors.title}
-                                        </span>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Description */}
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text font-semibold">
-                                        Description
-                                    </span>
-                                </label>
-                                <textarea
-                                    className="textarea textarea-bordered h-24"
-                                    placeholder="Enter task description (optional)"
-                                    value={formData.description}
-                                    onChange={(e) =>
-                                        handleFormChange(
-                                            "description",
-                                            e.target.value
-                                        )
-                                    }
-                                ></textarea>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Estimated Hours */}
-                                <div className="form-control">
-                                    <label className="label">
-                                        <span className="label-text font-semibold">
-                                            Estimated Hours
-                                        </span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        className={`input input-bordered w-full ${
-                                            errors.estimatedHours
-                                                ? "input-error"
-                                                : ""
-                                        }`}
-                                        placeholder="0"
-                                        min="0"
-                                        step="0.5"
-                                        value={formData.estimatedHours}
-                                        onChange={(e) =>
-                                            handleFormChange(
-                                                "estimatedHours",
-                                                e.target.value
-                                            )
-                                        }
-                                    />
-                                    {errors.estimatedHours && (
-                                        <span className="label-text-alt text-error">
-                                            {errors.estimatedHours}
-                                        </span>
-                                    )}
+                            {/* Task List */}
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="font-semibold">Tasks</h3>
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline"
+                                        onClick={addNewTask}
+                                    >
+                                        <Plus size={14} />
+                                        Add Task
+                                    </button>
                                 </div>
 
-                                {/* Target Completion */}
-                                <div className="form-control">
-                                    <label className="label">
-                                        <span className="label-text font-semibold">
-                                            Target Completion
-                                        </span>
-                                    </label>
-                                    <input
-                                        type="date"
-                                        className="input input-bordered w-full"
-                                        value={formData.targetCompletion}
-                                        onChange={(e) =>
-                                            handleFormChange(
-                                                "targetCompletion",
-                                                e.target.value
-                                            )
-                                        }
-                                        min={
-                                            new Date()
-                                                .toISOString()
-                                                .split("T")[0]
-                                        }
-                                    />
-                                </div>
+                                {formData.tasks.map((task, index) => (
+                                    <div
+                                        key={index}
+                                        className="border rounded-lg p-4 bg-base-100"
+                                    >
+                                        <div className="flex justify-between items-start mb-3">
+                                            <h4 className="font-medium">
+                                                Task #{index + 1}
+                                            </h4>
+                                            {formData.tasks.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-sm btn-ghost text-error"
+                                                    onClick={() =>
+                                                        removeTask(index)
+                                                    }
+                                                >
+                                                    Remove
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <div className="form-control">
+                                                <label className="label">
+                                                    <span className="label-text font-semibold">
+                                                        Task Title *
+                                                    </span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    className={`input input-bordered w-full ${
+                                                        errors[
+                                                            `tasks.${index}.title`
+                                                        ]
+                                                            ? "input-error"
+                                                            : ""
+                                                    }`}
+                                                    value={task.title}
+                                                    readOnly={
+                                                        formData.taskSource !==
+                                                        "MANUAL"
+                                                    }
+                                                    onChange={(e) =>
+                                                        formData.taskSource ===
+                                                            "MANUAL" &&
+                                                        handleTaskUpdate(
+                                                            index,
+                                                            "title",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                />
+                                                {errors[
+                                                    `tasks.${index}.title`
+                                                ] && (
+                                                    <span className="label-text-alt text-error">
+                                                        {
+                                                            errors[
+                                                                `tasks.${index}.title`
+                                                            ]
+                                                        }
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Description */}
+                                            <div className="form-control">
+                                                <label className="label">
+                                                    <span className="label-text font-semibold">
+                                                        Description
+                                                    </span>
+                                                </label>
+                                                <textarea
+                                                    className="textarea textarea-bordered w-full"
+                                                    placeholder="Enter task description (optional)"
+                                                    value={task.description}
+                                                    onChange={(e) =>
+                                                        handleTaskUpdate(
+                                                            index,
+                                                            "description",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                ></textarea>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {/* Estimated Hours */}
+                                                <div className="form-control">
+                                                    <label className="label">
+                                                        <span className="label-text font-semibold">
+                                                            Estimated Hours
+                                                        </span>
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        className={`input input-bordered w-full ${
+                                                            errors[
+                                                                `tasks.${index}.estimatedHours`
+                                                            ]
+                                                                ? "input-error"
+                                                                : ""
+                                                        }`}
+                                                        placeholder="0"
+                                                        min="0"
+                                                        step="0.5"
+                                                        value={
+                                                            task.estimatedHours
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleTaskUpdate(
+                                                                index,
+                                                                "estimatedHours",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                    />
+                                                    {errors[
+                                                        `tasks.${index}.estimatedHours`
+                                                    ] && (
+                                                        <span className="label-text-alt text-error">
+                                                            {
+                                                                errors[
+                                                                    `tasks.${index}.estimatedHours`
+                                                                ]
+                                                            }
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {/* Target Completion */}
+                                                <div className="form-control">
+                                                    <label className="label">
+                                                        <span className="label-text font-semibold">
+                                                            Target Completion
+                                                        </span>
+                                                    </label>
+                                                    <input
+                                                        type="date"
+                                                        className="input input-bordered w-full"
+                                                        value={
+                                                            task.targetCompletion
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleTaskUpdate(
+                                                                index,
+                                                                "targetCompletion",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        min={
+                                                            new Date()
+                                                                .toISOString()
+                                                                .split("T")[0]
+                                                        }
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
@@ -370,11 +439,18 @@ const CreateTask = () => {
                             <label
                                 htmlFor="task-modal"
                                 className="btn btn-ghost"
+                                onClick={resetForm}
                             >
                                 Cancel
                             </label>
                             <button
-                                onClick={handleSubmit}
+                                onClick={() => {
+                                    handleSubmit();
+                                    // // Close the modal on successful submission
+                                    // document.getElementById(
+                                    //     "task-modal"
+                                    // ).checked = false;
+                                }}
                                 className="btn btn-primary"
                                 disabled={isSubmitting}
                             >
@@ -392,370 +468,11 @@ const CreateTask = () => {
                             </button>
                         </div>
                     </div>
-                </div>
 
-                {/* Statistics Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <div className="stat bg-base-100 shadow rounded-box">
-                        <div className="stat-figure text-primary">
-                            <Clock size={24} />
-                        </div>
-                        <div className="stat-title">Active Tasks</div>
-                        <div className="stat-value text-primary">
-                            {filteredTasks.length}
-                        </div>
-                    </div>
-                    <div className="stat bg-base-100 shadow rounded-box">
-                        <div className="stat-figure text-secondary">
-                            <Briefcase size={24} />
-                        </div>
-                        <div className="stat-title">Projects</div>
-                        <div className="stat-value text-secondary">
-                            {assignedProjects?.length || 0}
-                        </div>
-                    </div>
-                    <div className="stat bg-base-100 shadow rounded-box">
-                        <div className="stat-figure text-accent">
-                            <Ticket size={24} />
-                        </div>
-                        <div className="stat-title">Tickets</div>
-                        <div className="stat-value text-accent">
-                            {assignedTickets?.length || 0}
-                        </div>
-                    </div>
-                    <div className="stat bg-base-100 shadow rounded-box">
-                        <div className="stat-figure text-warning">
-                            <AlertCircle size={24} />
-                        </div>
-                        <div className="stat-title">In Progress</div>
-                        <div className="stat-value text-warning">
-                            {
-                                filteredTasks.filter(
-                                    (task) => task.STATUS === 2 // Changed from "IN_PROGRESS" to 2
-                                ).length
-                            }
-                        </div>
-                    </div>
-                </div>
-
-                {/* Existing Tasks Section */}
-                <div className="card bg-base-100 shadow-xl">
-                    <div className="card-body">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="card-title text-xl">
-                                Your Active Tasks
-                            </h2>
-                            <div className="join">
-                                <button
-                                    className={`btn btn-sm join-item ${
-                                        viewMode === "table" ? "btn-active" : ""
-                                    }`}
-                                    onClick={() => setViewMode("table")}
-                                >
-                                    Table
-                                </button>
-                                <button
-                                    className={`btn btn-sm join-item ${
-                                        viewMode === "cards" ? "btn-active" : ""
-                                    }`}
-                                    onClick={() => setViewMode("cards")}
-                                >
-                                    Cards
-                                </button>
-                            </div>
-                        </div>
-
-                        {filteredTasks.length === 0 ? (
-                            <div className="text-center py-12">
-                                <Circle
-                                    size={48}
-                                    className="mx-auto text-base-content/30 mb-4"
-                                />
-                                <p className="text-base-content/60 text-lg">
-                                    No active tasks
-                                </p>
-                                <p className="text-base-content/40 text-sm mt-2">
-                                    Click "Create New Task" to get started
-                                </p>
-                            </div>
-                        ) : viewMode === "table" ? (
-                            <div className="overflow-x-auto">
-                                <table className="table table-zebra">
-                                    <thead>
-                                        <tr>
-                                            <th>
-                                                <input
-                                                    type="checkbox"
-                                                    className="checkbox"
-                                                    onChange={(e) => {
-                                                        if (e.target.checked) {
-                                                            setSelectedTasks(
-                                                                filteredTasks.map(
-                                                                    (t) =>
-                                                                        t.TASK_ID
-                                                                )
-                                                            );
-                                                        } else {
-                                                            setSelectedTasks(
-                                                                []
-                                                            );
-                                                        }
-                                                    }}
-                                                />
-                                            </th>
-                                            <th>Task</th>
-                                            <th>Source</th>
-                                            <th>Status</th>
-                                            <th>Priority</th>
-                                            <th>Created</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredTasks.map((task) => {
-                                            const statusInfo = getStatusConfig(
-                                                task.STATUS
-                                            );
-                                            const priorityInfo =
-                                                getPriorityConfig(
-                                                    task.PRIORITY
-                                                );
-                                            const StatusIcon = statusInfo.icon;
-                                            const SourceIcon =
-                                                sourceTypeIcons[
-                                                    task.SOURCE_TYPE
-                                                ] || Circle;
-
-                                            return (
-                                                <tr
-                                                    key={task.TASK_ID}
-                                                    className={
-                                                        selectedTasks.includes(
-                                                            task.TASK_ID
-                                                        )
-                                                            ? "bg-base-200"
-                                                            : ""
-                                                    }
-                                                >
-                                                    <td>
-                                                        <input
-                                                            type="checkbox"
-                                                            className="checkbox"
-                                                            checked={selectedTasks.includes(
-                                                                task.TASK_ID
-                                                            )}
-                                                            onChange={() =>
-                                                                handleTaskSelect(
-                                                                    task.TASK_ID
-                                                                )
-                                                            }
-                                                        />
-                                                    </td>
-                                                    <td>
-                                                        <div>
-                                                            <div className="font-semibold">
-                                                                {
-                                                                    task.TASK_TITLE
-                                                                }
-                                                            </div>
-                                                            <div className="text-sm text-base-content/70">
-                                                                {task.TASK_ID}
-                                                            </div>
-                                                            {task.SOURCE_ID && (
-                                                                <div className="text-xs text-base-content/50">
-                                                                    Source:{" "}
-                                                                    {
-                                                                        task.SOURCE_ID
-                                                                    }
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div className="flex items-center gap-1">
-                                                            <SourceIcon
-                                                                size={14}
-                                                            />
-                                                            <span className="text-sm">
-                                                                {
-                                                                    task.SOURCE_TYPE
-                                                                }
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div
-                                                            className={`badge ${statusInfo.color} gap-1`}
-                                                        >
-                                                            <StatusIcon
-                                                                size={12}
-                                                            />
-                                                            {statusInfo.text}
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div
-                                                            className={`badge ${priorityInfo.color} badge-outline`}
-                                                        >
-                                                            {priorityInfo.text}
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div className="flex items-center gap-1 text-sm">
-                                                            <Calendar
-                                                                size={14}
-                                                            />
-                                                            {new Date(
-                                                                task.CREATED_AT
-                                                            ).toLocaleDateString()}
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div className="dropdown dropdown-end">
-                                                            <div
-                                                                tabIndex={0}
-                                                                role="button"
-                                                                className="btn btn-ghost btn-xs"
-                                                            >
-                                                                ⋯
-                                                            </div>
-                                                            <ul
-                                                                tabIndex={0}
-                                                                className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52"
-                                                            >
-                                                                <li>
-                                                                    <a>
-                                                                        Edit
-                                                                        Task
-                                                                    </a>
-                                                                </li>
-                                                                <li>
-                                                                    <a>
-                                                                        View
-                                                                        Details
-                                                                    </a>
-                                                                </li>
-                                                                <li>
-                                                                    <a>
-                                                                        Start
-                                                                        Working
-                                                                    </a>
-                                                                </li>
-                                                                <li>
-                                                                    <a className="text-error">
-                                                                        Delete
-                                                                        Task
-                                                                    </a>
-                                                                </li>
-                                                            </ul>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ) : (
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                {filteredTasks.map((task) => {
-                                    const statusInfo = getStatusConfig(
-                                        task.STATUS
-                                    );
-                                    const priorityInfo = getPriorityConfig(
-                                        task.PRIORITY
-                                    );
-                                    const StatusIcon = statusInfo.icon;
-                                    const SourceIcon =
-                                        sourceTypeIcons[task.SOURCE_TYPE] ||
-                                        Circle;
-
-                                    return (
-                                        <div
-                                            key={task.TASK_ID}
-                                            className={`card bg-base-100 shadow-lg border-l-4 ${
-                                                task.PRIORITY === 1
-                                                    ? "border-l-error"
-                                                    : task.PRIORITY === 2
-                                                    ? "border-l-error"
-                                                    : task.PRIORITY === 3
-                                                    ? "border-l-warning"
-                                                    : "border-l-success"
-                                            }`}
-                                        >
-                                            <div className="card-body p-4">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <h3 className="card-title text-base">
-                                                        {task.TASK_TITLE}
-                                                    </h3>
-                                                    <input
-                                                        type="checkbox"
-                                                        className="checkbox checkbox-sm"
-                                                        checked={selectedTasks.includes(
-                                                            task.TASK_ID
-                                                        )}
-                                                        onChange={() =>
-                                                            handleTaskSelect(
-                                                                task.TASK_ID
-                                                            )
-                                                        }
-                                                    />
-                                                </div>
-
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <div
-                                                        className={`badge ${statusInfo.color} gap-1`}
-                                                    >
-                                                        <StatusIcon size={10} />
-                                                        {statusInfo.text}
-                                                    </div>
-                                                    <div
-                                                        className={`badge ${priorityInfo.color} badge-outline badge-sm`}
-                                                    >
-                                                        {priorityInfo.text}
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-1 text-sm text-base-content/70">
-                                                    <div className="flex items-center gap-1">
-                                                        <SourceIcon size={12} />
-                                                        <span>
-                                                            {task.SOURCE_TYPE}
-                                                        </span>
-                                                        {task.SOURCE_ID && (
-                                                            <span className="text-xs">
-                                                                (
-                                                                {task.SOURCE_ID}
-                                                                )
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <Calendar size={12} />
-                                                        <span>
-                                                            Created:{" "}
-                                                            {new Date(
-                                                                task.CREATED_AT
-                                                            ).toLocaleDateString()}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="card-actions justify-end mt-4">
-                                                    <button className="btn btn-primary btn-xs">
-                                                        Start
-                                                    </button>
-                                                    <button className="btn btn-ghost btn-xs">
-                                                        Edit
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
+                    {/* Modal backdrop - clicking it closes the modal */}
+                    <label className="modal-backdrop" htmlFor="task-modal">
+                        Close
+                    </label>
                 </div>
             </div>
         </AuthenticatedLayout>

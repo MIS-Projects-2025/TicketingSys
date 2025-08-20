@@ -111,7 +111,7 @@ class TaskController extends Controller
     {
         $empData = session('emp_data');
         $userId = $empData['emp_id'];
-
+        dd($request->all());
         $validated = $request->validate([
             'task_date' => 'required|date',
             'source_type' => 'required|string|in:PROJECT,TICKET,MANUAL',
@@ -322,43 +322,10 @@ class TaskController extends Controller
         return $priorityMap[$ticketData->TYPE_OF_REQUEST] ?? 3;
     }
 
-    private function getTaskStatistics($userId)
-    {
-        $today = Carbon::today()->format('Y-m-d');
 
-        return [
-            'today_total' => DB::connection('task')->selectOne('SELECT COUNT(*) as count FROM daily_tasks WHERE EMPLOYID = ? AND TASK_DATE = ? AND DELETED_AT IS NULL', [$userId, $today])->count,
-            'today_completed' => DB::connection('task')->selectOne('SELECT COUNT(*) as count FROM daily_tasks WHERE EMPLOYID = ? AND TASK_DATE = ? AND STATUS = ? AND DELETED_AT IS NULL', [$userId, $today, self::STATUS_COMPLETED])->count,
-            'pending_total' => DB::connection('task')->selectOne('SELECT COUNT(*) as count FROM daily_tasks WHERE EMPLOYID = ? AND STATUS NOT IN (?, ?) AND DELETED_AT IS NULL', [$userId, self::STATUS_COMPLETED, self::STATUS_CANCELLED])->count,
-            'this_week_hours' => DB::connection('task')->selectOne('SELECT COALESCE(SUM(ACTUAL_HOURS), 0) as hours FROM daily_tasks WHERE EMPLOYID = ? AND TASK_DATE >= ? AND DELETED_AT IS NULL', [$userId, Carbon::now()->startOfWeek()->format('Y-m-d')])->hours,
-        ];
-    }
 
-    private function getSourceDetails($sourceType, $sourceId)
-    {
-        if (!$sourceId) return null;
 
-        switch ($sourceType) {
-            case 'PROJECT':
-                return DB::connection('projects')->selectOne('
-                    SELECT * FROM project_list WHERE PROJ_ID = ?
-                ', [$sourceId]);
 
-            case 'TICKET':
-                return DB::connection('mysql')->selectOne('
-                    SELECT * FROM tickets WHERE TICKET_ID = ?
-                ', [$sourceId]);
-
-            default:
-                return null;
-        }
-    }
-
-    private function handleRecurringTask($completedTask, $userId)
-    {
-        // Logic for creating recurring tasks (optional)
-        // You can implement this based on project requirements
-    }
 
     private function logTaskHistory($taskId, $action, $fieldName = null, $oldValue = null, $newValue = null, $changedBy)
     {

@@ -35,34 +35,50 @@ const sourceTypeIcons = {
     TICKET: Ticket,
 };
 
+// Initial form state
+const initialFormData = {
+    taskSource: "",
+    project: "",
+    ticket: "",
+    priority: "3",
+    status: "",
+    tasks: [
+        {
+            title: "",
+            description: "",
+            estimatedHours: "",
+            targetCompletion: "",
+        },
+    ],
+};
+
 export default function useTaskManagement({
     existingTasks,
     assignedProjects,
     assignedTickets,
     saveTaskUrl,
 }) {
-    const [formData, setFormData] = useState({
-        taskSource: "",
-        project: "",
-        ticket: "",
-        priority: "3",
-        tasks: [
-            {
-                title: "",
-                description: "",
-                estimatedHours: "",
-                targetCompletion: "",
-            },
-        ],
+    // Group related state
+    const [formState, setFormState] = useState({
+        formData: initialFormData,
+        errors: {},
+        isSubmitting: false,
+        showForm: false,
+        selectedTasks: [],
+        viewMode: "table",
     });
 
-    const [errors, setErrors] = useState({});
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showForm, setShowForm] = useState(false);
-    const [selectedTasks, setSelectedTasks] = useState([]);
-    const [viewMode, setViewMode] = useState("table");
+    // Destructure state for easier access
+    const {
+        formData,
+        errors,
+        isSubmitting,
+        showForm,
+        selectedTasks,
+        viewMode,
+    } = formState;
 
-    // --- Helpers ---
+    // Helper functions
     const getStatusConfig = (code) =>
         statusConfig[code] || {
             text: "Unknown",
@@ -73,37 +89,152 @@ export default function useTaskManagement({
     const getPriorityConfig = (code) =>
         priorityConfig[code] || { text: "Unknown", color: "badge-ghost" };
 
-    const handleTaskSelect = (taskId) =>
-        setSelectedTasks((prev) =>
-            prev.includes(taskId)
-                ? prev.filter((id) => id !== taskId)
-                : [...prev, taskId]
-        );
+    // Event handlers
+    const handleTaskSelect = (taskId) => {
+        setFormState((prev) => ({
+            ...prev,
+            selectedTasks: prev.selectedTasks.includes(taskId)
+                ? prev.selectedTasks.filter((id) => id !== taskId)
+                : [...prev.selectedTasks, taskId],
+        }));
+    };
 
     const handleFormChange = (field, value) => {
-        setFormData((prev) => ({ ...prev, [field]: value }));
-        if (errors[field]) setErrors((prev) => ({ ...prev, [field]: null }));
+        let updatedForm = { ...formData, [field]: value };
+
+        // Auto-update task title if a project is selected while taskSource = PROJECT
+        if (field === "project" && updatedForm.taskSource === "PROJECT") {
+            const selected = assignedProjects.find(
+                (p) => String(p.value) === String(value)
+            );
+            if (selected) {
+                updatedForm.tasks = updatedForm.tasks.map((t, idx) => ({
+                    ...t,
+                    title: idx === 0 ? selected.label : t.title,
+                }));
+            }
+        }
+
+        // Auto-update task title if a ticket is selected while taskSource = TICKET or ADDITIONAL
+        if (
+            field === "ticket" &&
+            (updatedForm.taskSource === "TICKET" ||
+                updatedForm.taskSource === "ADDITIONAL")
+        ) {
+            const selected = assignedTickets.find(
+                (t) => String(t.value) === String(value)
+            );
+            if (selected) {
+                updatedForm.tasks = updatedForm.tasks.map((t, idx) => ({
+                    ...t,
+                    title: idx === 0 ? selected.label : t.title,
+                }));
+            }
+        }
+
+        setFormState((prev) => ({
+            ...prev,
+            formData: updatedForm,
+            errors: { ...prev.errors, [field]: null },
+        }));
+    };
+
+    const handleTaskUpdate = (index, field, value) => {
+        const updatedTasks = [...formData.tasks];
+        updatedTasks[index] = { ...updatedTasks[index], [field]: value };
+
+        setFormState((prev) => ({
+            ...prev,
+            formData: { ...prev.formData, tasks: updatedTasks },
+        }));
+    };
+
+    const addNewTask = () => {
+        let title = "";
+
+        if (formData.taskSource === "MANUAL") {
+            title = "";
+        } else if (formData.taskSource === "PROJECT") {
+            const selected = assignedProjects.find(
+                (p) => String(p.value) === String(formData.project)
+            );
+            title = selected ? selected.label : "";
+        } else if (
+            formData.taskSource === "TICKET" ||
+            formData.taskSource === "ADDITIONAL"
+        ) {
+            const selected = assignedTickets.find(
+                (t) => String(t.value) === String(formData.ticket)
+            );
+            title = selected ? selected.label : "";
+        }
+
+        const newTask = {
+            title,
+            description: "",
+            estimatedHours: "",
+            targetCompletion: "",
+        };
+
+        setFormState((prev) => ({
+            ...prev,
+            formData: {
+                ...prev.formData,
+                tasks: [...prev.formData.tasks, newTask],
+            },
+        }));
+    };
+    const removeTask = (index) => {
+        if (formData.tasks.length <= 1) return;
+
+        setFormState((prev) => ({
+            ...prev,
+            formData: {
+                ...prev.formData,
+                tasks: prev.formData.tasks.filter((_, i) => i !== index),
+            },
+        }));
     };
 
     const validateForm = () => {
         const newErrors = {};
-        if (!formData.taskSource)
-            newErrors.taskSource = "Task source is required";
-        if (!formData.title.trim()) newErrors.title = "Task title is required";
-        if (formData.taskSource === "PROJECT" && !formData.project)
-            newErrors.project = "Project is required";
-        if (formData.taskSource === "ADDITIONAL" && !formData.ticket)
-            newErrors.ticket = "Ticket is required";
-        if (formData.estimatedHours && parseFloat(formData.estimatedHours) <= 0)
-            newErrors.estimatedHours = "Estimated hours must be greater than 0";
 
-        setErrors(newErrors);
+        if (!formData.taskSource) {
+            newErrors.taskSource = "Task source is required";
+        }
+
+        formData.tasks.forEach((task, index) => {
+            if (!task.title.trim()) {
+                newErrors[`tasks.${index}.title`] = "Task title is required";
+            }
+
+            if (task.estimatedHours && parseFloat(task.estimatedHours) <= 0) {
+                newErrors[`tasks.${index}.estimatedHours`] =
+                    "Estimated hours must be greater than 0";
+            }
+        });
+
+        if (formData.taskSource === "PROJECT" && !formData.project) {
+            newErrors.project = "Project is required";
+        }
+
+        if (
+            (formData.taskSource === "TICKET" ||
+                formData.taskSource === "ADDITIONAL") &&
+            !formData.ticket
+        ) {
+            newErrors.ticket = "Ticket is required";
+        }
+
+        setFormState((prev) => ({ ...prev, errors: newErrors }));
         return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async () => {
+        console.log("handleSubmit fired 🚀");
         if (!validateForm()) return;
-        setIsSubmitting(true);
+
+        setFormState((prev) => ({ ...prev, isSubmitting: true }));
 
         try {
             await router.post(
@@ -113,6 +244,7 @@ export default function useTaskManagement({
                     source_type: formData.taskSource,
                     source_id: formData.project || formData.ticket || null,
                     priority: parseInt(formData.priority),
+                    status: formData.status,
                     tasks: formData.tasks.map((t) => ({
                         task_title: t.title,
                         task_description: t.description,
@@ -124,91 +256,150 @@ export default function useTaskManagement({
                 },
                 {
                     onSuccess: () => {
-                        setFormData({
-                            taskSource: "",
-                            project: "",
-                            ticket: "",
-                            priority: "3",
-                            tasks: [
-                                {
-                                    title: "",
-                                    description: "",
-                                    estimatedHours: "",
-                                    targetCompletion: "",
-                                },
-                            ],
+                        setFormState({
+                            formData: initialFormData,
+                            errors: {},
+                            isSubmitting: false,
+                            showForm: false,
+                            selectedTasks: [],
+                            viewMode: "table",
                         });
-                        setShowForm(false);
-                        setErrors({});
                     },
-                    onError: (errs) => setErrors(errs),
+                    onError: (errs) => {
+                        setFormState((prev) => ({
+                            ...prev,
+                            errors: errs,
+                            isSubmitting: false,
+                        }));
+                    },
                 }
             );
-        } finally {
-            setIsSubmitting(false);
+        } catch (error) {
+            setFormState((prev) => ({ ...prev, isSubmitting: false }));
         }
     };
 
-    // --- Auto-fill title ---
+    const resetForm = () => {
+        setFormState({
+            formData: initialFormData,
+            errors: {},
+            isSubmitting: false,
+            showForm: false,
+            selectedTasks: [],
+            viewMode: "table",
+        });
+    };
+
+    const toggleForm = () => {
+        setFormState((prev) => ({
+            ...prev,
+            showForm: !prev.showForm,
+            errors: {},
+        }));
+    };
+
+    const setViewMode = (mode) => {
+        setFormState((prev) => ({ ...prev, viewMode: mode }));
+    };
+
+    // --- Auto-fill title based on task source ---
     const selectedProject = assignedProjects?.find(
         (p) => p.value === formData.project
     );
+
     const selectedTicket = assignedTickets?.find(
         (t) => t.value === formData.ticket
     );
 
     useEffect(() => {
-        if (
-            formData.taskSource === "PROJECT" &&
-            selectedProject &&
-            !formData.title
-        ) {
-            setFormData((prev) => ({
+        // Only auto-fill titles for PROJECT and TICKET sources
+        if (formData.taskSource === "PROJECT" && selectedProject) {
+            const title = `Project: ${
+                selectedProject.PROJ_NAME || selectedProject.label
+            }`;
+            const updatedTasks = formData.tasks.map((task) => ({
+                ...task,
+                title: task.title || title,
+            }));
+
+            setFormState((prev) => ({
                 ...prev,
-                title: `Project: ${selectedProject.PROJ_NAME}`,
+                formData: { ...prev.formData, tasks: updatedTasks },
             }));
         } else if (
-            formData.taskSource === "ADDITIONAL" &&
-            selectedTicket &&
-            !formData.title
+            (formData.taskSource === "TICKET" ||
+                formData.taskSource === "ADDITIONAL") &&
+            selectedTicket
         ) {
-            setFormData((prev) => ({
-                ...prev,
-                title: `Additional: ${selectedTicket.PROJECT_NAME}`,
+            const title =
+                formData.taskSource === "TICKET"
+                    ? `Ticket: ${
+                          selectedTicket.TICKET_TITLE || selectedTicket.label
+                      }`
+                    : `Additional: ${
+                          selectedTicket.PROJECT_NAME || selectedTicket.label
+                      }`;
+
+            const updatedTasks = formData.tasks.map((task) => ({
+                ...task,
+                title: task.title || title,
             }));
+
+            setFormState((prev) => ({
+                ...prev,
+                formData: { ...prev.formData, tasks: updatedTasks },
+            }));
+        } else if (formData.taskSource === "MANUAL") {
+            // For manual tasks, clear titles if they were previously set by other sources
+            const hasNonManualTitle = formData.tasks.some(
+                (task) =>
+                    task.title &&
+                    (task.title.startsWith("Project:") ||
+                        task.title.startsWith("Ticket:") ||
+                        task.title.startsWith("Additional:"))
+            );
+
+            if (hasNonManualTitle) {
+                const updatedTasks = formData.tasks.map((task) => ({
+                    ...task,
+                    title: "",
+                }));
+
+                setFormState((prev) => ({
+                    ...prev,
+                    formData: { ...prev.formData, tasks: updatedTasks },
+                }));
+            }
         }
     }, [formData.taskSource, selectedProject, selectedTicket]);
 
     return {
-        // --- Form State ---
+        // --- State ---
         formData,
-        setFormData,
         errors,
         isSubmitting,
-
-        // --- UI State ---
         showForm,
-        setShowForm,
-        viewMode,
-        setViewMode,
-
-        // --- Task Selection ---
         selectedTasks,
-        handleTaskSelect,
+        viewMode,
 
-        // --- Form Handling ---
-        handleFormChange,
-        handleSubmit,
-        validateForm, // <- optional if you want to expose it
-
-        // --- Config Getters ---
+        // --- Helpers ---
         getStatusConfig,
         getPriorityConfig,
         sourceTypeIcons,
-
-        // --- Derived Data ---
         selectedProject,
         selectedTicket,
         filteredTasks: existingTasks || [],
+
+        // --- Actions ---
+        handleTaskSelect,
+        handleFormChange,
+        handleTaskUpdate,
+        addNewTask,
+        removeTask,
+        handleSubmit,
+        validateForm,
+        resetForm,
+        toggleForm,
+        setViewMode,
     };
 }

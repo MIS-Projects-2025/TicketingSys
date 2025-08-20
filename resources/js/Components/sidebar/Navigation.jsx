@@ -6,6 +6,7 @@ import {
     TicketPlus,
     Ticket,
     FolderKanban,
+    ListTodo,
 } from "lucide-react";
 
 export default function NavLinks({ isSidebarOpen }) {
@@ -51,7 +52,12 @@ export default function NavLinks({ isSidebarOpen }) {
                 icon={<FolderKanban className="w-5 h-5" />}
                 isSidebarOpen={isSidebarOpen}
             />
-
+            <SidebarLink
+                href={route("tasks.create")}
+                label="Tasks"
+                icon={<ListTodo className="w-5 h-5" />}
+                isSidebarOpen={isSidebarOpen}
+            />
             {/* Admin section */}
             {["superadmin", "admin"].includes(emp_data?.emp_system_role) && (
                 <SidebarLink

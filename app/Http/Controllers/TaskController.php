@@ -10,6 +10,12 @@ use Carbon\Carbon;
 
 class TaskController extends Controller
 {
+    // Status constants for reference
+    const STATUS_PENDING = 1;
+    const STATUS_IN_PROGRESS = 2;
+    const STATUS_ON_HOLD = 3;
+    const STATUS_COMPLETED = 4;
+    const STATUS_CANCELLED = 5;
 
     // Show Task Creation Form
     public function showTaskForm(): Response
@@ -25,8 +31,7 @@ class TaskController extends Controller
             PROJ_NAME,
             TARGET_DEADLINE
         FROM project_list 
-        WHERE FIND_IN_SET(?, ASSIGNED_PROGS) > 0 
-        AND PROJ_STATUS = 1 
+        WHERE FIND_IN_SET(?, ASSIGNED_PROGS) > 0  
         ORDER BY PROJ_NAME ASC
     ', [$userId]);
 
@@ -65,13 +70,13 @@ class TaskController extends Controller
         FROM daily_tasks 
         WHERE EMPLOYID = ? 
         AND DELETED_AT IS NULL
-        AND STATUS != "COMPLETED"
+        AND STATUS != ?
         ORDER BY 
-            CASE WHEN STATUS = "IN_PROGRESS" THEN 0 ELSE 1 END,
+            CASE WHEN STATUS = ? THEN 0 ELSE 1 END,
             PRIORITY ASC,
             CREATED_AT DESC
         LIMIT 10
-    ', [$userId]);
+    ', [$userId, self::STATUS_COMPLETED, self::STATUS_IN_PROGRESS]);
 
         return Inertia::render('TaskManagement/CreateTask', [
             'assignedProjects' => $assignedProjects,
@@ -90,6 +95,13 @@ class TaskController extends Controller
                 ['value' => '3', 'label' => 'Medium'],
                 ['value' => '4', 'label' => 'Low'],
                 ['value' => '5', 'label' => 'Very Low']
+            ],
+            'statusLevels'     => [
+                ['value' => self::STATUS_PENDING, 'label' => 'Pending'],
+                ['value' => self::STATUS_IN_PROGRESS, 'label' => 'In Progress'],
+                ['value' => self::STATUS_ON_HOLD, 'label' => 'On Hold'],
+                ['value' => self::STATUS_COMPLETED, 'label' => 'Completed'],
+                ['value' => self::STATUS_CANCELLED, 'label' => 'Cancelled']
             ]
         ]);
     }
@@ -114,10 +126,10 @@ class TaskController extends Controller
         $taskId = $this->generateTaskId();
         $now = now();
 
-        // Insert task
-        DB::insert('
+        // Insert task - Use task connection and EMPLOYID column
+        DB::connection('task')->insert('
             INSERT INTO daily_tasks (
-                TASK_ID, TASK_DATE, EMPLOYEE_ID, SOURCE_TYPE, SOURCE_ID,
+                TASK_ID, TASK_DATE, EMPLOYID, SOURCE_TYPE, SOURCE_ID,
                 TASK_TITLE, TASK_DESCRIPTION, PRIORITY, STATUS,
                 ESTIMATED_HOURS, TARGET_COMPLETION, CREATED_BY, CREATED_AT, UPDATED_AT
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -130,7 +142,7 @@ class TaskController extends Controller
             $validated['task_title'],
             $validated['task_description'],
             $validated['priority'],
-            'PENDING',
+            self::STATUS_PENDING,
             $validated['estimated_hours'],
             $validated['target_completion'],
             $userId,
@@ -151,16 +163,16 @@ class TaskController extends Controller
         $userId = $empData['emp_id'];
 
         $validated = $request->validate([
-            'status' => 'required|string|in:PENDING,IN_PROGRESS,ON_HOLD,COMPLETED,CANCELLED',
+            'status' => 'required|integer|in:1,2,3,4,5',
             'actual_hours' => 'nullable|numeric|min:0|max:24',
             'progress_notes' => 'nullable|string',
             'completion_date' => 'nullable|date',
         ]);
 
-        // Get current task
-        $currentTask = DB::selectOne('
+        // Get current task - Use task connection and EMPLOYID column
+        $currentTask = DB::connection('task')->selectOne('
             SELECT * FROM daily_tasks 
-            WHERE TASK_ID = ? AND EMPLOYEE_ID = ? AND DELETED_AT IS NULL
+            WHERE TASK_ID = ? AND EMPLOYID = ? AND DELETED_AT IS NULL
         ', [$taskId, $userId]);
 
         if (!$currentTask) {
@@ -185,16 +197,16 @@ class TaskController extends Controller
             $fieldsToUpdate['PROGRESS_NOTES'] = $validated['progress_notes'];
         }
 
-        if ($newStatus === 'COMPLETED' && !$currentTask->COMPLETION_DATE) {
+        if ($newStatus === self::STATUS_COMPLETED && !$currentTask->COMPLETION_DATE) {
             $fieldsToUpdate['COMPLETION_DATE'] = $validated['completion_date'] ?? $now;
         }
 
-        // Build and execute update query
+        // Build and execute update query - Use task connection
         $setClause = implode(', ', array_map(fn($key) => "$key = ?", array_keys($fieldsToUpdate)));
         $values = array_values($fieldsToUpdate);
         $values[] = $taskId;
 
-        DB::update("UPDATE daily_tasks SET $setClause WHERE TASK_ID = ?", $values);
+        DB::connection('task')->update("UPDATE daily_tasks SET $setClause WHERE TASK_ID = ?", $values);
 
         // Log status change
         if ($oldStatus !== $newStatus) {
@@ -202,7 +214,7 @@ class TaskController extends Controller
         }
 
         // Auto-create task for next day if this is a recurring project task
-        if ($newStatus === 'COMPLETED' && $currentTask->SOURCE_TYPE === 'PROJECT') {
+        if ($newStatus === self::STATUS_COMPLETED && $currentTask->SOURCE_TYPE === 'PROJECT') {
             $this->handleRecurringTask($currentTask, $userId);
         }
 
@@ -220,12 +232,12 @@ class TaskController extends Controller
             $priority = self::getTicketPriority($ticketData);
 
             DB::connection('task')->insert('
-    INSERT INTO daily_tasks (
-        TASK_ID, TASK_DATE, EMPLOYID, SOURCE_TYPE, SOURCE_ID,
-        TASK_TITLE, TASK_DESCRIPTION, PRIORITY, STATUS,
-        TARGET_COMPLETION, CREATED_BY, CREATED_AT, UPDATED_AT
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-', [
+                INSERT INTO daily_tasks (
+                    TASK_ID, TASK_DATE, EMPLOYID, SOURCE_TYPE, SOURCE_ID,
+                    TASK_TITLE, TASK_DESCRIPTION, PRIORITY, STATUS,
+                    TARGET_COMPLETION, CREATED_BY, CREATED_AT, UPDATED_AT
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ', [
                 $taskId,
                 Carbon::today()->format('Y-m-d'),
                 $employeeId,
@@ -234,22 +246,17 @@ class TaskController extends Controller
                 "Ticket: {$ticketData->PROJECT_NAME}",
                 $ticketData->DETAILS,
                 $priority,
-                'PENDING',
+                self::STATUS_PENDING,
                 null,
                 'SYSTEM',
                 $now,
                 $now
             ]);
 
-
             // Log task creation
             self::logTaskHistoryStatic($taskId, 'AUTO_CREATED_FROM_TICKET', 'SOURCE_ID', null, $ticketData->TICKET_ID, 'SYSTEM');
         }
     }
-
-
-
-
 
     // Delete Task
     public function deleteTask($taskId)
@@ -257,17 +264,17 @@ class TaskController extends Controller
         $empData = session('emp_data');
         $userId = $empData['emp_id'];
 
-        $task = DB::selectOne('
+        $task = DB::connection('task')->selectOne('
             SELECT * FROM daily_tasks 
-            WHERE TASK_ID = ? AND EMPLOYEE_ID = ? AND DELETED_AT IS NULL
+            WHERE TASK_ID = ? AND EMPLOYID = ? AND DELETED_AT IS NULL
         ', [$taskId, $userId]);
 
         if (!$task) {
             abort(404, 'Task not found or access denied');
         }
 
-        // Soft delete
-        DB::update('
+        // Soft delete - Use task connection
+        DB::connection('task')->update('
             UPDATE daily_tasks 
             SET DELETED_AT = ?, UPDATED_AT = ? 
             WHERE TASK_ID = ?
@@ -287,10 +294,10 @@ class TaskController extends Controller
 
         // Force task connection
         $lastTask = DB::connection('task')->selectOne('
-        SELECT TASK_ID FROM daily_tasks 
-        WHERE TASK_ID LIKE ? 
-        ORDER BY TASK_ID DESC LIMIT 1
-    ', ["{$prefix}%"]);
+            SELECT TASK_ID FROM daily_tasks 
+            WHERE TASK_ID LIKE ? 
+            ORDER BY TASK_ID DESC LIMIT 1
+        ', ["{$prefix}%"]);
 
         if ($lastTask) {
             $lastNumber = (int) substr($lastTask->TASK_ID, -3);
@@ -320,10 +327,10 @@ class TaskController extends Controller
         $today = Carbon::today()->format('Y-m-d');
 
         return [
-            'today_total' => DB::selectOne('SELECT COUNT(*) as count FROM daily_tasks WHERE EMPLOYEE_ID = ? AND TASK_DATE = ? AND DELETED_AT IS NULL', [$userId, $today])->count,
-            'today_completed' => DB::selectOne('SELECT COUNT(*) as count FROM daily_tasks WHERE EMPLOYEE_ID = ? AND TASK_DATE = ? AND STATUS = "COMPLETED" AND DELETED_AT IS NULL', [$userId, $today])->count,
-            'pending_total' => DB::selectOne('SELECT COUNT(*) as count FROM daily_tasks WHERE EMPLOYEE_ID = ? AND STATUS NOT IN ("COMPLETED", "CANCELLED") AND DELETED_AT IS NULL', [$userId])->count,
-            'this_week_hours' => DB::selectOne('SELECT COALESCE(SUM(ACTUAL_HOURS), 0) as hours FROM daily_tasks WHERE EMPLOYEE_ID = ? AND TASK_DATE >= ? AND DELETED_AT IS NULL', [$userId, Carbon::now()->startOfWeek()->format('Y-m-d')])->hours,
+            'today_total' => DB::connection('task')->selectOne('SELECT COUNT(*) as count FROM daily_tasks WHERE EMPLOYID = ? AND TASK_DATE = ? AND DELETED_AT IS NULL', [$userId, $today])->count,
+            'today_completed' => DB::connection('task')->selectOne('SELECT COUNT(*) as count FROM daily_tasks WHERE EMPLOYID = ? AND TASK_DATE = ? AND STATUS = ? AND DELETED_AT IS NULL', [$userId, $today, self::STATUS_COMPLETED])->count,
+            'pending_total' => DB::connection('task')->selectOne('SELECT COUNT(*) as count FROM daily_tasks WHERE EMPLOYID = ? AND STATUS NOT IN (?, ?) AND DELETED_AT IS NULL', [$userId, self::STATUS_COMPLETED, self::STATUS_CANCELLED])->count,
+            'this_week_hours' => DB::connection('task')->selectOne('SELECT COALESCE(SUM(ACTUAL_HOURS), 0) as hours FROM daily_tasks WHERE EMPLOYID = ? AND TASK_DATE >= ? AND DELETED_AT IS NULL', [$userId, Carbon::now()->startOfWeek()->format('Y-m-d')])->hours,
         ];
     }
 
@@ -338,7 +345,7 @@ class TaskController extends Controller
                 ', [$sourceId]);
 
             case 'TICKET':
-                return DB::selectOne('
+                return DB::connection('mysql')->selectOne('
                     SELECT * FROM tickets WHERE TICKET_ID = ?
                 ', [$sourceId]);
 
@@ -377,5 +384,19 @@ class TaskController extends Controller
             'CHANGED_BY' => $changedBy,
             'CHANGED_AT' => now(),
         ]);
+    }
+
+    // Helper method to get status label from numeric value
+    public static function getStatusLabel($statusCode)
+    {
+        $statusLabels = [
+            self::STATUS_PENDING => 'Pending',
+            self::STATUS_IN_PROGRESS => 'In Progress',
+            self::STATUS_ON_HOLD => 'On Hold',
+            self::STATUS_COMPLETED => 'Completed',
+            self::STATUS_CANCELLED => 'Cancelled'
+        ];
+
+        return $statusLabels[$statusCode] ?? 'Unknown';
     }
 }

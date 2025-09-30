@@ -37,6 +37,7 @@ class AuthenticationController extends Controller
                 'emp_system_role' => $isAdmin->emp_role ?? null,
             ]
         ]);
+        return redirect()->route('dashboard');
     }
 
     public function logout(Request $request)

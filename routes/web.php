@@ -5,7 +5,7 @@ use App\Http\Controllers\DemoController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-$app_name = env('APP_NAME', '');
+$app_name = request()->segment(1) ?? '';
 
 // Authentication routes
 require __DIR__ . '/auth.php';
@@ -25,5 +25,6 @@ Route::get("/demo", [DemoController::class, 'index'])->name('demo');
 // In routes/api.php
 
 Route::fallback(function () {
-    return Inertia::render('404');
+    // For Inertia requests, just redirect back to the same URL
+    return redirect()->to(request()->fullUrl());
 })->name('404');

@@ -6,7 +6,7 @@ use App\Http\Middleware\AuthMiddleware;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-$app_name = env('APP_NAME', '');
+
 
 Route::prefix($app_name)->group(function () {
   Route::post("/setSession", [AuthenticationController::class, 'setSession'])->name('setSession');

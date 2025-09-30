@@ -170,7 +170,7 @@ const Create = () => {
                             {/* Centered title block */}
                             <div className="text-center px-8">
                                 <h1 className="text-3xl font-bold text-base-content mb-2">
-                                    System Ticketing System
+                                    Ticketing System
                                 </h1>
                                 <p className="text-base-content/60">
                                     {isCreating

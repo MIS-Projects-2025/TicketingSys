@@ -6,23 +6,31 @@ const SidebarLink = ({
     label,
     icon,
     notifications = 0,
-    isSidebarOpen, // <-- NEW prop
+    isSidebarOpen,
 }) => {
     const { url } = usePage();
-
     const isActive = url === new URL(href, window.location.origin).pathname;
 
-    const themeColor =
-        localStorage.getItem("theme") === "dark"
-            ? "bg-gray-700"
-            : "bg-gray-200";
+    // Determine theme
+    const theme = localStorage.getItem("theme") === "dark" ? "dark" : "light";
 
-    const activeColor = isActive ? themeColor : "";
+    // Theme-aware classes
+    const hoverBg =
+        theme === "dark" ? "hover:bg-gray-200" : "hover:bg-gray-700";
+    const hoverText =
+        theme === "dark" ? "hover:text-black" : "hover:text-white";
+    const activeBg = theme === "dark" ? "bg-gray-200" : "bg-gray-700";
+    const activeText = theme === "dark" ? "text-black" : "text-white";
 
     return (
         <Link
             href={href}
-            className={`relative flex items-center px-4 py-2 transition-colors duration-150 rounded-md ${activeColor}`}
+            className={`relative flex items-center px-4 py-2 transition-colors duration-150 rounded-md
+                ${
+                    isActive
+                        ? `${activeBg} ${activeText}`
+                        : `${hoverBg} ${hoverText}`
+                }`}
             title={!isSidebarOpen ? label : ""} // tooltip on hover if collapsed
         >
             {/* Icon always visible */}
@@ -31,14 +39,14 @@ const SidebarLink = ({
             {/* Label (only if sidebar is expanded) */}
             {isSidebarOpen && <p className="ml-2">{label}</p>}
 
-            {/* Notifications (shift left when collapsed) */}
+            {/* Notifications */}
             {notifications > 0 && (
                 <span
                     className={`ml-auto text-xs px-2 py-1 rounded-md text-white bg-red-600 ${
                         !isSidebarOpen ? "absolute right-2" : ""
                     }`}
                 >
-                    {notifications}
+                    {notifications > 99 ? "99+" : notifications}
                 </span>
             )}
         </Link>

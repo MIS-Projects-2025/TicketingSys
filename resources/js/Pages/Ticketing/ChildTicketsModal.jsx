@@ -7,6 +7,8 @@ const ChildTicketsModal = ({
     onClose,
     childTickets = [],
     getStatusBadgeClass,
+    getStatusLabel,
+    getTicketTypeLabel,
     formatDate,
     ticketShowUrl,
 }) => {
@@ -27,16 +29,18 @@ const ChildTicketsModal = ({
         ...row,
         TYPE_OF_REQUEST: (
             <span className="badge badge-outline badge-sm">
-                {row.TYPE_OF_REQUEST?.replace("_", " ").toUpperCase()}
+                {getTicketTypeLabel(row.TYPE_OF_REQUEST)}
             </span>
         ),
+
         STATUS: (
             <span
                 className={`badge badge-sm ${getStatusBadgeClass(row.STATUS)}`}
             >
-                {row.STATUS}
+                {getStatusLabel(row.STATUS)}
             </span>
         ),
+
         CREATED_AT: (
             <span className="text-sm">{formatDate(row.CREATED_AT)}</span>
         ),

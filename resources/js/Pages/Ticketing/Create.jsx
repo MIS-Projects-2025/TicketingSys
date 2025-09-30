@@ -26,9 +26,9 @@ const Create = () => {
         employeeOptions = [],
         projectOptions = [],
     } = usePage().props;
-    console.log(usePage().props);
 
     const {
+        TICKET_TYPES,
         formData,
         selectedFiles,
         existingFiles,
@@ -50,8 +50,11 @@ const Create = () => {
         isChildTicket,
         getTicketTypeDisplay,
         getStatusBadgeClass,
+        getStatusLabel,
+        getTicketTypeLabel,
         formatDate,
         getTicketIdFromUrl,
+        getFilteredTicketOptions,
         setFormData,
         setFormState,
         setUserAccountType,
@@ -95,7 +98,9 @@ const Create = () => {
 
     const ticketTypeDisplay = getTicketTypeDisplay();
     const currentTicketId = getTicketIdFromUrl();
-    console.log(currentTicketId);
+
+    // Check if parent ticket field should be shown (only for types 2, 3, 4)
+    const shouldShowParentTicket = ["2", "3", "4"].includes(requestType);
 
     // Centralized action permissions
     const actions = getAvailableActions({
@@ -106,7 +111,6 @@ const Create = () => {
         emp_data,
         ticket,
     });
-    console.log(remarks, history);
 
     return (
         <AuthenticatedLayout>
@@ -114,6 +118,20 @@ const Create = () => {
                 <div className="card bg-base-200 w-full max-w-5xl shadow-xl">
                     <div className="card-body p-8">
                         <div className="relative mb-8 min-h-[4rem]">
+                            {!isCreating && formData.ticket_id && (
+                                <div className="absolute left-0 top-0 bg-base-100 text-base-content px-4 py-2 rounded-br-xl font-bold text-sm shadow-lg border border-base-200 flex items-center">
+                                    <span className="mr-2 text-xs opacity-80">
+                                        Ticket
+                                    </span>
+                                    <span className="tracking-wider">
+                                        #{formData.ticket_id}
+                                    </span>
+
+                                    {/* Optional: small notch for “torn ticket” look */}
+                                    <div className="absolute -right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-base-100 border border-base-200 rounded-full"></div>
+                                </div>
+                            )}
+
                             {/* Right-side buttons absolutely positioned */}
                             {!isCreating &&
                                 (remarks.length > 0 ||
@@ -236,61 +254,6 @@ const Create = () => {
                                     </div>
                                 )}
 
-                                {/* Ticket ID Selection */}
-                                <div className="flex items-stretch gap-2 w-full">
-                                    {requestType !== "1" && (
-                                        <label className="floating-label w-full">
-                                            <Select
-                                                isDisabled={
-                                                    !requestType ||
-                                                    requestType === "1"
-                                                }
-                                                value={
-                                                    ticketOptions.find(
-                                                        (opt) =>
-                                                            opt.value ===
-                                                            formData.ticket_id
-                                                    ) || null
-                                                }
-                                                onChange={(option) =>
-                                                    handleFormChange(
-                                                        "ticket_id",
-                                                        option
-                                                            ? option.value
-                                                            : ""
-                                                    )
-                                                }
-                                                options={ticketOptions}
-                                                styles={customDarkStyles}
-                                                placeholder="Choose Ticket ID"
-                                                isClearable
-                                                menuPortalTarget={document.body}
-                                                menuPosition="fixed"
-                                            />
-                                            <span>Ticket ID</span>
-                                        </label>
-                                    )}
-                                    {formData.ticket_id &&
-                                        formState !== "create" &&
-                                        String(formData.ticket_id) !==
-                                            String(currentTicketId) && (
-                                            <a
-                                                href={ticketShowUrl.replace(
-                                                    ":hash",
-                                                    btoa(formData.ticket_id)
-                                                )}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="btn btn-outline btn-primary px-4"
-                                                style={{ height: "38px" }}
-                                                title="View Ticket"
-                                            >
-                                                <View className="w-5 h-5 mr-1" />
-                                                View
-                                            </a>
-                                        )}
-                                </div>
-
                                 {/* Employee Info Section */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <input
@@ -322,9 +285,104 @@ const Create = () => {
                                     </label>
                                 </div>
 
-                                {/* Project and Request Type Section */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* Project Selection - Conditional based on request type */}
+                                {/* Request Type Selection - Move to top */}
+                                <div className="w-full">
+                                    <label className="floating-label">
+                                        <select
+                                            className="select select-bordered w-full"
+                                            disabled={!isEditable}
+                                            value={formData.type_of_request}
+                                            onChange={(e) => {
+                                                handleFormChange(
+                                                    "type_of_request",
+                                                    e.target.value
+                                                );
+                                                setRequestType(e.target.value);
+                                            }}
+                                        >
+                                            <option value="">
+                                                Choose request type
+                                            </option>
+                                            {Object.entries(TICKET_TYPES).map(
+                                                ([value, label]) => (
+                                                    <option
+                                                        key={value}
+                                                        value={value}
+                                                    >
+                                                        {label}
+                                                    </option>
+                                                )
+                                            )}
+                                        </select>
+                                        <span>Type of Request</span>
+                                    </label>
+                                </div>
+
+                                {/* Parent Ticket Selection - Only show for types 2, 3, 4 */}
+                                {shouldShowParentTicket && (
+                                    <div className="flex items-stretch gap-2 w-full">
+                                        <label className="floating-label w-full">
+                                            <Select
+                                                isDisabled={!requestType}
+                                                value={
+                                                    getFilteredTicketOptions().find(
+                                                        (opt) =>
+                                                            opt.value ===
+                                                            formData.ticket_id
+                                                    ) || null
+                                                }
+                                                onChange={(option) =>
+                                                    handleFormChange(
+                                                        "ticket_id",
+                                                        option
+                                                            ? option.value
+                                                            : ""
+                                                    )
+                                                }
+                                                options={getFilteredTicketOptions()}
+                                                styles={customDarkStyles}
+                                                placeholder={
+                                                    formData.project_name
+                                                        ? `Choose Parent Ticket from "${formData.project_name}"`
+                                                        : "Choose Parent Ticket (Optional - select project first)"
+                                                }
+                                                isClearable
+                                                menuPortalTarget={document.body}
+                                                menuPosition="fixed"
+                                                noOptionsMessage={() =>
+                                                    formData.project_name
+                                                        ? `No parent tickets found for "${formData.project_name}" - will create new parent ticket`
+                                                        : "Select a project first to see available parent tickets"
+                                                }
+                                            />
+                                            <span>
+                                                Parent Ticket ID (Optional)
+                                            </span>
+                                        </label>
+                                        {formData.ticket_id &&
+                                            formState !== "create" &&
+                                            String(formData.ticket_id) !==
+                                                String(currentTicketId) && (
+                                                <a
+                                                    href={ticketShowUrl.replace(
+                                                        ":hash",
+                                                        btoa(formData.ticket_id)
+                                                    )}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="btn btn-outline btn-primary px-4"
+                                                    style={{ height: "38px" }}
+                                                    title="View Parent Ticket"
+                                                >
+                                                    <View className="w-5 h-5 mr-1" />
+                                                    View
+                                                </a>
+                                            )}
+                                    </div>
+                                )}
+
+                                {/* Project Selection */}
+                                <div className="w-full">
                                     {requestType === "1" ? (
                                         // Show text input for new project when request type is 1
                                         <label className="floating-label">
@@ -341,7 +399,9 @@ const Create = () => {
                                                     )
                                                 }
                                             />
-                                            <span>Project Name</span>
+                                            <span>
+                                                Project Name (New Project)
+                                            </span>
                                         </label>
                                     ) : (
                                         // Show project select dropdown for existing projects OR text when not editable
@@ -385,7 +445,7 @@ const Create = () => {
                                                     }
                                                     options={projectOptions}
                                                     styles={customDarkStyles}
-                                                    placeholder="Choose Project"
+                                                    placeholder="Choose Existing Project"
                                                     isClearable
                                                     menuPortalTarget={
                                                         document.body
@@ -398,40 +458,9 @@ const Create = () => {
                                             <span>Project</span>
                                         </label>
                                     )}
-
-                                    {/* Request Type Selection */}
-                                    <label className="floating-label">
-                                        <select
-                                            className="select select-bordered w-full"
-                                            disabled={!isEditable}
-                                            value={formData.type_of_request}
-                                            onChange={(e) => {
-                                                handleFormChange(
-                                                    "type_of_request",
-                                                    e.target.value
-                                                );
-                                                setRequestType(e.target.value);
-                                            }}
-                                        >
-                                            <option value="">
-                                                Choose request type
-                                            </option>
-                                            <option value="1">
-                                                Request Form
-                                            </option>
-                                            <option value="2">
-                                                Testing Form
-                                            </option>
-                                            <option value="3">
-                                                Adjustment Form
-                                            </option>
-                                            <option value="4">
-                                                Enhancement Form
-                                            </option>
-                                        </select>
-                                        <span>Type of Request</span>
-                                    </label>
                                 </div>
+
+                                {/* Testing By - Only show for Testing Form */}
                                 {requestType === "2" && (
                                     <div className="w-full">
                                         <label className="floating-label">
@@ -506,6 +535,7 @@ const Create = () => {
                                         </label>
                                     </div>
                                 )}
+
                                 {/* Details Section */}
                                 <div className="grid grid-cols-1 gap-6">
                                     <label className="floating-label">
@@ -588,6 +618,8 @@ const Create = () => {
                 onClose={() => setShowChildTicketsModal(false)}
                 childTickets={childTickets}
                 getStatusBadgeClass={getStatusBadgeClass}
+                getStatusLabel={getStatusLabel}
+                getTicketTypeLabel={getTicketTypeLabel}
                 formatDate={formatDate}
                 ticketShowUrl={ticketShowUrl}
             />

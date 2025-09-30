@@ -41,7 +41,8 @@ class TicketingController extends Controller
         $ticketOptions = DB::select('
         SELECT 
             TICKET_ID as value,
-            CONCAT(TICKET_ID, " - ", PROJECT_NAME) as label
+            CONCAT(TICKET_ID, " - ", PROJECT_NAME) as label,
+            PROJECT_NAME as project_name
         FROM tickets 
         WHERE DELETED_AT IS NULL
         AND TICKET_LEVEL = "parent"
@@ -75,12 +76,12 @@ class TicketingController extends Controller
     ");
 
         $projectOptions = DB::connection('projects')->select("
-    SELECT
-    PROJ_NAME as value,
-    PROJ_NAME as label
-    FROM project_list
+        SELECT
+            PROJ_NAME as value,
+            PROJ_NAME as label
+        FROM project_list
     ");
-        // dd($employeeOptions);
+
         return Inertia::render('Ticketing/Create', [
             'ticketOptions' => $ticketOptions,
             'ticketProjects' => $ticketProjectMap,

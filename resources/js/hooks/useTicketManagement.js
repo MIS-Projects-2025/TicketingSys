@@ -18,7 +18,28 @@ const TICKET_STATUS = {
     FOR_TESTING: 13,
     TESTED: 14,
 };
+const TICKET_TYPES = {
+    1: "Request Form",
+    2: "Testing Form",
+    3: "Adjustment Form",
+    4: "Enhancement Form",
+};
+// Capitalize first letter of each word
+const ucWords = (str) =>
+    str.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 
+// Invert the map once (number → label) and capitalize words
+const STATUS_LABELS = Object.fromEntries(
+    Object.entries(TICKET_STATUS).map(([key, value]) => [
+        value,
+        ucWords(key.replace(/_/g, " ")),
+    ])
+);
+
+// Helper
+const getStatusLabel = (status) => STATUS_LABELS[status] || "Unknown";
+
+const getTicketTypeLabel = (type) => TICKET_TYPES[type] || "Unknown";
 // Status display mapping for UI
 const STATUS_DISPLAY = {
     [TICKET_STATUS.OPEN]: "Open",
@@ -64,6 +85,8 @@ export function useTicketManagement() {
         addTicketUrl,
         assignTicketUrl,
         ticketShowUrl,
+        ticketOptions = [],
+        projectOptions = [],
     } = usePage().props;
 
     // ========================================
@@ -78,7 +101,7 @@ export function useTicketManagement() {
         type_of_request: "",
         project_name: "",
         details: "",
-        status: TICKET_STATUS.OPEN, // Use numeric value
+        status: TICKET_STATUS.OPEN,
         ticket_level: "parent",
         assessed_by_prog: "",
         ticket_id: "",
@@ -87,7 +110,7 @@ export function useTicketManagement() {
 
     // UI state
     const [uiState, setUiState] = useState({
-        status: "idle", // "idle" | "processing" | "success" | "error"
+        status: "idle",
         message: "",
         requestType: "",
         userAccountType: "",
@@ -111,22 +134,69 @@ export function useTicketManagement() {
     });
 
     // ========================================
+    // VALIDATION FUNCTIONS
+    // ========================================
+
+    const validateTicketProjectMatch = useCallback(
+        (ticketId, projectName) => {
+            if (!ticketId || !projectName) return { isValid: true };
+
+            const selectedTicket = ticketOptions.find(
+                (t) => t.value === ticketId
+            );
+
+            if (!selectedTicket) {
+                return {
+                    isValid: false,
+                    message: "Selected ticket not found in system.",
+                };
+            }
+
+            if (String(selectedTicket.project_name) !== String(projectName)) {
+                return {
+                    isValid: false,
+                    message: `The selected ticket belongs to "${selectedTicket.project_name}", not "${projectName}". Please select a matching ticket or change the project.`,
+                };
+            }
+
+            return { isValid: true };
+        },
+        [ticketOptions]
+    );
+
+    const validateProjectExists = useCallback(
+        (projectName) => {
+            if (!projectName) return { isValid: true };
+
+            const projectExists = projectOptions.some(
+                (opt) => String(opt.value) === String(projectName)
+            );
+
+            if (!projectExists) {
+                return {
+                    isValid: false,
+                    message:
+                        "Selected project does not exist in the project list.",
+                };
+            }
+
+            return { isValid: true };
+        },
+        [projectOptions]
+    );
+
+    // ========================================
     // BUSINESS LOGIC (Pure functions)
     // ========================================
 
     const determineTicketType = useCallback(
         (data = formData) => {
-            // A child ticket is only created when:
-            // 1. A parent ticket is explicitly selected (ticket_id exists)
-            // 2. AND the request type is one of the child-eligible types (2, 3, 4)
             if (
                 data.ticket_id &&
                 ["2", "3", "4", 2, 3, 4].includes(data.type_of_request)
             ) {
                 return "child";
             }
-
-            // All other cases are parent tickets (including type_of_request = 1 and standalone projects)
             return "parent";
         },
         [formData]
@@ -134,9 +204,6 @@ export function useTicketManagement() {
 
     const isChildTicket = useCallback(
         (data = formData) => {
-            // Child ticket requires BOTH conditions:
-            // 1. Parent ticket selected
-            // 2. Request type is child-eligible (2, 3, 4)
             return (
                 data.ticket_id &&
                 data.ticket_id.trim() !== "" &&
@@ -145,6 +212,7 @@ export function useTicketManagement() {
         },
         [formData]
     );
+
     const validateForm = useCallback(() => {
         const ticketType = determineTicketType();
 
@@ -162,41 +230,52 @@ export function useTicketManagement() {
             };
         }
 
-        // Child ticket validation
-        if (ticketType === "child") {
+        // For non-request forms (types 2, 3, 4) - validation only when parent ticket is selected
+        if (["2", "3", "4", 2, 3, 4].includes(formData.type_of_request)) {
+            // If ticket is selected, validate it matches project
+            if (formData.ticket_id && formData.project_name) {
+                const validation = validateTicketProjectMatch(
+                    formData.ticket_id,
+                    formData.project_name
+                );
+                if (!validation.isValid) {
+                    return validation;
+                }
+            }
+
+            // Validate project exists in project list (for existing projects)
+            if (formData.project_name) {
+                const projectValidation = validateProjectExists(
+                    formData.project_name
+                );
+                if (!projectValidation.isValid) {
+                    return projectValidation;
+                }
+            }
+
+            // No parent ticket selected - this is OK, will create new parent ticket
             if (!formData.ticket_id || formData.ticket_id.trim() === "") {
-                return {
-                    isValid: false,
-                    message:
-                        "Please select a parent ticket for this request type.",
-                };
+                console.log(
+                    `No parent ticket selected for ${
+                        formData.type_of_request === "2"
+                            ? "Testing"
+                            : formData.type_of_request === "3"
+                            ? "Adjustment"
+                            : "Enhancement"
+                    } - will create new parent ticket for project: ${
+                        formData.project_name
+                    }`
+                );
             }
-
-            // Ensure request type is child-eligible when parent ticket is selected
-            const childTicketTypes = ["2", "3", "4", 2, 3, 4];
-            if (!childTicketTypes.includes(formData.type_of_request)) {
-                return {
-                    isValid: false,
-                    message:
-                        "Selected request type cannot be used with a parent ticket.",
-                };
-            }
-        }
-
-        // Optional: Warn if child-eligible request type is used without parent ticket
-        const childEligibleTypes = ["2", "3", "4", 2, 3, 4];
-        if (
-            childEligibleTypes.includes(formData.type_of_request) &&
-            (!formData.ticket_id || formData.ticket_id.trim() === "")
-        ) {
-            // This could be a warning instead of an error, depending on your business logic
-            console.warn(
-                "Child-eligible request type used without parent ticket - creating as standalone ticket"
-            );
         }
 
         return { isValid: true };
-    }, [formData, determineTicketType]);
+    }, [
+        formData,
+        determineTicketType,
+        validateTicketProjectMatch,
+        validateProjectExists,
+    ]);
 
     // ========================================
     // FORM HANDLERS
@@ -204,28 +283,158 @@ export function useTicketManagement() {
 
     const handleFormChange = useCallback(
         (field, value) => {
+            // Handle project_name changes with validation
+            if (field === "project_name") {
+                // Validate that project exists
+                const projectValidation = validateProjectExists(value);
+                if (!projectValidation.isValid && value !== "") {
+                    setUiState((prev) => ({
+                        ...prev,
+                        status: "error",
+                        message: projectValidation.message,
+                    }));
+                    return;
+                }
+
+                // Check if current ticket matches new project
+                if (formData.ticket_id && value) {
+                    const validation = validateTicketProjectMatch(
+                        formData.ticket_id,
+                        value
+                    );
+
+                    if (!validation.isValid) {
+                        // Clear ticket_id and show warning
+                        setFormData((prev) => ({
+                            ...prev,
+                            project_name: value,
+                            ticket_id: "",
+                            ticket_level: "parent",
+                        }));
+
+                        setUiState((prev) => ({
+                            ...prev,
+                            status: "warning",
+                            message:
+                                "Parent ticket cleared because it doesn't belong to the selected project.",
+                        }));
+                        return;
+                    }
+                }
+            }
+
+            // Handle ticket_id changes with validation and auto-fill
+            if (field === "ticket_id") {
+                if (value) {
+                    const selectedTicket = ticketOptions.find(
+                        (t) => t.value === value
+                    );
+
+                    if (!selectedTicket) {
+                        setUiState((prev) => ({
+                            ...prev,
+                            status: "error",
+                            message: "Selected ticket not found.",
+                        }));
+                        return;
+                    }
+
+                    // ALWAYS auto-fill project from selected ticket
+                    if (selectedTicket.project_name) {
+                        // Validate the ticket's project exists in project list
+                        const projectValidation = validateProjectExists(
+                            selectedTicket.project_name
+                        );
+
+                        if (!projectValidation.isValid) {
+                            setUiState((prev) => ({
+                                ...prev,
+                                status: "error",
+                                message: `The selected ticket belongs to a project ("${selectedTicket.project_name}") that is not in the project list.`,
+                            }));
+                            return;
+                        }
+
+                        // If project was already selected and doesn't match, warn user
+                        if (
+                            formData.project_name &&
+                            formData.project_name !==
+                                selectedTicket.project_name
+                        ) {
+                            setUiState((prev) => ({
+                                ...prev,
+                                status: "info",
+                                message: `Project changed from "${formData.project_name}" to "${selectedTicket.project_name}" to match the selected ticket.`,
+                            }));
+                        }
+
+                        // Auto-fill or update the project
+                        setFormData((prev) => {
+                            const updated = {
+                                ...prev,
+                                ticket_id: value,
+                                project_name: selectedTicket.project_name,
+                            };
+                            const ticketType = determineTicketType(updated);
+                            updated.ticket_level = ticketType;
+                            return updated;
+                        });
+
+                        // Clear message after a short delay
+                        setTimeout(() => {
+                            setUiState((prev) => ({
+                                ...prev,
+                                status: "idle",
+                                message: "",
+                            }));
+                        }, 3000);
+
+                        return;
+                    }
+
+                    // Clear error on successful selection
+                    setUiState((prev) => ({
+                        ...prev,
+                        status: "idle",
+                        message: "",
+                    }));
+                } else {
+                    // Ticket cleared - don't clear project
+                    setUiState((prev) => ({
+                        ...prev,
+                        status: "idle",
+                        message: "",
+                    }));
+                }
+            }
+
+            // Standard form update
             setFormData((prev) => {
                 const updated = { ...prev, [field]: value };
 
-                // Clear ticket_id when switching to request_form (type 1)
                 if (field === "type_of_request" && value === "1") {
                     updated.ticket_id = "";
                 }
 
-                // Auto-determine ticket type based on new logic
                 const ticketType = determineTicketType(updated);
                 updated.ticket_level = ticketType;
 
                 return updated;
             });
 
-            // Update UI state for request type
             if (field === "type_of_request") {
                 setUiState((prev) => ({ ...prev, requestType: value }));
             }
         },
-        [determineTicketType]
+        [
+            formData,
+            determineTicketType,
+            validateProjectExists,
+            validateTicketProjectMatch,
+            ticketOptions,
+        ]
     );
+
     const handleAssignmentChange = useCallback((field, value) => {
         setAssignmentData((prev) => ({
             ...prev,
@@ -286,7 +495,6 @@ export function useTicketManagement() {
                     ticketType === "child" ? formData.ticket_id : null,
             };
 
-            // Remove ticket_id for child tickets (backend generates new ID)
             if (ticketType === "child") {
                 delete ticketData.ticket_id;
             }
@@ -310,7 +518,6 @@ export function useTicketManagement() {
                     }));
 
                     setTimeout(() => {
-                        // Reset all states
                         setFormData({
                             employee_id: emp_data?.emp_id ?? "",
                             department: emp_data?.emp_dept ?? "",
@@ -318,7 +525,7 @@ export function useTicketManagement() {
                             type_of_request: "",
                             project_name: "",
                             details: "",
-                            status: TICKET_STATUS.OPEN, // Use numeric value
+                            status: TICKET_STATUS.OPEN,
                             ticket_level: "parent",
                             assessed_by_prog: "",
                             ticket_id: "",
@@ -358,10 +565,8 @@ export function useTicketManagement() {
 
     const handleApprovalAction = useCallback(
         (action) => {
-            // Check if this is a request form or not
             const isRequestForm = formData.type_of_request == 1;
 
-            // Dynamic status mapping based on ticket type - returns numeric values
             const getStatusForAction = (actionType) => {
                 const baseStatusMap = {
                     assessed: TICKET_STATUS.ASSESSED,
@@ -376,7 +581,6 @@ export function useTicketManagement() {
                     reject: TICKET_STATUS.REJECTED,
                 };
 
-                // Handle DH approval differently based on ticket type
                 if (actionType == "approve_dh") {
                     return isRequestForm
                         ? TICKET_STATUS.PENDING_OD_APPROVAL
@@ -386,7 +590,6 @@ export function useTicketManagement() {
                 return baseStatusMap[actionType];
             };
 
-            // Actions that require remarks
             const actionsRequiringRemarks = [
                 "disapprove",
                 "assess_return",
@@ -396,7 +599,6 @@ export function useTicketManagement() {
                 "return_test_ticket",
             ];
 
-            // Handle remarks requirement
             if (
                 actionsRequiringRemarks.includes(action) &&
                 uiState.remarksState !== "show"
@@ -418,31 +620,25 @@ export function useTicketManagement() {
             }
 
             const submitData = new FormData();
-            submitData.append("status", newStatus); // Send numeric status to backend
+            submitData.append("status", newStatus);
             submitData.append("updated_by", emp_data.emp_id);
             submitData.append("remark", formData.remarks || "");
 
-            // Role logic - for non-request forms, don't prioritize OD
             const roles = uiState.userAccountType.split(",");
             let roleToUse;
 
             if (isRequestForm) {
-                // For request forms, prioritize OD if available
                 roleToUse = roles.includes("OD") ? "OD" : roles[0];
             } else {
-                // For non-request forms, use appropriate role based on approval flow
-                // Supervisor → DH → MIS Supervisor flow
-                roleToUse = roles[0]; // Use first available role
+                roleToUse = roles[0];
             }
 
             submitData.append("role", roleToUse);
 
-            // For resubmitting, include the updated ticket details
             if (
                 finalAction === "resubmit" &&
                 uiState.userAccountType === "REQUESTOR"
             ) {
-                // Only append if fields have values (let backend handle the comparison)
                 if (formData.project_name) {
                     submitData.append("project_name", formData.project_name);
                 }
@@ -457,7 +653,6 @@ export function useTicketManagement() {
                 }
             }
 
-            // Add selected files to form data
             fileState.selectedFiles.forEach((file) => {
                 submitData.append("attachments[]", file);
             });
@@ -472,7 +667,6 @@ export function useTicketManagement() {
                             page.props.flash?.success ||
                             "Ticket updated successfully";
 
-                        // Customize success message based on action and ticket type
                         if (finalAction === "approve_dh") {
                             if (isRequestForm) {
                                 successMessage =
@@ -503,7 +697,6 @@ export function useTicketManagement() {
                         console.error("Update failed:", errors);
                         let errorMessage = "Failed to update ticket";
 
-                        // Handle validation errors
                         if (errors.project_name)
                             errorMessage = "Invalid project name";
                         else if (errors.details)
@@ -582,19 +775,13 @@ export function useTicketManagement() {
             const parentTicketId = formData.ticket_id;
             const parentProjectName = ticketProjects[parentTicketId];
 
-            // Map request type codes to display labels (only for child ticket types: 2, 3, 4)
             const getRequestTypeLabel = (typeCode) => {
                 const typeMap = {
                     2: "Testing",
                     3: "Adjustment",
                     4: "Enhancement",
-                    // Handle numeric versions as fallback
-                    2: "Testing",
-                    3: "Adjustment",
-                    4: "Enhancement",
                 };
-
-                return typeMap[typeCode] || "Enhancement"; // Default fallback
+                return typeMap[typeCode] || "Enhancement";
             };
 
             const requestTypeLabel = getRequestTypeLabel(
@@ -612,18 +799,14 @@ export function useTicketManagement() {
     }, [formData, ticketProjects, determineTicketType]);
 
     // ========================================
-    // UTILITY FUNCTIONS (Updated for numeric status)
+    // UTILITY FUNCTIONS
     // ========================================
 
     const getStatusBadgeClass = useCallback((status) => {
-        // Convert to numeric if needed
         const numericStatus = parseInt(status) || status;
-
-        // Return badge class based on numeric status
         return STATUS_BADGE_CLASSES[numericStatus] || "badge-neutral";
     }, []);
 
-    // Helper function to get status display name
     const getStatusDisplayName = useCallback((status) => {
         const numericStatus = parseInt(status) || status;
         return STATUS_DISPLAY[numericStatus] || `Status ${numericStatus}`;
@@ -641,7 +824,6 @@ export function useTicketManagement() {
     }, []);
 
     const getTicketIdFromUrl = useCallback(() => {
-        // Early return if we don't have ticketShowUrl (like on create page)
         if (!ticketShowUrl) {
             console.log("No ticketShowUrl available (likely on create page)");
             return null;
@@ -651,8 +833,7 @@ export function useTicketManagement() {
         console.log("Current path:", path);
 
         try {
-            // Extract just the pathname part from ticketShowUrl (strip protocol+host)
-            const url = new URL(ticketShowUrl.replace(":hash", "dummyhash")); // replace :hash just to make valid URL
+            const url = new URL(ticketShowUrl.replace(":hash", "dummyhash"));
             const prefix = url.pathname.replace("dummyhash", "");
 
             console.log("Prefix:", prefix);
@@ -672,6 +853,21 @@ export function useTicketManagement() {
         }
     }, [ticketShowUrl]);
 
+    const getFilteredTicketOptions = useCallback(() => {
+        if (!formData.project_name || uiState.requestType === "1") {
+            return ticketOptions;
+        }
+        console.log(
+            "Filtered ticket options:",
+            ticketOptions,
+            formData.project_name
+        );
+        return ticketOptions.filter(
+            (ticket) =>
+                String(ticket.project_name) === String(formData.project_name)
+        );
+    }, [formData.project_name, uiState.requestType, ticketOptions]);
+
     // ========================================
     // COMPUTED VALUES
     // ========================================
@@ -682,23 +878,21 @@ export function useTicketManagement() {
     }));
 
     // ========================================
-    // PUBLIC API (Clean interface for components)
+    // PUBLIC API
     // ========================================
 
     return {
-        // Constants for use in components
         TICKET_STATUS,
         STATUS_DISPLAY,
         STATUS_BADGE_CLASSES,
+        TICKET_TYPES,
 
-        // State (grouped and renamed for clarity)
         formData,
         selectedFiles: fileState.selectedFiles,
         existingFiles: fileState.existingFiles,
         assignmentData,
         assignmentOptions,
 
-        // UI State
         uiState: {
             status: uiState.status,
             message: uiState.message,
@@ -710,7 +904,6 @@ export function useTicketManagement() {
         showChildTicketsModal: uiState.showChildTicketsModal,
         showHistory: uiState.showHistory,
 
-        // Main Actions (simple, clear names)
         handleSubmit,
         handleFormChange,
         handleAssignmentChange,
@@ -719,19 +912,21 @@ export function useTicketManagement() {
         handleFileChange,
         removeFile: handleRemoveFile,
 
-        // UI Helpers
         getTicketTypeDisplay,
         getStatusBadgeClass,
-        getStatusDisplayName, // New helper for status display names
+        getStatusDisplayName,
         formatDate,
         getTicketIdFromUrl,
+        getFilteredTicketOptions,
+        getStatusLabel,
+        getTicketTypeLabel,
 
-        // Business Logic Helpers
         isChildTicket,
         determineTicketType,
         validateForm,
+        validateTicketProjectMatch,
+        validateProjectExists,
 
-        // Setters (for initialization in components)
         setFormData,
         setFormState: (value) =>
             setUiState((prev) => ({ ...prev, formState: value })),
@@ -744,8 +939,9 @@ export function useTicketManagement() {
         setAssignmentData,
         setShowHistory: (show) =>
             setUiState((prev) => ({ ...prev, showHistory: show })),
+        setRequestType: (value) =>
+            setUiState((prev) => ({ ...prev, requestType: value })),
 
-        // Data from props
         emp_data,
     };
 }

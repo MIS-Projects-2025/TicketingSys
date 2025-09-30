@@ -11,20 +11,19 @@ export default function Dropdown({
 
     const normalizePath = (href) => {
         try {
-            const urlObj = new URL(href, window.location.origin);
-            return urlObj.pathname;
+            return new URL(href, window.location.origin).pathname;
         } catch {
             return href;
         }
     };
 
-    const isActiveLink = (href) => {
-        return url === new URL(href, window.location.origin).pathname;
-    };
+    const isActiveLink = (href) =>
+        url === new URL(href, window.location.origin).pathname;
 
-    const hasActiveLink = useMemo(() => {
-        return links.some((link) => isActiveLink(link.href));
-    }, [url, links]);
+    const hasActiveLink = useMemo(
+        () => links.some((link) => isActiveLink(link.href)),
+        [url, links]
+    );
 
     const [open, setOpen] = useState(false);
 
@@ -32,16 +31,20 @@ export default function Dropdown({
         setOpen(hasActiveLink);
     }, [hasActiveLink]);
 
-    // Use Tailwind classes that work with your theme system
-    // You can replace these with theme-aware classes from your app
-    const hoverColor = "hover:bg-gray-100 dark:hover:bg-gray-800";
-    const activeColor = "bg-gray-200 dark:bg-gray-700";
+    // Theme-aware classes
+    const theme = localStorage.getItem("theme") === "dark" ? "dark" : "light";
+    const hoverBg =
+        theme === "dark" ? "hover:bg-gray-200" : "hover:bg-gray-700";
+    const hoverText =
+        theme === "dark" ? "hover:text-black" : "hover:text-white";
+    const activeBg = theme === "dark" ? "bg-gray-200" : "bg-gray-700";
+    const activeText = theme === "dark" ? "text-black" : "text-white";
 
     return (
         <div className="relative w-full">
             <button
                 onClick={() => setOpen(!open)}
-                className={`relative flex items-center justify-between w-full px-4 py-2 transition-colors duration-150 rounded-md ${hoverColor}`}
+                className={`relative flex items-center justify-between w-full px-4 py-2 transition-colors duration-150 rounded-md ${hoverBg} ${hoverText}`}
             >
                 <div className="flex items-center space-x-1">
                     {icon && (
@@ -53,18 +56,15 @@ export default function Dropdown({
                 </div>
 
                 <div className="flex items-center space-x-2">
-                    {/* Dropdown notification */}
-                    {notification ? (
-                        typeof notification === "number" ? (
+                    {notification &&
+                        (typeof notification === "number" ? (
                             <span className="bg-red-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
                                 {notification > 99 ? "99+" : notification}
                             </span>
                         ) : (
                             <span className="w-2 h-2 bg-red-600 rounded-full"></span>
-                        )
-                    ) : null}
+                        ))}
 
-                    {/* Dropdown arrow */}
                     <span className="pt-[3px] flex items-center justify-center">
                         {open ? (
                             <svg
@@ -111,9 +111,12 @@ export default function Dropdown({
                             <Link
                                 key={`${normalizePath(link.href)}-${index}`}
                                 href={link.href}
-                                className={`flex items-center justify-between w-full pl-8 pr-[10px] py-2 rounded transition-colors ${
-                                    active ? `${activeColor}` : ""
-                                } ${hoverColor}`}
+                                className={`flex items-center justify-between w-full pl-8 pr-[10px] py-2 rounded transition-colors
+                                    ${
+                                        active
+                                            ? `${activeBg} ${activeText}`
+                                            : `${hoverBg} ${hoverText}`
+                                    }`}
                             >
                                 <div className="flex items-center space-x-1">
                                     <span className="w-6 h-6 pt-[2px] flex items-center justify-center">
@@ -141,9 +144,8 @@ export default function Dropdown({
                                     </span>
                                 </div>
 
-                                {/* Per-link notification */}
-                                {linkNotification ? (
-                                    typeof linkNotification === "number" ? (
+                                {linkNotification &&
+                                    (typeof linkNotification === "number" ? (
                                         <span className="bg-red-600 text-white text-xs px-1.5 py-0.5 rounded-md">
                                             {linkNotification > 99
                                                 ? "99+"
@@ -151,8 +153,7 @@ export default function Dropdown({
                                         </span>
                                     ) : (
                                         <span className="w-2 h-2 mr-[7px] bg-red-600 rounded-full"></span>
-                                    )
-                                ) : null}
+                                    ))}
                             </Link>
                         );
                     })}

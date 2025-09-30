@@ -230,7 +230,6 @@ export function useTicketManagement() {
             };
         }
 
-        // For non-request forms (types 2, 3, 4) - validation only when parent ticket is selected
         if (["2", "3", "4", 2, 3, 4].includes(formData.type_of_request)) {
             // If ticket is selected, validate it matches project
             if (formData.ticket_id && formData.project_name) {
@@ -238,34 +237,15 @@ export function useTicketManagement() {
                     formData.ticket_id,
                     formData.project_name
                 );
-                if (!validation.isValid) {
-                    return validation;
-                }
+                if (!validation.isValid) return validation;
             }
 
-            // Validate project exists in project list (for existing projects)
-            if (formData.project_name) {
+            // Validate project exists in project list (skip for new projects)
+            if (formData.project_name && formData.type_of_request !== "1") {
                 const projectValidation = validateProjectExists(
                     formData.project_name
                 );
-                if (!projectValidation.isValid) {
-                    return projectValidation;
-                }
-            }
-
-            // No parent ticket selected - this is OK, will create new parent ticket
-            if (!formData.ticket_id || formData.ticket_id.trim() === "") {
-                console.log(
-                    `No parent ticket selected for ${
-                        formData.type_of_request === "2"
-                            ? "Testing"
-                            : formData.type_of_request === "3"
-                            ? "Adjustment"
-                            : "Enhancement"
-                    } - will create new parent ticket for project: ${
-                        formData.project_name
-                    }`
-                );
+                if (!projectValidation.isValid) return projectValidation;
             }
         }
 
@@ -283,35 +263,38 @@ export function useTicketManagement() {
 
     const handleFormChange = useCallback(
         (field, value) => {
-            // Handle project_name changes with validation
             if (field === "project_name") {
-                // Validate that project exists
-                const projectValidation = validateProjectExists(value);
-                if (!projectValidation.isValid && value !== "") {
-                    setUiState((prev) => ({
-                        ...prev,
-                        status: "error",
-                        message: projectValidation.message,
-                    }));
-                    return;
+                // Skip project existence check for new projects
+                if (formData.type_of_request !== "1") {
+                    const projectValidation = validateProjectExists(value);
+                    if (!projectValidation.isValid && value !== "") {
+                        setUiState((prev) => ({
+                            ...prev,
+                            status: "error",
+                            message: projectValidation.message,
+                        }));
+                        return;
+                    }
+                } else {
+                    console.log(
+                        "Typing new project, skipping project existence validation:",
+                        value
+                    );
                 }
 
-                // Check if current ticket matches new project
+                // Check if current ticket matches new project (existing logic)
                 if (formData.ticket_id && value) {
                     const validation = validateTicketProjectMatch(
                         formData.ticket_id,
                         value
                     );
-
                     if (!validation.isValid) {
-                        // Clear ticket_id and show warning
                         setFormData((prev) => ({
                             ...prev,
                             project_name: value,
                             ticket_id: "",
                             ticket_level: "parent",
                         }));
-
                         setUiState((prev) => ({
                             ...prev,
                             status: "warning",

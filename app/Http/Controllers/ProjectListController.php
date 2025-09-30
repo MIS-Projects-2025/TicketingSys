@@ -297,6 +297,11 @@ class ProjectListController extends Controller
 
     public function importExcel(Request $request)
     {
+        // Log::info('File received:', [
+        //     'hasFile' => $request->hasFile('excel_file'),
+        //     'file' => $request->file('excel_file'),
+        // ]);
+
         $request->validate([
             'excel_file' => 'required|mimes:xlsx,xls,csv|max:2048'
         ]);
@@ -339,10 +344,11 @@ class ProjectListController extends Controller
                 try {
                     // Create associative array from row data
                     $data = array_combine($headers, $row);
-
+                    // // For debugging without stopping execution:
+                    // Log::info('Import data:', ['data' => $data, 'userId' => $userId]);
                     // Process the row
                     $result = $this->processImportRow($data, $userId);
-
+                    // dd($result);
                     if ($result['action'] === 'insert') {
                         $imported++;
                     } elseif ($result['action'] === 'update') {
@@ -369,7 +375,7 @@ class ProjectListController extends Controller
     {
         // Clean and validate data
         $processedData = $this->cleanImportData($data);
-
+        // dd($data, $userId);
         // Check if project exists (by PROJ_ID if provided, or by PROJ_NAME)
         $existingProject = null;
 
@@ -539,8 +545,8 @@ class ProjectListController extends Controller
         ];
         $sampleData = [
             ['', 'Sample Project 1', 'Sample description', 'MIS', 'Pending', '1390', '2025-08-18', '2025-09-18', '2025-08-01', "'1705,1706"],
-            ['', 'Sample Project 2', 'Another description', 'HR', 'In Progress', '', '', '', '2025-08-01', "'1707"],
-            ['', 'Sample Project 3', 'Third project', 'IT', 'Completed', '1705', '2025-08-01', '2025-08-31', '2025-08-01',  ''],
+            ['', 'Sample Project 2', 'Another description', 'HR', 'On Hold', '', '', '', '2025-08-01', "'1707"],
+            ['', 'Sample Project 3', 'Third project', 'IT', 'Deployed', '1705', '2025-08-01', '2025-08-31', '2025-08-01',  ''],
         ];
 
         // Create CSV content

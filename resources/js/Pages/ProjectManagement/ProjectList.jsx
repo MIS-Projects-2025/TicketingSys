@@ -234,12 +234,12 @@ const ProjectList = () => {
             </div>
         );
     };
-    const DateRange = ({ startDate, endDate }) => {
+    const DateRange = ({ startDate, endDate, targetDate }) => {
         const start = formatDate(startDate);
         const end = formatDate(endDate);
-
+        const target = formatDate(targetDate);
         const isOverdue =
-            endDate && new Date(endDate) < new Date() && end !== "Not set";
+            endDate && new Date(endDate) < new Date() && target !== "Not set";
         const isUpcoming =
             startDate &&
             new Date(startDate) > new Date() &&
@@ -291,6 +291,7 @@ const ProjectList = () => {
                   <DateRange
                       startDate={project.DATE_START}
                       endDate={project.DATE_END}
+                      targetDate={project.TARGET_DEADLINE}
                   />
               ),
               assigned_programmers: (

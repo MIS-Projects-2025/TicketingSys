@@ -98,7 +98,7 @@ const CreateTask = () => {
     const isManualTask = formData.taskSource === "MANUAL";
     const hasSourceData =
         formData.taskSource && formData.taskSource !== "MANUAL";
-    // Add this useEffect in your CreateTask component
+
     useEffect(() => {
         const selectAllCheckbox = document.querySelector(
             'thead input[type="checkbox"]'
@@ -416,7 +416,12 @@ const CreateTask = () => {
                                     <div className="flex items-center gap-2">
                                         <input
                                             type="checkbox"
-                                            className="checkbox"
+                                            className={`checkbox ${
+                                                allTasksSelected ||
+                                                someTasksSelected
+                                                    ? "checkbox-success" // Green when all or some selected
+                                                    : "checkbox-primary" // Primary color when none selected
+                                            }`}
                                             checked={allTasksSelected}
                                             ref={(el) => {
                                                 if (el)
@@ -472,7 +477,13 @@ const CreateTask = () => {
                                                         </h3>
                                                         <input
                                                             type="checkbox"
-                                                            className="checkbox checkbox-sm"
+                                                            className={`checkbox ${
+                                                                selectedTasks.includes(
+                                                                    task.TASK_ID
+                                                                )
+                                                                    ? "checkbox-success" // Green when selected
+                                                                    : "checkbox-primary" // Primary color when unselected
+                                                            }`}
                                                             checked={selectedTasks.includes(
                                                                 task.TASK_ID
                                                             )}
@@ -805,16 +816,15 @@ const CreateTask = () => {
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
                                         <h3 className="font-semibold">Tasks</h3>
-                                        {isManualTask && (
-                                            <button
-                                                type="button"
-                                                className="btn btn-sm btn-outline"
-                                                onClick={addNewTask}
-                                            >
-                                                <Plus size={14} />
-                                                Add Task
-                                            </button>
-                                        )}
+
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline"
+                                            onClick={addNewTask}
+                                        >
+                                            <Plus size={14} />
+                                            Add Task
+                                        </button>
                                     </div>
 
                                     {formData.tasks.map((task, index) => (
@@ -847,8 +857,8 @@ const CreateTask = () => {
                                             </div>
 
                                             <div className="space-y-3">
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                    {/* Task Title */}
+                                                <div className="grid grid-cols-1 gap-4">
+                                                    {/* Task Title - always visible */}
                                                     <div className="form-control">
                                                         <label className="label">
                                                             <span className="label-text font-semibold">
@@ -904,93 +914,187 @@ const CreateTask = () => {
                                                             </span>
                                                         )}
                                                     </div>
-
-                                                    {/* Estimated Hours */}
-                                                    <div className="form-control">
-                                                        <label className="label">
-                                                            <span className="label-text font-semibold">
-                                                                <Clock
-                                                                    size={14}
-                                                                    className="inline mr-1"
-                                                                />
-                                                                Estimated Hours
-                                                            </span>
-                                                        </label>
-                                                        <input
-                                                            type="number"
-                                                            className={`input input-bordered w-full ${
-                                                                errors[
-                                                                    `tasks.${index}.estimatedHours`
-                                                                ]
-                                                                    ? "input-error"
-                                                                    : ""
-                                                            }`}
-                                                            placeholder="0.0"
-                                                            min="0"
-                                                            step="0.5"
-                                                            value={
-                                                                task.estimatedHours
-                                                            }
-                                                            onChange={(e) =>
-                                                                handleTaskUpdate(
-                                                                    index,
-                                                                    "estimatedHours",
-                                                                    e.target
-                                                                        .value
-                                                                )
-                                                            }
-                                                        />
-                                                        {errors[
-                                                            `tasks.${index}.estimatedHours`
-                                                        ] && (
-                                                            <span className="label-text-alt text-error">
-                                                                {
-                                                                    errors[
-                                                                        `tasks.${index}.estimatedHours`
-                                                                    ]
-                                                                }
-                                                            </span>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Target Completion */}
-                                                    <div className="form-control">
-                                                        <label className="label">
-                                                            <span className="label-text font-semibold">
-                                                                <Calendar
-                                                                    size={14}
-                                                                    className="inline mr-1"
-                                                                />
-                                                                Target
-                                                                Completion
-                                                            </span>
-                                                        </label>
-                                                        <input
-                                                            type="date"
-                                                            className="input input-bordered w-full"
-                                                            value={
-                                                                task.targetCompletion
-                                                            }
-                                                            onChange={(e) =>
-                                                                handleTaskUpdate(
-                                                                    index,
-                                                                    "targetCompletion",
-                                                                    e.target
-                                                                        .value
-                                                                )
-                                                            }
-                                                            min={
-                                                                new Date()
-                                                                    .toISOString()
-                                                                    .split(
-                                                                        "T"
-                                                                    )[0]
-                                                            }
-                                                        />
-                                                    </div>
                                                 </div>
 
-                                                {/* Description */}
+                                                {/* Optional Advanced Fields - Collapsible for Manual/Daily Tasks */}
+                                                {(isManualTask ||
+                                                    formData.taskSource ===
+                                                        "MANUAL") && (
+                                                    <details className="collapse collapse-arrow bg-base-200 rounded-lg">
+                                                        <summary className="collapse-title text-sm font-medium">
+                                                            Advanced Options
+                                                            (Optional)
+                                                        </summary>
+                                                        <div className="collapse-content">
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                                                {/* Estimated Hours */}
+                                                                <div className="form-control">
+                                                                    <label className="label">
+                                                                        <span className="label-text">
+                                                                            <Clock
+                                                                                size={
+                                                                                    14
+                                                                                }
+                                                                                className="inline mr-1"
+                                                                            />
+                                                                            Estimated
+                                                                            Hours
+                                                                        </span>
+                                                                    </label>
+                                                                    <input
+                                                                        type="number"
+                                                                        className="input input-bordered input-sm w-full"
+                                                                        placeholder="Optional"
+                                                                        min="0"
+                                                                        step="0.5"
+                                                                        value={
+                                                                            task.estimatedHours
+                                                                        }
+                                                                        onChange={(
+                                                                            e
+                                                                        ) =>
+                                                                            handleTaskUpdate(
+                                                                                index,
+                                                                                "estimatedHours",
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                </div>
+
+                                                                {/* Target Completion */}
+                                                                <div className="form-control">
+                                                                    <label className="label">
+                                                                        <span className="label-text">
+                                                                            <Calendar
+                                                                                size={
+                                                                                    14
+                                                                                }
+                                                                                className="inline mr-1"
+                                                                            />
+                                                                            Due
+                                                                            Date
+                                                                        </span>
+                                                                    </label>
+                                                                    <input
+                                                                        type="date"
+                                                                        className="input input-bordered input-sm w-full"
+                                                                        value={
+                                                                            task.targetCompletion
+                                                                        }
+                                                                        onChange={(
+                                                                            e
+                                                                        ) =>
+                                                                            handleTaskUpdate(
+                                                                                index,
+                                                                                "targetCompletion",
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                            )
+                                                                        }
+                                                                        min={
+                                                                            new Date()
+                                                                                .toISOString()
+                                                                                .split(
+                                                                                    "T"
+                                                                                )[0]
+                                                                        }
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </details>
+                                                )}
+
+                                                {/* For non-manual tasks, show these fields normally */}
+                                                {!isManualTask &&
+                                                    formData.taskSource !==
+                                                        "MANUAL" && (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            {/* Estimated Hours */}
+                                                            <div className="form-control">
+                                                                <label className="label">
+                                                                    <span className="label-text font-semibold">
+                                                                        <Clock
+                                                                            size={
+                                                                                14
+                                                                            }
+                                                                            className="inline mr-1"
+                                                                        />
+                                                                        Estimated
+                                                                        Hours
+                                                                    </span>
+                                                                </label>
+                                                                <input
+                                                                    type="number"
+                                                                    className="input input-bordered w-full"
+                                                                    placeholder="0.0"
+                                                                    min="0"
+                                                                    step="0.5"
+                                                                    value={
+                                                                        task.estimatedHours
+                                                                    }
+                                                                    onChange={(
+                                                                        e
+                                                                    ) =>
+                                                                        handleTaskUpdate(
+                                                                            index,
+                                                                            "estimatedHours",
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                        )
+                                                                    }
+                                                                />
+                                                            </div>
+
+                                                            {/* Target Completion */}
+                                                            <div className="form-control">
+                                                                <label className="label">
+                                                                    <span className="label-text font-semibold">
+                                                                        <Calendar
+                                                                            size={
+                                                                                14
+                                                                            }
+                                                                            className="inline mr-1"
+                                                                        />
+                                                                        Target
+                                                                        Completion
+                                                                    </span>
+                                                                </label>
+                                                                <input
+                                                                    type="date"
+                                                                    className="input input-bordered w-full"
+                                                                    value={
+                                                                        task.targetCompletion
+                                                                    }
+                                                                    onChange={(
+                                                                        e
+                                                                    ) =>
+                                                                        handleTaskUpdate(
+                                                                            index,
+                                                                            "targetCompletion",
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                        )
+                                                                    }
+                                                                    min={
+                                                                        new Date()
+                                                                            .toISOString()
+                                                                            .split(
+                                                                                "T"
+                                                                            )[0]
+                                                                    }
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                {/* Description - always visible */}
                                                 <div className="form-control">
                                                     <label className="label">
                                                         <span className="label-text font-semibold">

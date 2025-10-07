@@ -36,9 +36,12 @@ class ProjectListController extends Controller
     public function projectList(Request $request)
     {
         // Raw projects for fallback/debug
+        $rawTickets = DB::connection('mysql')
+            ->select('SELECT * FROM tickets ORDER BY CREATED_AT DESC');
         $rawProjects = DB::connection('projects')
             ->select('SELECT * FROM project_list ORDER BY CREATED_AT DESC');
-
+        $rawTasks = DB::connection('task')
+            ->select('SELECT * FROM daily_tasks ORDER BY CREATED_AT DESC');
         $employeeData = DB::connection('masterlist')->select('
         SELECT EMPLOYID, EMPNAME, FIRSTNAME, LASTNAME 
         FROM employee_masterlist
@@ -147,6 +150,8 @@ class ProjectListController extends Controller
 
         return Inertia::render('ProjectManagement/ProjectList', [
             'projects' => $result,  // React now gets array with `data` key
+            'tickets' => $rawTickets,
+            'tasks' => $rawTasks,
             'departments' => $departments,
             'requestors' => $requestors,
             'programmers' => $programmers,

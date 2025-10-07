@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, use } from "react";
 import DataTable from "@/Components/DataTable";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { usePage } from "@inertiajs/react";
@@ -20,6 +20,10 @@ import {
     XCircle,
     BarChart3,
     PartyPopper,
+    CheckCircle2,
+    ListTodo,
+    Ticket,
+    Users,
 } from "lucide-react";
 
 // Project Status Constants (use consistent lowercase keys)
@@ -173,7 +177,14 @@ const EmptyState = ({ filterType }) => {
 };
 
 const ProjectList = () => {
-    const { projects, employees = {} } = usePage().props;
+    const {
+        projects,
+        employees = {},
+        dailyTasks = [],
+        tickets = [],
+    } = usePage().props;
+    console.log(usePage().props);
+
     const [activeFilter, setActiveFilter] = useState(FILTER_TYPES.ALL);
 
     const {
@@ -441,6 +452,72 @@ const ProjectList = () => {
             : [];
     }, [projects, employees]);
 
+    // Calculate task and ticket statistics
+    const taskTicketStats = useMemo(() => {
+        const stats = {
+            ongoingTasks: 0,
+            completedTasks: 0,
+            pendingTickets: 0,
+            inProgressTickets: 0,
+            tasksByEmployee: {},
+            ticketsByEmployee: {},
+        };
+
+        // Process daily tasks (STATUS: 1=Pending, 2=In Progress, 3=Completed, etc.)
+        if (Array.isArray(dailyTasks)) {
+            dailyTasks.forEach((task) => {
+                if (task.STATUS === 1 || task.STATUS === 2) {
+                    stats.ongoingTasks++;
+                    const empId = task.EMPLOYID;
+                    if (!stats.tasksByEmployee[empId]) {
+                        stats.tasksByEmployee[empId] = {
+                            count: 0,
+                            tasks: [],
+                            employee: employees[empId],
+                        };
+                    }
+                    stats.tasksByEmployee[empId].count++;
+                    stats.tasksByEmployee[empId].tasks.push(task);
+                } else if (task.STATUS === 3) {
+                    stats.completedTasks++;
+                }
+            });
+        }
+
+        // Process tickets (STATUS varies - check for active statuses)
+        if (Array.isArray(tickets)) {
+            tickets.forEach((ticket) => {
+                const status = parseInt(ticket.STATUS);
+                // Assuming statuses 1-10 are active/pending, adjust as needed
+                if (status < 10) {
+                    stats.pendingTickets++;
+                } else if (status >= 10 && status < 20) {
+                    stats.inProgressTickets++;
+                }
+
+                // Track tickets by assigned programmers
+                if (ticket.ASSIGNED_TO) {
+                    const assignedIds = ticket.ASSIGNED_TO.split(",").map(
+                        (id) => id.trim()
+                    );
+                    assignedIds.forEach((empId) => {
+                        if (!stats.ticketsByEmployee[empId]) {
+                            stats.ticketsByEmployee[empId] = {
+                                count: 0,
+                                tickets: [],
+                                employee: employees[empId],
+                            };
+                        }
+                        stats.ticketsByEmployee[empId].count++;
+                        stats.ticketsByEmployee[empId].tickets.push(ticket);
+                    });
+                }
+            });
+        }
+
+        return stats;
+    }, [dailyTasks, tickets, employees]);
+
     // Categorize projects by status
     const projectStats = useMemo(() => {
         const stats = {
@@ -552,6 +629,195 @@ const ProjectList = () => {
                         >
                             + Add New Project
                         </button>
+                    </div>
+                </div>
+
+                {/* Tasks & Tickets Overview */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    {/* Overall Stats */}
+                    <div className="card bg-gradient-to-br from-info/10 to-info/5 border border-info/20 shadow-md">
+                        <div className="card-body p-6">
+                            <h2 className="card-title text-lg mb-4 flex items-center gap-2">
+                                <ListTodo className="text-info" size={20} />
+                                Tasks & Tickets Overview
+                            </h2>
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between p-3 bg-base-100 rounded-lg">
+                                    <span className="flex items-center gap-2">
+                                        <Clock
+                                            size={16}
+                                            className="text-warning"
+                                        />
+                                        <span className="font-medium">
+                                            Ongoing Tasks
+                                        </span>
+                                    </span>
+                                    <span className="badge badge-warning badge-lg">
+                                        {taskTicketStats.ongoingTasks}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-base-100 rounded-lg">
+                                    <span className="flex items-center gap-2">
+                                        <CheckCircle2
+                                            size={16}
+                                            className="text-success"
+                                        />
+                                        <span className="font-medium">
+                                            Completed Tasks
+                                        </span>
+                                    </span>
+                                    <span className="badge badge-success badge-lg">
+                                        {taskTicketStats.completedTasks}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-base-100 rounded-lg">
+                                    <span className="flex items-center gap-2">
+                                        <Ticket
+                                            size={16}
+                                            className="text-error"
+                                        />
+                                        <span className="font-medium">
+                                            Pending Tickets
+                                        </span>
+                                    </span>
+                                    <span className="badge badge-error badge-lg">
+                                        {taskTicketStats.pendingTickets}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between p-3 bg-base-100 rounded-lg">
+                                    <span className="flex items-center gap-2">
+                                        <Ticket
+                                            size={16}
+                                            className="text-info"
+                                        />
+                                        <span className="font-medium">
+                                            In Progress Tickets
+                                        </span>
+                                    </span>
+                                    <span className="badge badge-info badge-lg">
+                                        {taskTicketStats.inProgressTickets}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Top Contributors by Tasks */}
+                    <div className="card bg-base-100 border border-base-300 shadow-md">
+                        <div className="card-body p-6">
+                            <h2 className="card-title text-lg mb-4 flex items-center gap-2">
+                                <Users className="text-primary" size={20} />
+                                Top Contributors (Tasks)
+                            </h2>
+                            <div className="space-y-2 max-h-[250px] overflow-y-auto">
+                                {Object.entries(taskTicketStats.tasksByEmployee)
+                                    .sort((a, b) => b[1].count - a[1].count)
+                                    .slice(0, 5)
+                                    .map(([empId, data]) => {
+                                        const employee = employees[empId];
+                                        const name =
+                                            employee?.EMPNAME || "Unknown";
+                                        const initials =
+                                            getInitialsFromEmployee(employee);
+                                        const colorClass =
+                                            getAvatarColor(empId);
+
+                                        return (
+                                            <div
+                                                key={empId}
+                                                className="flex items-center gap-3 p-2 bg-base-200 rounded-lg hover:bg-base-300 transition-colors"
+                                            >
+                                                <div
+                                                    className={`avatar placeholder`}
+                                                >
+                                                    <div
+                                                        className={`w-10 h-10 rounded-full ${colorClass} text-xs font-semibold flex items-center justify-center`}
+                                                    >
+                                                        {initials}
+                                                    </div>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-medium text-sm truncate">
+                                                        {name}
+                                                    </p>
+                                                    <p className="text-xs text-base-content/60">
+                                                        ID: {empId}
+                                                    </p>
+                                                </div>
+                                                <div className="badge badge-primary">
+                                                    {data.count}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                {Object.keys(taskTicketStats.tasksByEmployee)
+                                    .length === 0 && (
+                                    <p className="text-sm text-base-content/60 text-center py-4">
+                                        No ongoing tasks
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Top Contributors by Tickets */}
+                    <div className="card bg-base-100 border border-base-300 shadow-md">
+                        <div className="card-body p-6">
+                            <h2 className="card-title text-lg mb-4 flex items-center gap-2">
+                                <Users className="text-secondary" size={20} />
+                                Top Contributors (Tickets)
+                            </h2>
+                            <div className="space-y-2 max-h-[250px] overflow-y-auto">
+                                {Object.entries(
+                                    taskTicketStats.ticketsByEmployee
+                                )
+                                    .sort((a, b) => b[1].count - a[1].count)
+                                    .slice(0, 5)
+                                    .map(([empId, data]) => {
+                                        const employee = employees[empId];
+                                        const name =
+                                            employee?.EMPNAME || "Unknown";
+                                        const initials =
+                                            getInitialsFromEmployee(employee);
+                                        const colorClass =
+                                            getAvatarColor(empId);
+
+                                        return (
+                                            <div
+                                                key={empId}
+                                                className="flex items-center gap-3 p-2 bg-base-200 rounded-lg hover:bg-base-300 transition-colors"
+                                            >
+                                                <div
+                                                    className={`avatar placeholder`}
+                                                >
+                                                    <div
+                                                        className={`w-10 h-10 rounded-full ${colorClass} text-xs font-semibold flex items-center justify-center`}
+                                                    >
+                                                        {initials}
+                                                    </div>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-medium text-sm truncate">
+                                                        {name}
+                                                    </p>
+                                                    <p className="text-xs text-base-content/60">
+                                                        ID: {empId}
+                                                    </p>
+                                                </div>
+                                                <div className="badge badge-secondary">
+                                                    {data.count}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                {Object.keys(taskTicketStats.ticketsByEmployee)
+                                    .length === 0 && (
+                                    <p className="text-sm text-base-content/60 text-center py-4">
+                                        No assigned tickets
+                                    </p>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
 

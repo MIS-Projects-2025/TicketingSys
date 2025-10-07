@@ -605,7 +605,7 @@ const ProjectList = () => {
                     <StatCard
                         title="Cancelled"
                         value={projectStats.cancelled}
-                        color="text-neutral"
+                        color="text-neutral-content"
                         icon={XCircle}
                         onClick={handleStatCardClick}
                         isActive={activeFilter === FILTER_TYPES.CANCELLED}

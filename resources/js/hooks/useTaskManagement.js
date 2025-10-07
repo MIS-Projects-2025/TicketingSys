@@ -41,7 +41,7 @@ const initialFormData = {
     project: "",
     ticket: "",
     priority: "3",
-    status: "",
+    status: "1",
     tasks: [
         {
             title: "",
@@ -57,6 +57,7 @@ export default function useTaskManagement({
     assignedProjects,
     assignedTickets,
     saveTaskUrl,
+    allTasks,
 }) {
     // Group related state
     const [formState, setFormState] = useState({
@@ -111,36 +112,6 @@ export default function useTaskManagement({
 
     const handleFormChange = (field, value) => {
         let updatedForm = { ...formData, [field]: value };
-
-        // Auto-update task title if a project is selected while taskSource = PROJECT
-        if (field === "project" && updatedForm.taskSource === "PROJECT") {
-            const selected = assignedProjects.find(
-                (p) => String(p.value) === String(value)
-            );
-            if (selected) {
-                updatedForm.tasks = updatedForm.tasks.map((t, idx) => ({
-                    ...t,
-                    title: idx === 0 ? selected.label : t.title,
-                }));
-            }
-        }
-
-        // Auto-update task title if a ticket is selected while taskSource = TICKET or ADDITIONAL
-        if (
-            field === "ticket" &&
-            (updatedForm.taskSource === "TICKET" ||
-                updatedForm.taskSource === "ADDITIONAL")
-        ) {
-            const selected = assignedTickets.find(
-                (t) => String(t.value) === String(value)
-            );
-            if (selected) {
-                updatedForm.tasks = updatedForm.tasks.map((t, idx) => ({
-                    ...t,
-                    title: idx === 0 ? selected.label : t.title,
-                }));
-            }
-        }
 
         setFormState((prev) => ({
             ...prev,
@@ -217,11 +188,6 @@ export default function useTaskManagement({
             if (!task.title.trim()) {
                 newErrors[`tasks.${index}.title`] = "Task title is required";
             }
-
-            if (task.estimatedHours && parseFloat(task.estimatedHours) <= 0) {
-                newErrors[`tasks.${index}.estimatedHours`] =
-                    "Estimated hours must be greater than 0";
-            }
         });
 
         if (formData.taskSource === "PROJECT" && !formData.project) {
@@ -254,13 +220,10 @@ export default function useTaskManagement({
                     source_type: formData.taskSource,
                     source_id: formData.project || formData.ticket || null,
                     priority: parseInt(formData.priority),
-                    status: formData.status,
+                    status: parseInt(formData.status),
                     tasks: formData.tasks.map((t) => ({
                         task_title: t.title,
                         task_description: t.description,
-                        estimated_hours: t.estimatedHours
-                            ? parseFloat(t.estimatedHours)
-                            : null,
                         target_completion: t.targetCompletion || null,
                     })),
                 },
@@ -400,6 +363,7 @@ export default function useTaskManagement({
         selectedProject,
         selectedTicket,
         filteredTasks: existingTasks || [],
+        allTasks: allTasks || [],
 
         // --- Actions ---
         handleTaskSelect,

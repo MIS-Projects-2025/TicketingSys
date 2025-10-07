@@ -61,6 +61,7 @@ class TaskController extends Controller
         $existingTasks = DB::connection('task')->select('
         SELECT 
             TASK_ID,
+            EMPLOYID,
             TASK_TITLE,
             SOURCE_TYPE,
             SOURCE_ID,
@@ -77,12 +78,33 @@ class TaskController extends Controller
             CREATED_AT DESC
         LIMIT 10
     ', [$userId, self::STATUS_COMPLETED, self::STATUS_IN_PROGRESS]);
-
+        // Get programmer list
+        $progList = DB::connection('masterlist')->select("
+        SELECT EMPLOYID,EMPNAME FROM employee_masterlist
+        WHERE DEPARTMENT = 'MIS' AND LOWER(JOB_TITLE) LIKE '%programmer%' AND ACCSTATUS != 2
+    ");
+        $misSup = DB::connection('masterlist')->select("
+        SELECT EMPLOYID FROM employee_masterlist
+        WHERE DEPARTMENT = 'MIS' AND LOWER(JOB_TITLE) LIKE '%supervisor%' AND ACCSTATUS != 2
+    ");
+        $misSup = $misSup[0];
+        $allTasks = DB::connection('task')->select('
+        SELECT * FROM daily_tasks 
+        WHERE DELETED_AT IS NULL
+        AND STATUS != ?
+        ORDER BY 
+            CASE WHEN STATUS = ? THEN 0 ELSE 1 END,
+            PRIORITY ASC,
+            CREATED_AT DESC
+    ', [self::STATUS_COMPLETED, self::STATUS_IN_PROGRESS]);
         return Inertia::render('TaskManagement/CreateTask', [
             'assignedProjects' => $assignedProjects,
             'assignedTickets'  => $assignedTickets,
             'existingTasks'    => $existingTasks,
+            'allTasks'         => $allTasks,
             'empData'          => $empData,
+            'misSup'          => $misSup,
+            'progList'         => $progList,
             'saveTaskUrl'      => route('tasks.store'),
             'taskSourceTypes'  => [
                 ['value' => 'MANUAL', 'label' => 'Manual Task'],
@@ -111,7 +133,7 @@ class TaskController extends Controller
     {
         $empData = session('emp_data');
         $userId = $empData['emp_id'];
-        dd($request->all());
+        // dd($request->all());
         // Updated validation rules to handle tasks array
         $validated = $request->validate([
             'task_date' => 'required|date',
@@ -122,7 +144,6 @@ class TaskController extends Controller
             'tasks' => 'required|array|min:1',
             'tasks.*.task_title' => 'required|string|max:255',
             'tasks.*.task_description' => 'nullable|string',
-            'tasks.*.estimated_hours' => 'nullable|numeric|min:0|max:24',
             'tasks.*.target_completion' => 'nullable|date',
         ]);
 
@@ -137,8 +158,8 @@ class TaskController extends Controller
             INSERT INTO daily_tasks (
                 TASK_ID, TASK_DATE, EMPLOYID, SOURCE_TYPE, SOURCE_ID,
                 TASK_TITLE, TASK_DESCRIPTION, PRIORITY, STATUS,
-                ESTIMATED_HOURS, TARGET_COMPLETION, CREATED_BY, CREATED_AT, UPDATED_AT
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 TARGET_COMPLETION, CREATED_BY, CREATED_AT, UPDATED_AT
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ', [
                 $taskId,
                 $validated['task_date'],
@@ -149,7 +170,7 @@ class TaskController extends Controller
                 $taskData['task_description'] ?? null,
                 $validated['priority'],
                 $validated['status'],
-                $taskData['estimated_hours'] ?? null,
+
                 $taskData['target_completion'] ?? null,
                 $userId,
                 $now,
@@ -176,7 +197,6 @@ class TaskController extends Controller
 
         $validated = $request->validate([
             'status' => 'required|integer|in:1,2,3,4,5',
-            'actual_hours' => 'nullable|numeric|min:0|max:24',
             'progress_notes' => 'nullable|string',
             'completion_date' => 'nullable|date',
         ]);
@@ -201,9 +221,7 @@ class TaskController extends Controller
             'UPDATED_AT' => $now,
         ];
 
-        if (isset($validated['actual_hours'])) {
-            $fieldsToUpdate['ACTUAL_HOURS'] = $validated['actual_hours'];
-        }
+
 
         if (isset($validated['progress_notes'])) {
             $fieldsToUpdate['PROGRESS_NOTES'] = $validated['progress_notes'];

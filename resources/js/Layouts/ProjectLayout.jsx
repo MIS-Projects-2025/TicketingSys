@@ -1,34 +1,26 @@
 import { Link } from "@inertiajs/react";
 import {
     Clock,
-    Play,
     Pause,
-    CheckCircle,
-    ListTodo,
-    Users,
-    User,
+    TestTube2,
+    ArrowLeftRight,
+    Rocket,
+    XCircle,
+    BarChart3,
     ChevronDown,
     ChevronRight,
-    XCircle,
+    FolderKanban,
 } from "lucide-react";
 import { useState } from "react";
 
-export default function TaskLayout({
+export default function ProjectLayout({
     children,
     statusLevels,
-    existingTasks,
+    existingProjects,
     selectedStatus,
     onStatusChange,
-    programmers,
-    selectedProgrammer,
-    onProgrammerChange,
-    emp_data,
-    misSup,
 }) {
-    console.log(misSup);
-
     const [showStatus, setShowStatus] = useState(true);
-    const [showProgrammers, setShowProgrammers] = useState(true);
 
     // Determine theme
     const theme = localStorage.getItem("theme") === "dark" ? "dark" : "light";
@@ -41,36 +33,33 @@ export default function TaskLayout({
     const activeBg = theme === "dark" ? "bg-gray-200" : "bg-gray-700";
     const activeText = theme === "dark" ? "text-black" : "text-white";
 
-    const getProgrammerTaskCount = (programmerId) => {
-        if (!existingTasks) return 0;
-        if (programmerId === "all") return existingTasks.length;
-        return existingTasks.filter(
-            (task) => parseInt(task.EMPLOYID) === parseInt(programmerId)
-        ).length;
-    };
-
     const getStatusConfig = (status) => {
         const configs = {
             1: { text: "Pending", color: "badge-warning", icon: Clock },
-            2: { text: "In Progress", color: "badge-info", icon: Play },
-            3: { text: "On Hold", color: "badge-error", icon: Pause },
-            4: { text: "Completed", color: "badge-success", icon: CheckCircle },
-            5: { text: "Cancelled", color: "badge-neutral", icon: XCircle },
+            2: { text: "On Hold", color: "badge-error", icon: Pause },
+            3: { text: "For Testing", color: "badge-info", icon: TestTube2 },
+            4: {
+                text: "Parallel Run",
+                color: "badge-secondary",
+                icon: ArrowLeftRight,
+            },
+            5: { text: "Deployed", color: "badge-success", icon: Rocket },
+            6: { text: "Cancelled", color: "badge-neutral", icon: XCircle },
         };
         return (
             configs[status] || {
                 text: "Unknown",
                 color: "badge-ghost",
-                icon: ListTodo,
+                icon: BarChart3,
             }
         );
     };
 
     const getStatusCount = (statusValue) => {
-        if (!existingTasks) return 0;
-        if (statusValue === "all") return existingTasks.length;
-        return existingTasks.filter(
-            (task) => task.STATUS === parseInt(statusValue)
+        if (!existingProjects) return 0;
+        if (statusValue === "all") return existingProjects.length;
+        return existingProjects.filter(
+            (project) => parseInt(project.PROJ_STATUS) === parseInt(statusValue)
         ).length;
     };
 
@@ -82,13 +71,13 @@ export default function TaskLayout({
                 <div className="p-5 border-b border-base-300 flex items-center gap-3 sticky top-0 bg-base-100 z-10">
                     <Link href="/" className="flex items-center gap-2">
                         <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                            <ListTodo
+                            <FolderKanban
                                 size={24}
                                 className="text-primary-content"
                             />
                         </div>
                         <span className="text-xl font-bold text-base-content">
-                            Tasks
+                            Projects
                             <p className="text-xs text-base-content/60">
                                 Manage & Filter
                             </p>
@@ -98,7 +87,7 @@ export default function TaskLayout({
 
                 {/* Filter Section */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-5">
-                    {/* All Tasks */}
+                    {/* All Projects */}
                     <button
                         onClick={() => onStatusChange("all")}
                         className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${
@@ -108,9 +97,9 @@ export default function TaskLayout({
                         }`}
                     >
                         <div className="flex items-center gap-2">
-                            <ListTodo size={18} />
+                            <BarChart3 size={18} />
                             <span className="font-medium text-sm">
-                                All Tasks
+                                All Projects
                             </span>
                         </div>
                         <span
@@ -167,8 +156,10 @@ export default function TaskLayout({
                                                 }`}
                                             >
                                                 <StatusIcon size={16} />
-                                                <span>{status.label}</span>
-                                                <span className="text-[10px] opacity-70">
+                                                <span className="mt-1">
+                                                    {status.label}
+                                                </span>
+                                                <span className="text-[10px] opacity-70 mt-0.5">
                                                     {count}
                                                 </span>
                                             </button>
@@ -177,75 +168,6 @@ export default function TaskLayout({
                                 </div>
                             )}
                         </div>
-
-                        {/* ====== By Programmer ====== */}
-                        {misSup?.EMPLOYID == emp_data?.emp_id && (
-                            <div className="rounded-lg bg-base-200/40 p-3 border border-base-300">
-                                <button
-                                    onClick={() =>
-                                        setShowProgrammers(!showProgrammers)
-                                    }
-                                    className="flex items-center justify-between w-full text-xs font-semibold uppercase text-base-content/70 tracking-wide mb-2"
-                                >
-                                    <span>By Programmer</span>
-                                    {showProgrammers ? (
-                                        <ChevronDown size={16} />
-                                    ) : (
-                                        <ChevronRight size={16} />
-                                    )}
-                                </button>
-
-                                {showProgrammers && (
-                                    <div className="max-h-52 overflow-y-auto pr-1 space-y-1">
-                                        <button
-                                            onClick={() =>
-                                                onProgrammerChange("all")
-                                            }
-                                            className={`w-full flex items-center justify-between p-2 rounded-lg transition text-sm ${
-                                                selectedProgrammer === "all"
-                                                    ? `${activeBg} ${activeText}`
-                                                    : `${hoverBg} ${hoverText}`
-                                            }`}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <Users size={16} />
-                                                <span>All Programmers</span>
-                                            </div>
-                                            <span className="text-xs opacity-70">
-                                                {getProgrammerTaskCount("all")}
-                                            </span>
-                                        </button>
-
-                                        {programmers?.map((p) => (
-                                            <button
-                                                key={p.EMPLOYID}
-                                                onClick={() =>
-                                                    onProgrammerChange(
-                                                        p.EMPLOYID
-                                                    )
-                                                }
-                                                className={`w-full flex items-center justify-between p-2 rounded-lg transition text-sm ${
-                                                    selectedProgrammer ===
-                                                    p.EMPLOYID
-                                                        ? `${activeBg} ${activeText}`
-                                                        : `${hoverBg} ${hoverText}`
-                                                }`}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <User size={16} />
-                                                    <span>{p.EMPNAME}</span>
-                                                </div>
-                                                <span className="text-xs opacity-70">
-                                                    {getProgrammerTaskCount(
-                                                        p.EMPLOYID
-                                                    )}
-                                                </span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
                     </div>
                 </div>
             </aside>

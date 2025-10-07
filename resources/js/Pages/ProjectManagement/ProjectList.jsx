@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import DataTable from "@/Components/DataTable";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import ProjectLayout from "@/Layouts/ProjectLayout";
 import { usePage } from "@inertiajs/react";
 import ProjectDrawer from "./ProjectDrawer";
 import DeleteModal from "./DeleteModal";
@@ -18,11 +19,10 @@ import {
     ArrowLeftRight,
     Rocket,
     XCircle,
-    BarChart3,
     PartyPopper,
 } from "lucide-react";
 
-// Project Status Constants (use consistent lowercase keys)
+// Project Status Constants
 const PROJECT_STATUS = {
     PENDING: "pending",
     ON_HOLD: "on_hold",
@@ -32,13 +32,11 @@ const PROJECT_STATUS = {
     CANCELLED: "cancelled",
 };
 
-// Filter types for StatCards (same as PROJECT_STATUS for simplicity)
 const FILTER_TYPES = {
     ...PROJECT_STATUS,
     ALL: "all",
 };
 
-// Mapping database numeric values to project statuses
 const DB_VALUE_TO_PROJECT_STATUS = {
     1: PROJECT_STATUS.PENDING,
     2: PROJECT_STATUS.ON_HOLD,
@@ -47,69 +45,6 @@ const DB_VALUE_TO_PROJECT_STATUS = {
     5: PROJECT_STATUS.DEPLOYED,
     6: PROJECT_STATUS.CANCELLED,
 };
-
-// Map project status to filter type
-const STATUS_TO_FILTER = {
-    [PROJECT_STATUS.PENDING]: FILTER_TYPES.PENDING,
-    [PROJECT_STATUS.ON_HOLD]: FILTER_TYPES.ON_HOLD,
-    [PROJECT_STATUS.FOR_TESTING]: FILTER_TYPES.FOR_TESTING,
-    [PROJECT_STATUS.PARALLEL_RUN]: FILTER_TYPES.PARALLEL_RUN,
-    [PROJECT_STATUS.DEPLOYED]: FILTER_TYPES.DEPLOYED,
-    [PROJECT_STATUS.CANCELLED]: FILTER_TYPES.CANCELLED,
-};
-
-// DaisyUI color mapping for border colors
-const colorMap = {
-    "text-primary": "border-primary",
-    "text-secondary": "border-secondary",
-    "text-accent": "border-accent",
-    "text-info": "border-info",
-    "text-success": "border-success",
-    "text-warning": "border-warning",
-    "text-error": "border-error",
-    "text-base-content": "border-base-content",
-    "text-neutral": "border-neutral",
-};
-
-// StatCard component
-const StatCard = ({
-    title,
-    value,
-    color,
-    icon: Icon,
-    onClick,
-    isActive,
-    filterType,
-}) => (
-    <div
-        className={`card border rounded-xl shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer ${
-            isActive
-                ? `bg-base-100 shadow-lg border-2 ${
-                      colorMap[color] || "border-primary"
-                  }`
-                : "bg-base-200 border-base-300 hover:bg-base-100"
-        }`}
-        onClick={() => onClick(filterType)}
-    >
-        <div className="card-body p-4 flex-row items-center justify-between">
-            <div>
-                <p
-                    className={`text-sm font-medium ${color} transition-colors duration-300`}
-                >
-                    {title}
-                </p>
-                <p
-                    className={`text-2xl font-bold ${color} transition-colors duration-300`}
-                >
-                    {value}
-                </p>
-            </div>
-            <Icon
-                className={`${color} w-6 h-6 transition-colors duration-300`}
-            />
-        </div>
-    </div>
-);
 
 // EmptyState component
 const EmptyState = ({ filterType }) => {
@@ -195,6 +130,16 @@ const ProjectList = () => {
         setShowImportModal,
         getStatusConfig,
     } = useProjectActions();
+
+    // Status levels for sidebar
+    const statusLevels = [
+        { value: 1, label: "Pending" },
+        { value: 2, label: "On Hold" },
+        { value: 3, label: "For Testing" },
+        { value: 4, label: "Parallel Run" },
+        { value: 5, label: "Deployed" },
+        { value: 6, label: "Cancelled" },
+    ];
 
     const getStatusBadge = (status) => {
         const config = getStatusConfig(status);
@@ -441,46 +386,6 @@ const ProjectList = () => {
             : [];
     }, [projects, employees]);
 
-    // Categorize projects by status
-    const projectStats = useMemo(() => {
-        const stats = {
-            pending: 0,
-            onHold: 0,
-            forTesting: 0,
-            parallelRun: 0,
-            deployed: 0,
-            cancelled: 0,
-        };
-
-        processedData.forEach((project) => {
-            // Convert DB value to PROJECT_STATUS
-            const status = DB_VALUE_TO_PROJECT_STATUS[project.PROJ_STATUS];
-
-            switch (status) {
-                case PROJECT_STATUS.PENDING:
-                    stats.pending++;
-                    break;
-                case PROJECT_STATUS.ON_HOLD:
-                    stats.onHold++;
-                    break;
-                case PROJECT_STATUS.FOR_TESTING:
-                    stats.forTesting++;
-                    break;
-                case PROJECT_STATUS.PARALLEL_RUN:
-                    stats.parallelRun++;
-                    break;
-                case PROJECT_STATUS.DEPLOYED:
-                    stats.deployed++;
-                    break;
-                case PROJECT_STATUS.CANCELLED:
-                    stats.cancelled++;
-                    break;
-            }
-        });
-
-        return stats;
-    }, [processedData]);
-
     // Filter data based on active filter
     const filteredData = useMemo(() => {
         if (activeFilter === FILTER_TYPES.ALL) return processedData;
@@ -491,8 +396,13 @@ const ProjectList = () => {
         });
     }, [processedData, activeFilter]);
 
-    const handleStatCardClick = (filterType) => {
-        setActiveFilter(filterType);
+    const handleStatusChange = (statusValue) => {
+        if (statusValue === "all") {
+            setActiveFilter(FILTER_TYPES.ALL);
+        } else {
+            const status = DB_VALUE_TO_PROJECT_STATUS[parseInt(statusValue)];
+            setActiveFilter(status);
+        }
     };
 
     const getFilterDescription = () => {
@@ -532,9 +442,27 @@ const ProjectList = () => {
         { label: "Action", key: "action", cellClass: "overflow-visible" },
     ];
 
+    // Get selected status for sidebar
+    const getSelectedStatus = () => {
+        if (activeFilter === FILTER_TYPES.ALL) return "all";
+
+        // Find the status value that matches current filter
+        for (const [value, status] of Object.entries(
+            DB_VALUE_TO_PROJECT_STATUS
+        )) {
+            if (status === activeFilter) return value;
+        }
+        return "all";
+    };
+
     return (
-        <AuthenticatedLayout>
-            <div className="container mx-auto p-4">
+        <ProjectLayout
+            statusLevels={statusLevels}
+            existingProjects={processedData}
+            selectedStatus={getSelectedStatus()}
+            onStatusChange={handleStatusChange}
+        >
+            <div className="container mx-auto">
                 {/* Header Section */}
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-3xl font-bold">Projects List</h1>
@@ -553,73 +481,6 @@ const ProjectList = () => {
                             + Add New Project
                         </button>
                     </div>
-                </div>
-
-                {/* Quick Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
-                    <StatCard
-                        title="Pending"
-                        value={projectStats.pending}
-                        color="text-warning"
-                        icon={Clock}
-                        onClick={handleStatCardClick}
-                        isActive={activeFilter === FILTER_TYPES.PENDING}
-                        filterType={FILTER_TYPES.PENDING}
-                    />
-                    <StatCard
-                        title="On Hold"
-                        value={projectStats.onHold}
-                        color="text-error"
-                        icon={Pause}
-                        onClick={handleStatCardClick}
-                        isActive={activeFilter === FILTER_TYPES.ON_HOLD}
-                        filterType={FILTER_TYPES.ON_HOLD}
-                    />
-                    <StatCard
-                        title="For Testing"
-                        value={projectStats.forTesting}
-                        color="text-info"
-                        icon={TestTube2}
-                        onClick={handleStatCardClick}
-                        isActive={activeFilter === FILTER_TYPES.FOR_TESTING}
-                        filterType={FILTER_TYPES.FOR_TESTING}
-                    />
-                    <StatCard
-                        title="Parallel Run"
-                        value={projectStats.parallelRun}
-                        color="text-secondary"
-                        icon={ArrowLeftRight}
-                        onClick={handleStatCardClick}
-                        isActive={activeFilter === FILTER_TYPES.PARALLEL_RUN}
-                        filterType={FILTER_TYPES.PARALLEL_RUN}
-                    />
-                    <StatCard
-                        title="Deployed"
-                        value={projectStats.deployed}
-                        color="text-success"
-                        icon={Rocket}
-                        onClick={handleStatCardClick}
-                        isActive={activeFilter === FILTER_TYPES.DEPLOYED}
-                        filterType={FILTER_TYPES.DEPLOYED}
-                    />
-                    <StatCard
-                        title="Cancelled"
-                        value={projectStats.cancelled}
-                        color="text-neutral-content"
-                        icon={XCircle}
-                        onClick={handleStatCardClick}
-                        isActive={activeFilter === FILTER_TYPES.CANCELLED}
-                        filterType={FILTER_TYPES.CANCELLED}
-                    />
-                    <StatCard
-                        title="All Projects"
-                        value={processedData.length}
-                        color="text-base-content"
-                        icon={BarChart3}
-                        onClick={handleStatCardClick}
-                        isActive={activeFilter === FILTER_TYPES.ALL}
-                        filterType={FILTER_TYPES.ALL}
-                    />
                 </div>
 
                 {/* Main Table */}
@@ -696,7 +557,7 @@ const ProjectList = () => {
                     onClose={closeDeleteModal}
                 />
             </div>
-        </AuthenticatedLayout>
+        </ProjectLayout>
     );
 };
 

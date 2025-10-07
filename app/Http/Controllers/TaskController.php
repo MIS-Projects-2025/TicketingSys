@@ -23,17 +23,28 @@ class TaskController extends Controller
         $empData = session('emp_data');
         $userId = $empData['emp_id'];
 
+
         // --- Projects from "projects" connection ---
         $assignedProjects = DB::connection('projects')->select('
-        SELECT 
-            PROJ_ID as value,
-            CONCAT(PROJ_NAME, " (", PROJ_DEPT, ")") as label,
-            PROJ_NAME,
-            TARGET_DEADLINE
-        FROM project_list 
-        WHERE FIND_IN_SET(?, ASSIGNED_PROGS) > 0  
-        ORDER BY PROJ_NAME ASC
-    ', [$userId]);
+    SELECT 
+        PROJ_ID as value,
+        CONCAT(PROJ_NAME, " (", PROJ_DEPT, ")") as label,
+        PROJ_NAME,
+        TARGET_DEADLINE
+    FROM project_list 
+    WHERE FIND_IN_SET(?, ASSIGNED_PROGS) > 0
+    ORDER BY PROJ_NAME ASC
+', [$userId]);
+
+        $allProjects = DB::connection('projects')->select('
+    SELECT 
+        PROJ_ID as value,
+        CONCAT(PROJ_NAME, " (", PROJ_DEPT, ")") as label,
+        PROJ_NAME,
+        TARGET_DEADLINE
+    FROM project_list 
+    ORDER BY PROJ_NAME ASC
+');
 
         // --- Tickets from default connection ---
         $assignedTickets = DB::connection('mysql')->select('
@@ -71,13 +82,12 @@ class TaskController extends Controller
         FROM daily_tasks 
         WHERE EMPLOYID = ? 
         AND DELETED_AT IS NULL
-        AND STATUS != ?
         ORDER BY 
             CASE WHEN STATUS = ? THEN 0 ELSE 1 END,
             PRIORITY ASC,
             CREATED_AT DESC
         LIMIT 10
-    ', [$userId, self::STATUS_COMPLETED, self::STATUS_IN_PROGRESS]);
+    ', [$userId, self::STATUS_IN_PROGRESS]);
         // Get programmer list
         $progList = DB::connection('masterlist')->select("
         SELECT EMPLOYID,EMPNAME FROM employee_masterlist
@@ -89,17 +99,18 @@ class TaskController extends Controller
     ");
         $misSup = $misSup[0];
         $allTasks = DB::connection('task')->select('
-        SELECT * FROM daily_tasks 
-        WHERE DELETED_AT IS NULL
-        AND STATUS != ?
-        ORDER BY 
-            CASE WHEN STATUS = ? THEN 0 ELSE 1 END,
-            PRIORITY ASC,
-            CREATED_AT DESC
-    ', [self::STATUS_COMPLETED, self::STATUS_IN_PROGRESS]);
+    SELECT * FROM daily_tasks 
+    WHERE DELETED_AT IS NULL
+    ORDER BY 
+        CASE WHEN STATUS = ? THEN 0 ELSE 1 END,
+        PRIORITY ASC,
+        CREATED_AT DESC
+', [self::STATUS_IN_PROGRESS]);
+
         return Inertia::render('TaskManagement/CreateTask', [
             'assignedProjects' => $assignedProjects,
             'assignedTickets'  => $assignedTickets,
+            'allProjects'      => $allProjects,
             'existingTasks'    => $existingTasks,
             'allTasks'         => $allTasks,
             'empData'          => $empData,

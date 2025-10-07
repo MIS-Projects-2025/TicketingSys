@@ -55,6 +55,7 @@ const initialFormData = {
 export default function useTaskManagement({
     existingTasks,
     assignedProjects,
+    allProjects,
     assignedTickets,
     saveTaskUrl,
     allTasks,

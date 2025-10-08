@@ -69,10 +69,20 @@ export function getAvailableActions({
             remarksState !== "show",
         canAcknowledge:
             formState === "acknowledging" &&
-            ticket.ASSIGNED_TO == emp_data?.emp_id,
+            ticket.ASSIGNED_TO.split(",")
+                .map((id) => id.trim())
+                .includes(String(emp_data?.emp_id)),
         canReject:
             formState === "acknowledging" &&
-            ticket.ASSIGNED_TO == emp_data?.emp_id &&
+            ticket.ASSIGNED_TO.split(",")
+                .map((id) => id.trim())
+                .includes(String(emp_data?.emp_id)) &&
             remarksState !== "show",
+        canResolve:
+            formState === "resolving" &&
+            ticket.ASSIGNED_TO.split(",")
+                .map((id) => id.trim())
+                .includes(String(emp_data?.emp_id)) &&
+            remarksState === "show",
     };
 }

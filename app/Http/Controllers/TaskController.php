@@ -155,7 +155,7 @@ class TaskController extends Controller
             'tasks' => 'required|array|min:1',
             'tasks.*.task_title' => 'required|string|max:255',
             'tasks.*.task_description' => 'nullable|string',
-            'tasks.*.target_completion' => 'nullable|date',
+            'tasks.*.target_completion' => 'nullable|datetime',
         ]);
 
         $createdTasks = [];
@@ -209,7 +209,7 @@ class TaskController extends Controller
         $validated = $request->validate([
             'status' => 'required|integer|in:1,2,3,4,5',
             'progress_notes' => 'nullable|string',
-            'completion_date' => 'nullable|date',
+            'completion_date' => 'nullable|datetime',
         ]);
 
         // Get current task - Use task connection and EMPLOYID column

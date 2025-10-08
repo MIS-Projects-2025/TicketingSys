@@ -562,6 +562,7 @@ export function useTicketManagement() {
                     cancel: TICKET_STATUS.CANCELLED,
                     acknowledge: TICKET_STATUS.ACKNOWLEDGED,
                     reject: TICKET_STATUS.REJECTED,
+                    assigned: TICKET_STATUS.ASSIGNED,
                 };
 
                 if (actionType == "approve_dh") {
@@ -580,6 +581,7 @@ export function useTicketManagement() {
                 "resubmit",
                 "reject",
                 "return_test_ticket",
+                "resolve",
             ];
 
             if (

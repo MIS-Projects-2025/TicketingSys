@@ -12,6 +12,7 @@ import {
     Play,
     Trash2,
     Plus,
+    Clock,
 } from "lucide-react";
 
 const CreateTask = () => {
@@ -68,7 +69,9 @@ const CreateTask = () => {
     });
 
     const isMISSupervisor = misSup.EMPLOYID === empData.emp_id;
-
+    const isManualTask = formData.taskSource === "MANUAL";
+    const hasSourceData =
+        formData.taskSource && formData.taskSource !== "MANUAL";
     const getFilteredTasks = () => {
         const tasksToFilter = isMISSupervisor ? allTasks : allFilteredTasks;
 
@@ -675,7 +678,7 @@ const CreateTask = () => {
                         </div>
                     </div>
 
-                    {/* Task Creation Modal - Same as before */}
+                    {/* DaisyUI Modal */}
                     <input
                         type="checkbox"
                         id="task-modal"
@@ -690,10 +693,404 @@ const CreateTask = () => {
 
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Form fields remain the same */}
+                                    {/* Task Source */}
+                                    <div className="form-control">
+                                        <label className="label">
+                                            <span className="label-text font-semibold">
+                                                Task Source *
+                                            </span>
+                                        </label>
+                                        <select
+                                            className={`select select-bordered w-full ${
+                                                errors.taskSource
+                                                    ? "select-error"
+                                                    : ""
+                                            }`}
+                                            value={formData.taskSource}
+                                            onChange={(e) =>
+                                                handleFormChange(
+                                                    "taskSource",
+                                                    e.target.value
+                                                )
+                                            }
+                                        >
+                                            <option value="">
+                                                -- Select Source --
+                                            </option>
+                                            {taskSourceTypes?.map((src) => (
+                                                <option
+                                                    key={src.value}
+                                                    value={src.value}
+                                                >
+                                                    {src.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {errors.taskSource && (
+                                            <span className="label-text-alt text-error">
+                                                {errors.taskSource}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Conditional Source Field (Project or Ticket) */}
+                                    {formData.taskSource === "PROJECT" && (
+                                        <div className="form-control">
+                                            <label className="label">
+                                                <span className="label-text font-semibold">
+                                                    Project *
+                                                </span>
+                                            </label>
+                                            <select
+                                                className={`select select-bordered w-full ${
+                                                    errors.project
+                                                        ? "select-error"
+                                                        : ""
+                                                }`}
+                                                value={formData.project}
+                                                onChange={(e) =>
+                                                    handleFormChange(
+                                                        "project",
+                                                        e.target.value
+                                                    )
+                                                }
+                                            >
+                                                <option value="">
+                                                    -- Select Project --
+                                                </option>
+                                                {assignedProjects?.map(
+                                                    (proj) => (
+                                                        <option
+                                                            key={proj.value}
+                                                            value={proj.value}
+                                                        >
+                                                            {proj.label}
+                                                        </option>
+                                                    )
+                                                )}
+                                            </select>
+                                            {errors.project && (
+                                                <span className="label-text-alt text-error">
+                                                    {errors.project}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {(formData.taskSource === "TICKET" ||
+                                        formData.taskSource ===
+                                            "ADDITIONAL") && (
+                                        <div className="form-control">
+                                            <label className="label">
+                                                <span className="label-text font-semibold">
+                                                    Ticket *
+                                                </span>
+                                            </label>
+                                            <select
+                                                className={`select select-bordered w-full ${
+                                                    errors.ticket
+                                                        ? "select-error"
+                                                        : ""
+                                                }`}
+                                                value={formData.ticket}
+                                                onChange={(e) =>
+                                                    handleFormChange(
+                                                        "ticket",
+                                                        e.target.value
+                                                    )
+                                                }
+                                            >
+                                                <option value="">
+                                                    -- Select Ticket --
+                                                </option>
+                                                {assignedTickets?.map((tkt) => (
+                                                    <option
+                                                        key={tkt.value}
+                                                        value={tkt.value}
+                                                    >
+                                                        {tkt.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {errors.ticket && (
+                                                <span className="label-text-alt text-error">
+                                                    {errors.ticket}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Priority */}
+                                    <div className="form-control">
+                                        <label className="label">
+                                            <span className="label-text font-semibold">
+                                                Priority
+                                            </span>
+                                        </label>
+                                        <select
+                                            className="select select-bordered w-full"
+                                            value={formData.priority}
+                                            onChange={(e) =>
+                                                handleFormChange(
+                                                    "priority",
+                                                    e.target.value
+                                                )
+                                            }
+                                        >
+                                            {priorityLevels?.map((prio) => (
+                                                <option
+                                                    key={prio.value}
+                                                    value={prio.value}
+                                                >
+                                                    {prio.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Status */}
+                                    <div className="form-control">
+                                        <label className="label">
+                                            <span className="label-text font-semibold">
+                                                Status
+                                            </span>
+                                        </label>
+                                        <select
+                                            className="select select-bordered w-full"
+                                            value={formData.status}
+                                            onChange={(e) =>
+                                                handleFormChange(
+                                                    "status",
+                                                    e.target.value
+                                                )
+                                            }
+                                        >
+                                            {statusLevels?.map((stat) => (
+                                                <option
+                                                    key={stat.value}
+                                                    value={stat.value}
+                                                >
+                                                    {stat.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
+
+                                {/* Help text for different sources */}
+                                {formData.taskSource && (
+                                    <div className="alert alert-info">
+                                        <AlertCircle size={16} />
+                                        <div>
+                                            {formData.taskSource ===
+                                                "MANUAL" && (
+                                                <p>
+                                                    <strong>
+                                                        Manual Tasks:
+                                                    </strong>{" "}
+                                                    You can create custom tasks
+                                                    with your own titles and
+                                                    descriptions. All fields are
+                                                    editable.
+                                                </p>
+                                            )}
+                                            {formData.taskSource ===
+                                                "PROJECT" && (
+                                                <p>
+                                                    <strong>
+                                                        Project Tasks:
+                                                    </strong>{" "}
+                                                    You can add task titles,
+                                                    target dates and
+                                                    descriptions.
+                                                </p>
+                                            )}
+                                            {(formData.taskSource ===
+                                                "TICKET" ||
+                                                formData.taskSource ===
+                                                    "ADDITIONAL") && (
+                                                <p>
+                                                    <strong>
+                                                        Ticket-based Tasks:
+                                                    </strong>{" "}
+                                                    You can add task titles,
+                                                    target dates and
+                                                    descriptions.
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Task List */}
+                                {formData.taskSource && (
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <h3 className="font-semibold">
+                                                Tasks
+                                            </h3>
+
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-outline"
+                                                onClick={addNewTask}
+                                            >
+                                                <Plus size={14} />
+                                                Add Task
+                                            </button>
+                                        </div>
+
+                                        {formData.tasks.map((task, index) => (
+                                            <div
+                                                key={index}
+                                                className="border rounded-lg p-4 bg-base-50"
+                                            >
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <h4 className="font-medium flex items-center gap-2">
+                                                        <span className="badge badge-ghost">
+                                                            #{index + 1}
+                                                        </span>
+                                                        Task Details
+                                                    </h4>
+                                                    {formData.tasks.length >
+                                                        1 && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-ghost text-error"
+                                                            onClick={() =>
+                                                                removeTask(
+                                                                    index
+                                                                )
+                                                            }
+                                                        >
+                                                            <X size={14} />
+                                                            Remove
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                <div className="space-y-3">
+                                                    <div className="grid grid-cols-1 gap-4">
+                                                        <div className="form-control">
+                                                            <label className="label">
+                                                                <span className="label-text font-semibold">
+                                                                    Task Title *
+                                                                </span>
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                className={`input input-bordered w-full ${
+                                                                    errors[
+                                                                        `tasks.${index}.title`
+                                                                    ]
+                                                                        ? "input-error"
+                                                                        : ""
+                                                                }`}
+                                                                value={
+                                                                    task.title
+                                                                }
+                                                                placeholder="Enter task title"
+                                                                onChange={(e) =>
+                                                                    handleTaskUpdate(
+                                                                        index,
+                                                                        "title",
+                                                                        e.target
+                                                                            .value
+                                                                    )
+                                                                }
+                                                            />
+                                                            {errors[
+                                                                `tasks.${index}.title`
+                                                            ] && (
+                                                                <span className="label-text-alt text-error">
+                                                                    {
+                                                                        errors[
+                                                                            `tasks.${index}.title`
+                                                                        ]
+                                                                    }
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Target Completion and Description */}
+                                                    {formData.taskSource !==
+                                                        "MANUAL" && (
+                                                        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                                                            <div className="form-control">
+                                                                <label className="label">
+                                                                    <span className="label-text font-semibold">
+                                                                        <Calendar
+                                                                            size={
+                                                                                14
+                                                                            }
+                                                                            className="inline mr-1"
+                                                                        />
+                                                                        Target
+                                                                        Completion
+                                                                    </span>
+                                                                </label>
+                                                                <input
+                                                                    type="date"
+                                                                    className="input input-bordered w-full"
+                                                                    value={
+                                                                        task.targetCompletion
+                                                                    }
+                                                                    onChange={(
+                                                                        e
+                                                                    ) =>
+                                                                        handleTaskUpdate(
+                                                                            index,
+                                                                            "targetCompletion",
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                        )
+                                                                    }
+                                                                    min={
+                                                                        new Date()
+                                                                            .toISOString()
+                                                                            .split(
+                                                                                "T"
+                                                                            )[0]
+                                                                    }
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Description */}
+                                                    <div className="form-control">
+                                                        <label className="label">
+                                                            <span className="label-text font-semibold">
+                                                                Description
+                                                            </span>
+                                                        </label>
+                                                        <textarea
+                                                            className="textarea textarea-bordered w-full"
+                                                            placeholder="Enter task description (optional)"
+                                                            rows="3"
+                                                            value={
+                                                                task.description
+                                                            }
+                                                            onChange={(e) =>
+                                                                handleTaskUpdate(
+                                                                    index,
+                                                                    "description",
+                                                                    e.target
+                                                                        .value
+                                                                )
+                                                            }
+                                                        ></textarea>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
+                            {/* Modal Actions */}
                             <div className="modal-action">
                                 <label
                                     htmlFor="task-modal"
@@ -703,7 +1100,9 @@ const CreateTask = () => {
                                     Cancel
                                 </label>
                                 <button
-                                    onClick={handleSubmit}
+                                    onClick={() => {
+                                        handleSubmit();
+                                    }}
                                     className="btn btn-primary"
                                     disabled={
                                         isSubmitting || !formData.taskSource
@@ -727,6 +1126,7 @@ const CreateTask = () => {
                             </div>
                         </div>
 
+                        {/* Modal backdrop */}
                         <label className="modal-backdrop" htmlFor="task-modal">
                             Close
                         </label>

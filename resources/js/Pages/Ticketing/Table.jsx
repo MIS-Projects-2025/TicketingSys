@@ -15,6 +15,7 @@ import {
     ThumbsUp,
     User2,
     Airplay,
+    CheckCircle,
 } from "lucide-react";
 
 // Constants
@@ -43,6 +44,7 @@ const TICKET_STATUS = {
     ON_HOLD: 12,
     FOR_TESTING: 13,
     TESTED: 14,
+    RESOLVED: 15,
 };
 
 // Status display mapping
@@ -61,6 +63,7 @@ const STATUS_DISPLAY = {
     [TICKET_STATUS.ON_HOLD]: "On Hold",
     [TICKET_STATUS.FOR_TESTING]: "For Testing",
     [TICKET_STATUS.TESTED]: "Tested",
+    [TICKET_STATUS.RESOLVED]: "Resolved",
 };
 
 // Status color mapping
@@ -79,6 +82,7 @@ const STATUS_COLORS = {
     [TICKET_STATUS.ON_HOLD]: "warning",
     [TICKET_STATUS.FOR_TESTING]: "info",
     [TICKET_STATUS.TESTED]: "success",
+    [TICKET_STATUS.RESOLVED]: "success",
 };
 
 const PRIORITY_LEVELS = {
@@ -96,6 +100,7 @@ const ACTION_TYPES = {
     RESUBMIT: "resubmit",
     ACKNOWLEDGE: "acknowledge",
     TEST: "test",
+    RESOLVED: "resolved",
 };
 
 // Filter types for StatCards
@@ -113,6 +118,7 @@ const ACTION_ICONS = {
     view: Eye,
     acknowledge: UserCheck,
     for_testing: Airplay, // New icon for "For Testing"
+    resolved: CheckCircle,
 };
 
 // Priority badge styles
@@ -158,12 +164,15 @@ const getActionConfig = (ticket, userAccountType, empData) => {
     // Database stores numeric status values, so ensure we're comparing numbers
     const ticketStatus = parseInt(ticket.STATUS);
 
+    // console.log(
+    //     "" + isProgrammer,
+    //     empData,
+    //     ticketStatus,
+    //     TICKET_STATUS.ASSIGNED,
+    //     ticket.ASSIGNED_TO
+    // );
     console.log(
-        isProgrammer,
-        empData,
-        ticketStatus,
-        TICKET_STATUS.ASSIGNED,
-        ticket.ASSIGNED_TO
+        `isProgrammer: ${isProgrammer}, empData: ${empData}, ticketStatus: ${ticketStatus}, TICKET_STATUS.ACKNOWLEDGED: ${TICKET_STATUS.ACKNOWLEDGED}, ticket.ASSIGNED_TO: ${ticket.ASSIGNED_TO} isUser: ${isUser}`
     );
 
     if (isMIS) {
@@ -213,7 +222,9 @@ const getActionConfig = (ticket, userAccountType, empData) => {
     if (
         isProgrammer &&
         ticketStatus === TICKET_STATUS.ASSIGNED &&
-        ticket.ASSIGNED_TO == empData?.emp_id
+        ticket.ASSIGNED_TO.split(",")
+            .map((id) => id.trim())
+            .includes(String(isUser))
     ) {
         return {
             label: "Acknowledge",
@@ -224,7 +235,21 @@ const getActionConfig = (ticket, userAccountType, empData) => {
             icon: ACTION_ICONS.acknowledge,
         };
     }
-
+    if (
+        ticketStatus == TICKET_STATUS.ACKNOWLEDGED &&
+        ticket.ASSIGNED_TO.split(",")
+            .map((id) => id.trim())
+            .includes(String(isUser))
+    ) {
+        return {
+            label: "Resolve",
+            className: "btn btn-outline btn-success",
+            formState: "resolving",
+            actionType: ACTION_TYPES.RESOLVED,
+            priority: PRIORITY_LEVELS.HIGH,
+            icon: ACTION_ICONS.resolved,
+        };
+    }
     // Department Head approval for request forms
     if (isDeptHead && !isOD && ticketStatus === TICKET_STATUS.ASSESSED) {
         return {

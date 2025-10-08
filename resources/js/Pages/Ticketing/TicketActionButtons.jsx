@@ -406,6 +406,16 @@ const TicketActionButtons = ({
                         Reject
                     </button>
                 )}
+                {actions.canResolve && (
+                    <button
+                        type="button"
+                        className="btn btn-outline btn-success gap-2"
+                        onClick={() => handleApprovalAction("resolve")}
+                    >
+                        <CheckCircle className="w-4 h-4" />
+                        Resolve
+                    </button>
+                )}
             </div>
 
             {/* Generate Button */}
